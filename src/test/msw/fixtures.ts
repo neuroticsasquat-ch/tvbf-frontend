@@ -1,0 +1,147 @@
+import type { GenreOut, NetworkOut, ShowDetail, ShowListPage, SeasonOut, EpisodeOut } from "@/api/types";
+
+export const fixtureGenres: GenreOut[] = [
+  { id: 1, name: "Drama" },
+  { id: 2, name: "Comedy" },
+  { id: 3, name: "Sci-Fi" },
+];
+
+export const fixtureNetworks: NetworkOut[] = [
+  { id: 10, name: "HBO", country_code: "US", country_name: "United States", timezone: "America/New_York" },
+  { id: 11, name: "BBC One", country_code: "GB", country_name: "United Kingdom", timezone: "Europe/London" },
+];
+
+export const fixtureShow: ShowDetail = {
+  id: 100,
+  name: "Fixture Show",
+  type: "Scripted",
+  status: "Running",
+  language: "English",
+  premiered: "2020-01-01",
+  ended: null,
+  image_medium: "https://example.com/m.jpg",
+  image_original: "https://example.com/o.jpg",
+  network: { id: 10, name: "HBO" },
+  web_channel: null,
+  genres: ["Drama"],
+  summary: "<p>A <b>test</b> show.</p>",
+  runtime: 60,
+  official_site: "https://example.com/show",
+  externals: { imdb: "tt1234567", tvdb: 123, tvrage: null },
+  tvmaze_updated: 1700000000,
+  seasons: [
+    {
+      id: 1000,
+      number: 1,
+      name: null,
+      episode_order: 10,
+      premiere_date: "2020-01-01",
+      end_date: "2020-03-01",
+      network: null,
+      web_channel: null,
+      image_medium: null,
+      image_original: null,
+      summary: null,
+    },
+    {
+      id: 1001,
+      number: 2,
+      name: null,
+      episode_order: 10,
+      premiere_date: "2021-01-01",
+      end_date: "2021-03-01",
+      network: null,
+      web_channel: null,
+      image_medium: null,
+      image_original: null,
+      summary: null,
+    },
+  ],
+};
+
+export const fixtureShowListPage: ShowListPage = {
+  items: [
+    {
+      id: 100,
+      name: "Fixture Show",
+      type: "Scripted",
+      status: "Running",
+      language: "English",
+      premiered: "2020-01-01",
+      ended: null,
+      image_medium: "https://example.com/m.jpg",
+      image_original: "https://example.com/o.jpg",
+      network: { id: 10, name: "HBO" },
+      web_channel: null,
+      genres: ["Drama"],
+    },
+    {
+      id: 101,
+      name: "Another Show",
+      type: "Scripted",
+      status: "Ended",
+      language: "English",
+      premiered: "2015-01-01",
+      ended: "2018-12-31",
+      image_medium: null,
+      image_original: null,
+      network: { id: 11, name: "BBC One" },
+      web_channel: null,
+      genres: ["Comedy"],
+    },
+  ],
+  page: 1,
+  per_page: 50,
+  total: 2,
+  total_pages: 1,
+};
+
+export const fixtureEpisodes: EpisodeOut[] = [
+  {
+    id: 5000,
+    show_id: 100,
+    season_id: 1000,
+    season: 1,
+    number: 1,
+    name: "Pilot",
+    airdate: "2020-01-01",
+    airtime: "21:00",
+    runtime: 60,
+    summary: "<p>Opening episode.</p>",
+    image_medium: null,
+    image_original: null,
+  },
+  {
+    id: 5001,
+    show_id: 100,
+    season_id: 1000,
+    season: 1,
+    number: 2,
+    name: "Second",
+    airdate: "2020-01-08",
+    airtime: "21:00",
+    runtime: 60,
+    summary: null,
+    image_medium: null,
+    image_original: null,
+  },
+];
+
+export const fixtureSeason2Episodes: EpisodeOut[] = [
+  {
+    id: 5100,
+    show_id: 100,
+    season_id: 1001,
+    season: 2,
+    number: 1,
+    name: "S2 Pilot",
+    airdate: "2021-01-01",
+    airtime: "21:00",
+    runtime: 60,
+    summary: null,
+    image_medium: null,
+    image_original: null,
+  },
+];
+
+export const _seasonPlaceholder: SeasonOut[] = [];

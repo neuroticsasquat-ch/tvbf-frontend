@@ -1,0 +1,49 @@
+import { env } from "@/env";
+import type { ShowFilters } from "./types";
+
+export class ApiError extends Error {
+  readonly status: number;
+  readonly body: unknown;
+
+  constructor(status: number, message: string, body: unknown) {
+    super(message);
+    this.name = "ApiError";
+    this.status = status;
+    this.body = body;
+  }
+}
+
+export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
+  const res = await fetch(`${env.apiBaseUrl}${path}`, {
+    ...init,
+    headers: { Accept: "application/json", ...(init?.headers ?? {}) },
+  });
+  if (!res.ok) {
+    let body: unknown = null;
+    let message = `Request failed with status ${res.status}`;
+    try {
+      body = await res.json();
+      if (body && typeof body === "object" && "detail" in body && typeof body.detail === "string") {
+        message = body.detail;
+      }
+    } catch {
+      // non-JSON body; keep generic message
+    }
+    throw new ApiError(res.status, message, body);
+  }
+  return (await res.json()) as T;
+}
+
+export function buildShowsQuery(filters: ShowFilters): string {
+  const params = new URLSearchParams();
+  if (filters.search && filters.search.length > 0) params.set("search", filters.search);
+  if (filters.status) params.set("status", filters.status);
+  if (filters.language) params.set("language", filters.language);
+  if (filters.type) params.set("type", filters.type);
+  if (filters.sort) params.set("sort", filters.sort);
+  if (filters.page !== undefined) params.set("page", String(filters.page));
+  if (filters.per_page !== undefined) params.set("per_page", String(filters.per_page));
+  if (filters.genre) for (const g of filters.genre) params.append("genre", g);
+  if (filters.network) for (const n of filters.network) params.append("network", String(n));
+  return params.toString();
+}
