@@ -10,6 +10,13 @@ if (typeof window !== "undefined") {
   window.HTMLElement.prototype.setPointerCapture = () => undefined;
   window.HTMLElement.prototype.releasePointerCapture = () => undefined;
   window.HTMLElement.prototype.scrollIntoView = () => undefined;
+  class ResizeObserverStub {
+    observe() {}
+    unobserve() {}
+    disconnect() {}
+  }
+  (window as unknown as { ResizeObserver: typeof ResizeObserver }).ResizeObserver ??=
+    ResizeObserverStub as unknown as typeof ResizeObserver;
 }
 
 beforeAll(() => server.listen({ onUnhandledRequest: "error" }));
