@@ -36,7 +36,7 @@ export function MyShowsPage() {
       </div>
       {isLoading && <p>Loading…</p>}
       {!isLoading && data && data.length === 0 && (
-        <p className="text-muted-foreground">Nothing here yet. Add some shows from Browse.</p>
+        <p className="text-muted-foreground">Nothing here yet. Search for shows and add them to your list.</p>
       )}
       {!isLoading && data && data.length > 0 && (
         <ul className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-8 gap-2">
