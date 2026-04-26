@@ -1,0 +1,71 @@
+import { describe, expect, it } from "vitest";
+import { render, screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { http, HttpResponse } from "msw";
+import { MemoryRouter, Routes, Route } from "react-router";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { server } from "@/test/msw/server";
+import { env } from "@/env";
+import { AuthProvider } from "@/components/AuthContext";
+import { SignupPage } from "./SignupPage";
+
+function renderAt(path: string) {
+  const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  return render(
+    <QueryClientProvider client={qc}>
+      <AuthProvider>
+        <MemoryRouter initialEntries={[path]}>
+          <Routes>
+            <Route path="/signup" element={<SignupPage />} />
+            <Route path="/my-shows" element={<div>my list page</div>} />
+          </Routes>
+        </MemoryRouter>
+      </AuthProvider>
+    </QueryClientProvider>,
+  );
+}
+
+describe("SignupPage", () => {
+  it("creates an account and redirects", async () => {
+    server.use(
+      http.get(`${env.apiBaseUrl}/me`, () =>
+        HttpResponse.json({ detail: "auth_required" }, { status: 401 }),
+      ),
+      http.post(`${env.apiBaseUrl}/auth/signup`, () =>
+        HttpResponse.json(
+          {
+            id: "u1",
+            email: "x@y.com",
+            display_name: "X",
+            created_at: new Date().toISOString(),
+            csrf_token: "test-csrf",
+          },
+          { status: 201 },
+        ),
+      ),
+    );
+    renderAt("/signup");
+    await userEvent.type(screen.getByLabelText(/email/i), "x@y.com");
+    await userEvent.type(screen.getByLabelText(/display name/i), "X");
+    await userEvent.type(screen.getByLabelText(/password/i), "hunter2hunter2");
+    await userEvent.click(screen.getByRole("button", { name: /sign up/i }));
+    await waitFor(() => expect(screen.getByText("my list page")).toBeInTheDocument());
+  });
+
+  it("surfaces email_in_use", async () => {
+    server.use(
+      http.get(`${env.apiBaseUrl}/me`, () =>
+        HttpResponse.json({ detail: "auth_required" }, { status: 401 }),
+      ),
+      http.post(`${env.apiBaseUrl}/auth/signup`, () =>
+        HttpResponse.json({ detail: "email_in_use" }, { status: 409 }),
+      ),
+    );
+    renderAt("/signup");
+    await userEvent.type(screen.getByLabelText(/email/i), "x@y.com");
+    await userEvent.type(screen.getByLabelText(/display name/i), "X");
+    await userEvent.type(screen.getByLabelText(/password/i), "hunter2hunter2");
+    await userEvent.click(screen.getByRole("button", { name: /sign up/i }));
+    await waitFor(() => expect(screen.getByText(/already registered/i)).toBeInTheDocument());
+  });
+});

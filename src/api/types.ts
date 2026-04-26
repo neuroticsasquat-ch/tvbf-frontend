@@ -111,3 +111,41 @@ export interface ShowFilters {
   page?: number;
   per_page?: number;
 }
+
+export type MyShowsSort = "recent_activity" | "name_asc" | "name_desc" | "added";
+export type WatchNextSort = "airdate_desc" | "airdate_asc" | "name_asc" | "name_desc";
+export type UpcomingSort = "airdate_asc" | "airdate_desc" | "name_asc" | "name_desc";
+
+export interface User {
+  id: string;
+  email: string;
+  display_name: string;
+  created_at: string;
+}
+
+export interface AuthedUser extends User {
+  csrf_token: string;
+}
+
+export interface MyShowEntry {
+  show: ShowSummary;
+  watched_episode_count: number;
+  total_episode_count: number;
+  next_episode: EpisodeOut | null;
+  added_at: string;
+}
+
+export interface WatchNextEntry {
+  show: ShowSummary;
+  episode: EpisodeOut;
+}
+
+export interface UpcomingEntry {
+  show: ShowSummary;
+  episode: EpisodeOut;
+}
+
+export interface EpisodeWatchOut {
+  episode_id: number;
+  watched_at: string;
+}

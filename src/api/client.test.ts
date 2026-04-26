@@ -1,8 +1,8 @@
 import { HttpResponse, http } from "msw";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { server } from "@/test/msw/server";
 import { env } from "@/env";
-import { ApiError, apiFetch, buildShowsQuery } from "./client";
+import { ApiError, apiFetch, buildShowsQuery, setCsrfToken } from "./client";
 import type { ShowFilters } from "./types";
 
 describe("apiFetch", () => {
@@ -74,5 +74,56 @@ describe("buildShowsQuery", () => {
     expect(q.get("sort")).toBe("-premiered");
     expect(q.get("page")).toBe("2");
     expect(q.get("per_page")).toBe("25");
+  });
+});
+
+describe("apiFetch — auth + csrf", () => {
+  beforeEach(() => {
+    setCsrfToken(null);
+  });
+
+  it("includes credentials on every request", async () => {
+    let observedCredentials: RequestCredentials | undefined;
+    server.use(
+      http.get(`${env.apiBaseUrl}/probe`, ({ request }) => {
+        observedCredentials = request.credentials;
+        return HttpResponse.json({ ok: true });
+      }),
+    );
+    await apiFetch("/probe");
+    expect(observedCredentials).toBe("include");
+  });
+
+  it("attaches X-CSRF-Token from in-memory csrf token on POST", async () => {
+    setCsrfToken("abc123");
+    let observedHeader: string | null = null;
+    server.use(
+      http.post(`${env.apiBaseUrl}/echo`, ({ request }) => {
+        observedHeader = request.headers.get("X-CSRF-Token");
+        return HttpResponse.json({});
+      }),
+    );
+    await apiFetch("/echo", { method: "POST", body: "{}" });
+    expect(observedHeader).toBe("abc123");
+  });
+
+  it("does not attach X-CSRF-Token when token is unset", async () => {
+    let observedHeader: string | null = "sentinel";
+    server.use(
+      http.post(`${env.apiBaseUrl}/echo`, ({ request }) => {
+        observedHeader = request.headers.get("X-CSRF-Token");
+        return HttpResponse.json({});
+      }),
+    );
+    await apiFetch("/echo", { method: "POST", body: "{}" });
+    expect(observedHeader).toBeNull();
+  });
+
+  it("returns undefined for 204", async () => {
+    server.use(
+      http.delete(`${env.apiBaseUrl}/gone`, () => new HttpResponse(null, { status: 204 })),
+    );
+    const result = await apiFetch<void>("/gone", { method: "DELETE" });
+    expect(result).toBeUndefined();
   });
 });

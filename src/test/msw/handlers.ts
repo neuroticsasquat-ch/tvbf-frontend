@@ -12,6 +12,9 @@ import {
 const base = env.apiBaseUrl;
 
 export const handlers = [
+  // Default: unauthenticated — individual tests can override with server.use(...)
+  http.get(`${base}/me`, () => HttpResponse.json({ detail: "auth_required" }, { status: 401 })),
+  http.get(`${base}/me/shows`, () => HttpResponse.json([])),
   http.get(`${base}/genres`, () => HttpResponse.json(fixtureGenres)),
   http.get(`${base}/networks`, () => HttpResponse.json(fixtureNetworks)),
   http.get(`${base}/shows`, () => HttpResponse.json(fixtureShowListPage)),

@@ -6,6 +6,8 @@ import { ErrorState } from "@/components/ErrorState";
 import { NotFoundPage } from "./NotFoundPage";
 import { SafeHtml } from "@/components/SafeHtml";
 import { Badge } from "@/components/ui/badge";
+import { MyShowsToggle } from "@/components/MyShowsToggle";
+import { NextEpisodeCard } from "@/components/NextEpisodeCard";
 
 function yearRange(premiered: string | null, ended: string | null) {
   if (!premiered) return "—";
@@ -53,6 +55,11 @@ export function ShowDetailPage() {
           <SafeHtml html={show.summary} className="prose prose-sm max-w-none pt-2" />
         </div>
       </header>
+
+      <div className="my-4 flex items-center gap-4">
+        <MyShowsToggle showId={show.id} />
+      </div>
+      <NextEpisodeCard showId={show.id} />
 
       <section>
         <h2 className="mb-3 text-lg font-semibold">Seasons</h2>

@@ -13,11 +13,35 @@ export class ApiError extends Error {
   }
 }
 
+let _csrfToken: string | null = null;
+
+export function setCsrfToken(token: string | null): void {
+  _csrfToken = token;
+}
+
+export function getCsrfToken(): string | null {
+  return _csrfToken;
+}
+
 export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
+  const method = (init?.method ?? "GET").toUpperCase();
+  const headers = new Headers({ Accept: "application/json", ...(init?.headers ?? {}) });
+
+  if (method !== "GET" && method !== "HEAD") {
+    if (_csrfToken) headers.set("X-CSRF-Token", _csrfToken);
+  }
+
+  if (init?.body && !headers.has("Content-Type")) {
+    headers.set("Content-Type", "application/json");
+  }
+
   const res = await fetch(`${env.apiBaseUrl}${path}`, {
     ...init,
-    headers: { Accept: "application/json", ...(init?.headers ?? {}) },
+    method,
+    credentials: "include",
+    headers,
   });
+
   if (!res.ok) {
     let body: unknown = null;
     let message = `Request failed with status ${res.status}`;
@@ -31,6 +55,8 @@ export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> 
     }
     throw new ApiError(res.status, message, body);
   }
+
+  if (res.status === 204) return undefined as T;
   return (await res.json()) as T;
 }
 

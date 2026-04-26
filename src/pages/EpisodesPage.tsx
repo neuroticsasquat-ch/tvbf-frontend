@@ -13,6 +13,8 @@ import {
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { SafeHtml } from "@/components/SafeHtml";
+import { EpisodeWatchCheckbox } from "@/components/EpisodeWatchCheckbox";
+import { SeasonWatchToggle } from "@/components/SeasonWatchToggle";
 
 export function EpisodesPage() {
   const { id } = useParams<{ id: string }>();
@@ -75,6 +77,8 @@ export function EpisodesPage() {
         </div>
       </div>
 
+      <SeasonWatchToggle showId={showId} season={currentSeason} />
+
       {episodesQuery.data.length === 0 ? (
         <p className="py-16 text-center text-muted-foreground">No episodes for this season.</p>
       ) : (
@@ -86,6 +90,7 @@ export function EpisodesPage() {
               <th className="py-2 pr-4 font-medium">Airdate</th>
               <th className="py-2 pr-4 font-medium">Runtime</th>
               <th className="py-2 pr-4 font-medium">Summary</th>
+              <th className="py-2 pr-4 font-medium"></th>
             </tr>
           </thead>
           <tbody>
@@ -101,6 +106,9 @@ export function EpisodesPage() {
                 </td>
                 <td className="py-2 pr-4 text-muted-foreground">
                   <SafeHtml html={ep.summary} />
+                </td>
+                <td className="py-2 pr-4 whitespace-nowrap">
+                  <EpisodeWatchCheckbox showId={ep.show_id} episodeId={ep.id} />
                 </td>
               </tr>
             ))}
