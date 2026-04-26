@@ -17,9 +17,9 @@ export default defineConfig({
     hmr: {
       clientPort: 443,
       protocol: "wss",
-      host: "tvbf.localhost",
+      host: "app.tvbf.localhost",
     },
-    allowedHosts: ["tvbf.localhost"],
+    allowedHosts: ["app.tvbf.localhost"],
     watch: {
       usePolling: true,
       interval: 500,
