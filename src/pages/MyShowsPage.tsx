@@ -39,21 +39,28 @@ export function MyShowsPage() {
         <p className="text-muted-foreground">Nothing here yet. Add some shows from Browse.</p>
       )}
       {!isLoading && data && data.length > 0 && (
-        <ul className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+        <ul className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-8 gap-2">
           {data.map((entry) => (
-            <li key={entry.show.id} className="border border-border rounded p-3">
-              <Link to={`/shows/${entry.show.id}`} className="block">
+            <li
+              key={entry.show.id}
+              className="overflow-hidden border border-border rounded bg-background"
+            >
+              <Link to={`/shows/${entry.show.id}`} className="group block">
                 {entry.show.image_medium && (
                   <img
                     src={entry.show.image_medium}
                     alt=""
-                    className="w-full aspect-[2/3] object-cover rounded mb-2"
+                    className="w-full aspect-[2/3] object-cover"
                   />
                 )}
-                <h3 className="font-semibold">{entry.show.name}</h3>
-                <p className="text-xs text-muted-foreground">
-                  {entry.watched_episode_count}/{entry.total_episode_count} watched
-                </p>
+                <div className="p-1.5">
+                  <h3 className="truncate text-xs font-medium leading-tight group-hover:underline">
+                    {entry.show.name}
+                  </h3>
+                  <p className="text-[10px] text-muted-foreground leading-tight">
+                    {entry.watched_episode_count}/{entry.total_episode_count}
+                  </p>
+                </div>
               </Link>
             </li>
           ))}

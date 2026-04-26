@@ -1,5 +1,5 @@
 import { Link } from "react-router";
-import { Badge } from "@/components/ui/badge";
+
 import type { ShowSummary } from "@/api/types";
 
 const FALLBACK_POSTER =
@@ -21,18 +21,11 @@ export function ShowCard({ show }: { show: ShowSummary }) {
         className="aspect-[3/4] w-full object-cover"
         loading="lazy"
       />
-      <div className="p-3">
-        <h3 className="truncate text-sm font-medium group-hover:underline">{show.name}</h3>
-        <p className="mt-1 text-xs text-muted-foreground">
-          {year(show.premiered)} {show.network?.name ? `· ${show.network.name}` : ""}
-        </p>
-        <div className="mt-2 flex flex-wrap gap-1">
-          {show.genres.slice(0, 3).map((g) => (
-            <Badge key={g} variant="secondary" className="text-[10px]">
-              {g}
-            </Badge>
-          ))}
-        </div>
+      <div className="p-1.5">
+        <h3 className="truncate text-xs font-medium leading-tight group-hover:underline">
+          {show.name}
+        </h3>
+        <p className="text-[10px] text-muted-foreground leading-tight">{year(show.premiered)}</p>
       </div>
     </Link>
   );
