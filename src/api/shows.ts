@@ -4,12 +4,13 @@ import type { EpisodeOut, ShowDetail, ShowFilters, ShowListPage } from "./types"
 
 const FIVE_MINUTES = 5 * 60 * 1000;
 
-export function useShows(filters: ShowFilters) {
+export function useShows(filters: ShowFilters, options: { enabled?: boolean } = {}) {
   const queryString = buildShowsQuery(filters);
   return useQuery<ShowListPage>({
     queryKey: ["shows", filters],
     queryFn: () => apiFetch<ShowListPage>(`/shows${queryString ? `?${queryString}` : ""}`),
     staleTime: FIVE_MINUTES,
+    enabled: options.enabled ?? true,
   });
 }
 

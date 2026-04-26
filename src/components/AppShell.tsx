@@ -13,7 +13,7 @@ export function AppShell() {
           </Link>
           <nav className="flex items-center gap-4 text-sm text-muted-foreground">
             <Link to="/" className="hover:text-foreground">
-              Browse
+              Search
             </Link>
             {user ? (
               <>

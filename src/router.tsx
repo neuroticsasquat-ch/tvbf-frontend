@@ -1,6 +1,6 @@
 import { createBrowserRouter } from "react-router";
 import { AppShell } from "@/components/AppShell";
-import { BrowsePage } from "@/pages/BrowsePage";
+import { SearchPage } from "@/pages/SearchPage";
 import { ShowDetailPage } from "@/pages/ShowDetailPage";
 import { EpisodesPage } from "@/pages/EpisodesPage";
 import { NotFoundPage } from "@/pages/NotFoundPage";
@@ -16,7 +16,7 @@ export const router = createBrowserRouter([
     path: "/",
     element: <AppShell />,
     children: [
-      { index: true, element: <BrowsePage /> },
+      { index: true, element: <SearchPage /> },
       { path: "login", element: <LoginPage /> },
       { path: "signup", element: <SignupPage /> },
       { path: "shows/:id", element: <ShowDetailPage /> },
