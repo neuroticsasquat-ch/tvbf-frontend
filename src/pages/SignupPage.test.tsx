@@ -25,6 +25,13 @@ function renderAt(path: string) {
   );
 }
 
+async function fillCommonFields(invite = "test-invite") {
+  await userEvent.type(screen.getByLabelText(/invite code/i), invite);
+  await userEvent.type(screen.getByLabelText(/email/i), "x@y.com");
+  await userEvent.type(screen.getByLabelText(/display name/i), "X");
+  await userEvent.type(screen.getByLabelText(/password/i), "hunter2hunter2");
+}
+
 describe("SignupPage", () => {
   it("creates an account and redirects", async () => {
     server.use(
@@ -45,9 +52,7 @@ describe("SignupPage", () => {
       ),
     );
     renderAt("/signup");
-    await userEvent.type(screen.getByLabelText(/email/i), "x@y.com");
-    await userEvent.type(screen.getByLabelText(/display name/i), "X");
-    await userEvent.type(screen.getByLabelText(/password/i), "hunter2hunter2");
+    await fillCommonFields();
     await userEvent.click(screen.getByRole("button", { name: /sign up/i }));
     await waitFor(() => expect(screen.getByText("my list page")).toBeInTheDocument());
   });
@@ -62,10 +67,45 @@ describe("SignupPage", () => {
       ),
     );
     renderAt("/signup");
+    await fillCommonFields();
+    await userEvent.click(screen.getByRole("button", { name: /sign up/i }));
+    await waitFor(() => expect(screen.getByText(/already registered/i)).toBeInTheDocument());
+  });
+
+  it("surfaces invalid_invite (403)", async () => {
+    server.use(
+      http.get(`${env.apiBaseUrl}/me`, () =>
+        HttpResponse.json({ detail: "auth_required" }, { status: 401 }),
+      ),
+      http.post(`${env.apiBaseUrl}/auth/signup`, () =>
+        HttpResponse.json({ detail: "invalid_invite" }, { status: 403 }),
+      ),
+    );
+    renderAt("/signup");
+    await fillCommonFields("bogus-code");
+    await userEvent.click(screen.getByRole("button", { name: /sign up/i }));
+    await waitFor(() =>
+      expect(screen.getByText(/invite code is invalid/i)).toBeInTheDocument(),
+    );
+  });
+
+  it("pre-fills the invite code from the ?invite= query param", () => {
+    renderAt("/signup?invite=abc123");
+    const input = screen.getByLabelText(/invite code/i) as HTMLInputElement;
+    expect(input.value).toBe("abc123");
+  });
+
+  it("blocks submit when invite code is empty", async () => {
+    renderAt("/signup");
+    // Fill everything EXCEPT invite code.
     await userEvent.type(screen.getByLabelText(/email/i), "x@y.com");
     await userEvent.type(screen.getByLabelText(/display name/i), "X");
     await userEvent.type(screen.getByLabelText(/password/i), "hunter2hunter2");
+    // The browser's `required` attribute prevents form submission and triggers
+    // its own validation UI before any network call. The form's onSubmit never
+    // runs in this case, so we just confirm no API call was made by checking
+    // the page doesn't navigate away.
     await userEvent.click(screen.getByRole("button", { name: /sign up/i }));
-    await waitFor(() => expect(screen.getByText(/already registered/i)).toBeInTheDocument());
+    expect(screen.queryByText("my list page")).not.toBeInTheDocument();
   });
 });

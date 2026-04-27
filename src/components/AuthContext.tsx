@@ -8,7 +8,12 @@ type AuthContextValue = {
   user: AuthedUser | null;
   loading: boolean;
   login: (email: string, password: string) => Promise<void>;
-  signup: (email: string, password: string, displayName: string) => Promise<void>;
+  signup: (
+    email: string,
+    password: string,
+    displayName: string,
+    inviteCode: string,
+  ) => Promise<void>;
   logout: () => Promise<void>;
   changePassword: (currentPassword: string, newPassword: string) => Promise<void>;
   deleteAccount: (password: string) => Promise<void>;
@@ -50,8 +55,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     },
   });
   const signupMut = useMutation({
-    mutationFn: (vars: { email: string; password: string; display_name: string }) =>
-      authApi.signup(vars),
+    mutationFn: (vars: {
+      email: string;
+      password: string;
+      display_name: string;
+      invite_code: string;
+    }) => authApi.signup(vars),
     onSuccess: (user) => {
       setCsrfToken(user.csrf_token);
       qc.setQueryData(["me"], user);
@@ -89,8 +98,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       login: async (email, password) => {
         await loginMut.mutateAsync({ email, password });
       },
-      signup: async (email, password, displayName) => {
-        await signupMut.mutateAsync({ email, password, display_name: displayName });
+      signup: async (email, password, displayName, inviteCode) => {
+        await signupMut.mutateAsync({
+          email,
+          password,
+          display_name: displayName,
+          invite_code: inviteCode,
+        });
       },
       logout: async () => {
         await logoutMut.mutateAsync();

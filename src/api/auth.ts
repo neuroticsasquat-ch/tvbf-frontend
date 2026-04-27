@@ -3,8 +3,12 @@ import type { AuthedUser } from "./types";
 
 export const me = () => apiFetch<AuthedUser>("/me");
 
-export const signup = (body: { email: string; password: string; display_name: string }) =>
-  apiFetch<AuthedUser>("/auth/signup", { method: "POST", body: JSON.stringify(body) });
+export const signup = (body: {
+  email: string;
+  password: string;
+  display_name: string;
+  invite_code: string;
+}) => apiFetch<AuthedUser>("/auth/signup", { method: "POST", body: JSON.stringify(body) });
 
 export const login = (body: { email: string; password: string }) =>
   apiFetch<AuthedUser>("/auth/login", { method: "POST", body: JSON.stringify(body) });

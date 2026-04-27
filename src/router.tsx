@@ -16,14 +16,14 @@ export const router = createBrowserRouter([
     path: "/",
     element: <AppShell />,
     children: [
-      { index: true, element: <SearchPage /> },
       { path: "login", element: <LoginPage /> },
       { path: "signup", element: <SignupPage /> },
-      { path: "shows/:id", element: <ShowDetailPage /> },
-      { path: "shows/:id/episodes", element: <EpisodesPage /> },
       {
         element: <RequireAuth />,
         children: [
+          { index: true, element: <SearchPage /> },
+          { path: "shows/:id", element: <ShowDetailPage /> },
+          { path: "shows/:id/episodes", element: <EpisodesPage /> },
           { path: "my-shows", element: <MyShowsPage /> },
           { path: "watch-next", element: <WatchNextPage /> },
           { path: "upcoming", element: <UpcomingPage /> },

@@ -12,11 +12,11 @@ export function AppShell() {
             TV Binge Friend
           </Link>
           <nav className="flex items-center gap-4 text-sm text-muted-foreground">
-            <Link to="/" className="hover:text-foreground">
-              Search
-            </Link>
             {user ? (
               <>
+                <Link to="/" className="hover:text-foreground">
+                  Search
+                </Link>
                 <Link to="/my-shows" className="hover:text-foreground">
                   My Shows
                 </Link>
