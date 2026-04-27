@@ -12,7 +12,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
-import { SafeHtml } from "@/components/SafeHtml";
 import { EpisodeWatchCheckbox } from "@/components/EpisodeWatchCheckbox";
 import { SeasonWatchToggle } from "@/components/SeasonWatchToggle";
 
@@ -82,38 +81,25 @@ export function EpisodesPage() {
       {episodesQuery.data.length === 0 ? (
         <p className="py-16 text-center text-muted-foreground">No episodes for this season.</p>
       ) : (
-        <table className="w-full border-collapse text-sm">
-          <thead>
-            <tr className="border-b border-border text-left text-muted-foreground">
-              <th className="py-2 pr-4 font-medium">#</th>
-              <th className="py-2 pr-4 font-medium">Title</th>
-              <th className="py-2 pr-4 font-medium">Airdate</th>
-              <th className="py-2 pr-4 font-medium">Runtime</th>
-              <th className="py-2 pr-4 font-medium">Summary</th>
-              <th className="py-2 pr-4 font-medium"></th>
-            </tr>
-          </thead>
-          <tbody>
-            {episodesQuery.data.map((ep) => (
-              <tr key={ep.id} className="border-b border-border align-top">
-                <td className="py-2 pr-4 whitespace-nowrap">{ep.number ?? "—"}</td>
-                <td className="py-2 pr-4 font-medium">{ep.name ?? "—"}</td>
-                <td className="py-2 pr-4 whitespace-nowrap text-muted-foreground">
-                  {ep.airdate ?? "—"}
-                </td>
-                <td className="py-2 pr-4 whitespace-nowrap text-muted-foreground">
-                  {ep.runtime ? `${ep.runtime} min` : "—"}
-                </td>
-                <td className="py-2 pr-4 text-muted-foreground">
-                  <SafeHtml html={ep.summary} />
-                </td>
-                <td className="py-2 pr-4 whitespace-nowrap">
-                  <EpisodeWatchCheckbox showId={ep.show_id} episodeId={ep.id} />
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        <ul className="divide-y divide-border rounded border border-border">
+          {episodesQuery.data.map((ep) => (
+            <li key={ep.id} className="flex items-stretch">
+              <div className="flex w-12 shrink-0 items-center justify-center self-stretch border-r border-border bg-muted/40 text-sm font-medium tabular-nums text-muted-foreground">
+                {ep.number ?? "—"}
+              </div>
+              <div className="flex min-w-0 flex-1 items-center justify-between gap-3 px-4 py-2">
+                <div className="min-w-0">
+                  <div className="truncate text-sm font-medium">{ep.name ?? "—"}</div>
+                  <div className="text-xs text-muted-foreground">
+                    {ep.airdate ?? "TBA"}
+                    {ep.runtime ? ` · ${ep.runtime} min` : ""}
+                  </div>
+                </div>
+                <EpisodeWatchCheckbox showId={ep.show_id} episodeId={ep.id} />
+              </div>
+            </li>
+          ))}
+        </ul>
       )}
     </div>
   );

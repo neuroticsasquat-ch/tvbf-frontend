@@ -1,5 +1,7 @@
+import { CheckCircle2, Circle } from "lucide-react";
 import { useAuth } from "./AuthContext";
 import { useMarkEpisode, useUnmarkEpisode, useWatchedEpisodes } from "@/api/me";
+import { Button } from "@/components/ui/button";
 
 export function EpisodeWatchCheckbox({
   showId,
@@ -15,24 +17,29 @@ export function EpisodeWatchCheckbox({
 
   if (!user) return null;
 
-  const checked = watchedSet?.has(episodeId) ?? false;
-  const pending = mark.isPending || unmark.isPending;
+  const watched = watchedSet?.has(episodeId) ?? false;
 
-  function onToggle(e: React.ChangeEvent<HTMLInputElement>) {
-    if (e.target.checked) mark.mutate(episodeId);
-    else unmark.mutate(episodeId);
+  function onClick() {
+    if (watched) unmark.mutate({ episodeId, showId });
+    else mark.mutate({ episodeId, showId });
   }
 
   return (
-    <label className="inline-flex items-center gap-2">
-      <input
-        type="checkbox"
-        checked={checked}
-        onChange={onToggle}
-        disabled={pending}
-        aria-label="Mark episode watched"
-      />
-      <span className="text-xs text-muted-foreground">Watched</span>
-    </label>
+    <Button
+      type="button"
+      variant="ghost"
+      size="icon"
+      onClick={onClick}
+      aria-pressed={watched}
+      aria-label={watched ? "Mark episode unwatched" : "Mark episode watched"}
+      title={watched ? "Watched — click to unmark" : "Not watched — click to mark watched"}
+      className={
+        watched
+          ? "text-emerald-600 hover:text-emerald-700"
+          : "text-muted-foreground hover:text-foreground"
+      }
+    >
+      {watched ? <CheckCircle2 aria-hidden /> : <Circle aria-hidden />}
+    </Button>
   );
 }

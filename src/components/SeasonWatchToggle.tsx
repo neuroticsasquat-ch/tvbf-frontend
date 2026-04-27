@@ -1,27 +1,38 @@
+import { Check, X } from "lucide-react";
 import { useAuth } from "./AuthContext";
-import { useMarkSeason, useUnmarkSeason } from "@/api/me";
+import { useMarkSeason, useUnmarkSeason, useWatchedEpisodes } from "@/api/me";
+import { useShowEpisodes } from "@/api/shows";
+import { Button } from "@/components/ui/button";
 
 export function SeasonWatchToggle({ showId, season }: { showId: number; season: number }) {
   const { user } = useAuth();
+  const { data: episodes } = useShowEpisodes(showId, season);
+  const { data: watched } = useWatchedEpisodes(showId, !!user);
   const mark = useMarkSeason();
   const unmark = useUnmarkSeason();
+
   if (!user) return null;
+
+  const total = episodes?.length ?? 0;
+  const watchedInSeason =
+    episodes && watched ? episodes.filter((ep) => watched.has(ep.id)).length : 0;
+  const fullyWatched = total > 0 && watchedInSeason === total;
+
+  function onClick() {
+    if (fullyWatched) unmark.mutate({ showId, season });
+    else mark.mutate({ showId, season });
+  }
+
   return (
-    <div className="flex items-center gap-3">
-      <button
-        type="button"
-        onClick={() => mark.mutate({ showId, season })}
-        className="text-xs underline"
-      >
-        Mark season watched
-      </button>
-      <button
-        type="button"
-        onClick={() => unmark.mutate({ showId, season })}
-        className="text-xs underline"
-      >
-        Unmark season
-      </button>
-    </div>
+    <Button
+      type="button"
+      variant={fullyWatched ? "outline" : "default"}
+      size="sm"
+      onClick={onClick}
+      disabled={total === 0}
+    >
+      {fullyWatched ? <X aria-hidden /> : <Check aria-hidden />}
+      {fullyWatched ? "Unmark season" : "Mark season watched"}
+    </Button>
   );
 }

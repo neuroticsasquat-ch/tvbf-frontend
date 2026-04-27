@@ -9,7 +9,6 @@ export function MyShowsToggle({ showId }: { showId: number }) {
 
   if (!user) return null;
   const tracked = !!data?.find((e) => e.show.id === showId);
-  const pending = add.isPending || remove.isPending;
 
   function onClick() {
     if (tracked) remove.mutate(showId);
@@ -20,12 +19,11 @@ export function MyShowsToggle({ showId }: { showId: number }) {
     <button
       type="button"
       onClick={onClick}
-      disabled={pending}
       className={`rounded border px-3 py-1 text-sm ${
         tracked
           ? "border-border bg-background text-foreground"
           : "border-foreground bg-foreground text-background"
-      } disabled:opacity-50`}
+      }`}
     >
       {tracked ? "Remove from My Shows" : "Add to My Shows"}
     </button>
