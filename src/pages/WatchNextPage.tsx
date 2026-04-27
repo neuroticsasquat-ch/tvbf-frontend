@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link } from "react-router";
 import { useWatchNext } from "@/api/me";
+import { EpisodeWatchCheckbox } from "@/components/EpisodeWatchCheckbox";
 import type { WatchNextSort } from "@/api/types";
 
 const SORTS: { key: WatchNextSort; label: string }[] = [
@@ -69,6 +70,7 @@ export function WatchNextPage() {
                   <p className="text-xs text-muted-foreground">Aired {entry.episode.airdate}</p>
                 )}
               </div>
+              <EpisodeWatchCheckbox showId={entry.show.id} episodeId={entry.episode.id} />
             </li>
           ))}
         </ul>
