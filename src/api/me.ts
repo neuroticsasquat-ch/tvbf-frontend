@@ -11,10 +11,13 @@ import type {
   WatchNextSort,
 } from "./types";
 
+const FIVE_MINUTES = 5 * 60 * 1000;
+
 export function useMyShows(sort: MyShowsSort = "recent_activity") {
   return useQuery<MyShowEntry[]>({
     queryKey: ["my-shows", sort],
     queryFn: () => apiFetch<MyShowEntry[]>(`/me/shows?sort=${sort}`),
+    staleTime: FIVE_MINUTES,
   });
 }
 
