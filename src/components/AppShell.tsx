@@ -24,7 +24,7 @@ export function AppShell() {
     "block w-full text-left px-4 py-3 text-foreground hover:bg-muted border-b border-border";
 
   return (
-    <div className="min-h-screen">
+    <div className="flex min-h-screen flex-col">
       <header className="border-b border-border">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3">
           <Link to="/" className="text-lg font-semibold">
@@ -171,9 +171,33 @@ export function AppShell() {
         )}
       </header>
 
-      <main className="mx-auto max-w-6xl px-4 py-6">
+      <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-6">
         <Outlet />
       </main>
+
+      <footer className="border-t border-border">
+        <div className="mx-auto max-w-6xl px-4 py-4 text-xs text-muted-foreground">
+          TV data and images provided by{" "}
+          <a
+            href="https://www.tvmaze.com"
+            target="_blank"
+            rel="noreferrer noopener"
+            className="underline hover:text-foreground"
+          >
+            TVmaze
+          </a>
+          , licensed under{" "}
+          <a
+            href="https://creativecommons.org/licenses/by-sa/4.0/"
+            target="_blank"
+            rel="noreferrer noopener"
+            className="underline hover:text-foreground"
+          >
+            CC BY-SA 4.0
+          </a>
+          .
+        </div>
+      </footer>
 
       <ChangePasswordDialog open={pwOpen} onClose={() => setPwOpen(false)} />
       <DeleteAccountDialog open={delOpen} onClose={() => setDelOpen(false)} />
