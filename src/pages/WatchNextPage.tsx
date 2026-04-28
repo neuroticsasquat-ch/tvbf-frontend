@@ -62,13 +62,18 @@ export function WatchNextPage() {
                 >
                   {entry.show.name}
                 </Link>
-                <p className="text-sm">
-                  S{entry.episode.season}E{entry.episode.number}
-                  {entry.episode.name ? ` — ${entry.episode.name}` : ""}
-                </p>
-                {entry.episode.airdate && (
-                  <p className="text-xs text-muted-foreground">Aired {entry.episode.airdate}</p>
-                )}
+                <Link
+                  to={`/episodes/${entry.episode.id}`}
+                  className="block hover:underline"
+                >
+                  <p className="text-sm">
+                    S{entry.episode.season}E{entry.episode.number}
+                    {entry.episode.name ? ` — ${entry.episode.name}` : ""}
+                  </p>
+                  {entry.episode.airdate && (
+                    <p className="text-xs text-muted-foreground">Aired {entry.episode.airdate}</p>
+                  )}
+                </Link>
               </div>
               <EpisodeWatchCheckbox showId={entry.show.id} episodeId={entry.episode.id} />
             </li>

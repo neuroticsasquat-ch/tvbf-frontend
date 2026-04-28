@@ -84,17 +84,22 @@ export function EpisodesPage() {
         <ul className="divide-y divide-border rounded border border-border">
           {episodesQuery.data.map((ep) => (
             <li key={ep.id} className="flex items-stretch">
-              <div className="flex w-12 shrink-0 items-center justify-center self-stretch border-r border-border bg-muted/40 text-sm font-medium tabular-nums text-muted-foreground">
-                {ep.number ?? "—"}
-              </div>
-              <div className="flex min-w-0 flex-1 items-center justify-between gap-3 px-4 py-2">
-                <div className="min-w-0">
+              <Link
+                to={`/episodes/${ep.id}`}
+                className="flex flex-1 items-stretch hover:bg-muted"
+              >
+                <div className="flex w-12 shrink-0 items-center justify-center self-stretch border-r border-border bg-muted/40 text-sm font-medium tabular-nums text-muted-foreground">
+                  {ep.number ?? "—"}
+                </div>
+                <div className="min-w-0 flex-1 px-4 py-2">
                   <div className="truncate text-sm font-medium">{ep.name ?? "—"}</div>
                   <div className="text-xs text-muted-foreground">
                     {ep.airdate ?? "TBA"}
                     {ep.runtime ? ` · ${ep.runtime} min` : ""}
                   </div>
                 </div>
+              </Link>
+              <div className="flex items-center pr-3">
                 <EpisodeWatchCheckbox showId={ep.show_id} episodeId={ep.id} />
               </div>
             </li>

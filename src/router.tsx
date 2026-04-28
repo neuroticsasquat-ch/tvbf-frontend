@@ -3,6 +3,7 @@ import { AppShell } from "@/components/AppShell";
 import { SearchPage } from "@/pages/SearchPage";
 import { ShowDetailPage } from "@/pages/ShowDetailPage";
 import { EpisodesPage } from "@/pages/EpisodesPage";
+import { EpisodePage } from "@/pages/EpisodePage";
 import { NotFoundPage } from "@/pages/NotFoundPage";
 import { LoginPage } from "@/pages/LoginPage";
 import { SignupPage } from "@/pages/SignupPage";
@@ -24,6 +25,7 @@ export const router = createBrowserRouter([
           { index: true, element: <SearchPage /> },
           { path: "shows/:id", element: <ShowDetailPage /> },
           { path: "shows/:id/episodes", element: <EpisodesPage /> },
+          { path: "episodes/:episodeId", element: <EpisodePage /> },
           { path: "my-shows", element: <MyShowsPage /> },
           { path: "watch-next", element: <WatchNextPage /> },
           { path: "upcoming", element: <UpcomingPage /> },

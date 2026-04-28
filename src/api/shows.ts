@@ -23,6 +23,15 @@ export function useShow(id: number) {
   });
 }
 
+export function useEpisode(id: number) {
+  return useQuery<EpisodeOut>({
+    queryKey: ["episode", id],
+    queryFn: () => apiFetch<EpisodeOut>(`/episodes/${id}`),
+    staleTime: FIVE_MINUTES,
+    enabled: Number.isFinite(id) && id > 0,
+  });
+}
+
 export function useShowEpisodes(id: number, season?: number) {
   const suffix = season !== undefined ? `?season=${season}` : "";
   return useQuery<EpisodeOut[]>({
