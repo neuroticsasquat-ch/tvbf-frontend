@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router";
 
 import { ApiError } from "@/api/client";
@@ -11,15 +11,9 @@ export function SignupPage() {
   const [email, setEmail] = useState("");
   const [displayName, setDisplayName] = useState("");
   const [password, setPassword] = useState("");
-  const [inviteCode, setInviteCode] = useState("");
+  const [inviteCode, setInviteCode] = useState(() => params.get("invite") ?? "");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
-
-  // Pre-fill the invite code from ?invite=… so a shareable signup URL works.
-  useEffect(() => {
-    const fromUrl = params.get("invite");
-    if (fromUrl) setInviteCode(fromUrl);
-  }, [params]);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
