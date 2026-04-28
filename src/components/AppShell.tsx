@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Link, Outlet, useLocation } from "react-router";
 import { useAuth } from "./AuthContext";
 import { UserMenu } from "./UserMenu";
@@ -11,11 +11,13 @@ export function AppShell() {
   const [pwOpen, setPwOpen] = useState(false);
   const [delOpen, setDelOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [prevPath, setPrevPath] = useState(location.pathname);
 
   // Auto-close the mobile drawer on route change.
-  useEffect(() => {
+  if (location.pathname !== prevPath) {
+    setPrevPath(location.pathname);
     setMenuOpen(false);
-  }, [location.pathname]);
+  }
 
   const linkClass = "hover:text-foreground";
   const drawerLink =

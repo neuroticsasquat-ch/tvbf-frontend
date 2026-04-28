@@ -17,11 +17,13 @@ export function SearchPage() {
   const page = Number.parseInt(params.get("page") ?? "1", 10) || 1;
 
   const [draft, setDraft] = useState(search);
+  const [prevSearch, setPrevSearch] = useState(search);
 
   // Reflect URL → input when navigating back/forward.
-  useEffect(() => {
+  if (search !== prevSearch) {
+    setPrevSearch(search);
     setDraft(search);
-  }, [search]);
+  }
 
   // Debounce typing → URL.
   useEffect(() => {
