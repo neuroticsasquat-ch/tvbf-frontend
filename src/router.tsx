@@ -31,9 +31,9 @@ export const router = createBrowserRouter([
           { path: "my-shows", element: <MyShowsPage /> },
           { path: "watch-next", element: <WatchNextPage /> },
           { path: "upcoming", element: <UpcomingPage /> },
+          { path: "*", element: <NotFoundPage /> },
         ],
       },
-      { path: "*", element: <NotFoundPage /> },
     ],
   },
 ]);
