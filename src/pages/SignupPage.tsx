@@ -87,7 +87,7 @@ export function SignupPage() {
         </div>
         <div>
           <label htmlFor="display_name" className="block text-sm">
-            Display name
+            Username
           </label>
           <input
             id="display_name"

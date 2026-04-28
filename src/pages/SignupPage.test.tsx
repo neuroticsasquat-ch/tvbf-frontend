@@ -28,7 +28,7 @@ function renderAt(path: string) {
 async function fillCommonFields(invite = "test-invite") {
   await userEvent.type(screen.getByLabelText(/invite code/i), invite);
   await userEvent.type(screen.getByLabelText(/email/i), "x@y.com");
-  await userEvent.type(screen.getByLabelText(/display name/i), "X");
+  await userEvent.type(screen.getByLabelText(/username/i), "X");
   await userEvent.type(screen.getByLabelText(/password/i), "hunter2hunter2");
 }
 
@@ -99,7 +99,7 @@ describe("SignupPage", () => {
     renderAt("/signup");
     // Fill everything EXCEPT invite code.
     await userEvent.type(screen.getByLabelText(/email/i), "x@y.com");
-    await userEvent.type(screen.getByLabelText(/display name/i), "X");
+    await userEvent.type(screen.getByLabelText(/username/i), "X");
     await userEvent.type(screen.getByLabelText(/password/i), "hunter2hunter2");
     // The browser's `required` attribute prevents form submission and triggers
     // its own validation UI before any network call. The form's onSubmit never
