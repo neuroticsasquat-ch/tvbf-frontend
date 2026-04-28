@@ -93,16 +93,16 @@ export function EpisodePage() {
         </Button>
       </div>
 
-      <div className="flex items-start gap-4">
+      <div className="flex flex-col items-start gap-4 md:flex-row">
         {ep.image_original || ep.image_medium ? (
           <img
             src={ep.image_original ?? ep.image_medium ?? ""}
             alt=""
-            className="w-48 max-w-[40%] shrink-0 rounded border border-border object-cover"
+            className="w-full max-w-sm shrink-0 rounded border border-border object-cover md:w-48 md:max-w-[40%]"
           />
         ) : null}
         <div className="min-w-0 flex-1 space-y-3">
-          <EpisodeWatchCheckbox showId={ep.show_id} episodeId={ep.id} />
+          <EpisodeWatchCheckbox showId={ep.show_id} episodeId={ep.id} withLabel />
           {ep.summary ? (
             <SafeHtml html={ep.summary} className="prose prose-sm max-w-none" />
           ) : (

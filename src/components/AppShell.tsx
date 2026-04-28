@@ -36,7 +36,7 @@ export function AppShell() {
             {user ? (
               <>
                 <Link to="/" className={linkClass}>
-                  Search
+                  Home
                 </Link>
                 <Link to="/my-shows" className={linkClass}>
                   My Shows
@@ -46,6 +46,9 @@ export function AppShell() {
                 </Link>
                 <Link to="/upcoming" className={linkClass}>
                   Upcoming
+                </Link>
+                <Link to="/search" className={linkClass}>
+                  Search
                 </Link>
                 <UserMenu
                   onChangePassword={() => setPwOpen(true)}
@@ -95,7 +98,7 @@ export function AppShell() {
               <ul className="text-base">
                 <li>
                   <Link to="/" className={drawerLink}>
-                    Search
+                    Home
                   </Link>
                 </li>
                 <li>
@@ -111,6 +114,11 @@ export function AppShell() {
                 <li>
                   <Link to="/upcoming" className={drawerLink}>
                     Upcoming
+                  </Link>
+                </li>
+                <li>
+                  <Link to="/search" className={drawerLink}>
+                    Search
                   </Link>
                 </li>
                 <li className="px-4 py-3 text-sm text-muted-foreground border-b border-border">

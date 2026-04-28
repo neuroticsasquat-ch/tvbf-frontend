@@ -19,9 +19,11 @@ type ListSnapshots = {
 export function EpisodeWatchCheckbox({
   showId,
   episodeId,
+  withLabel = false,
 }: {
   showId: number;
   episodeId: number;
+  withLabel?: boolean;
 }) {
   const { user } = useAuth();
   const qc = useQueryClient();
@@ -74,6 +76,23 @@ export function EpisodeWatchCheckbox({
         },
       });
     }
+  }
+
+  if (withLabel) {
+    return (
+      <Button
+        type="button"
+        variant={watched ? "outline" : "default"}
+        size="sm"
+        onClick={onClick}
+        aria-pressed={watched}
+        title={watched ? "Watched — click to unmark" : "Click to mark watched"}
+        className={watched ? "text-emerald-700" : undefined}
+      >
+        {watched ? <CheckCircle2 aria-hidden /> : <Circle aria-hidden />}
+        {watched ? "Watched" : "Mark watched"}
+      </Button>
+    );
   }
 
   return (
