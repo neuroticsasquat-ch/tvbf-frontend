@@ -44,7 +44,6 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
         <Sentry.ErrorBoundary fallback={<div>Something went wrong. Please refresh the page.</div>}>
           <RouterProvider router={router} />
         </Sentry.ErrorBoundary>
-        <RouterProvider router={router} />
         <Toaster position="bottom-center" richColors closeButton />
       </AuthProvider>
     </QueryClientProvider>
