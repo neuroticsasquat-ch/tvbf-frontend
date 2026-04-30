@@ -19,11 +19,11 @@ const queryClient = new QueryClient({
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
-    <Sentry.ErrorBoundary fallback={<div>Something went wrong. Please refresh the page.</div>}>
-      <RouterProvider router={router} />
-    </Sentry.ErrorBoundary>
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
+        <Sentry.ErrorBoundary fallback={<div>Something went wrong. Please refresh the page.</div>}>
+          <RouterProvider router={router} />
+        </Sentry.ErrorBoundary>
         <RouterProvider router={router} />
         <Toaster position="bottom-center" richColors closeButton />
       </AuthProvider>
