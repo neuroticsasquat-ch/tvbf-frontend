@@ -1,6 +1,7 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import * as Sentry from "@sentry/react";
 import { RouterProvider } from "react-router/dom";
 import { Toaster } from "sonner";
 import { router } from "./router";
@@ -18,6 +19,9 @@ const queryClient = new QueryClient({
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
+    <Sentry.ErrorBoundary fallback={<div>Something went wrong. Please refresh the page.</div>}>
+      <RouterProvider router={router} />
+    </Sentry.ErrorBoundary>
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
         <RouterProvider router={router} />
