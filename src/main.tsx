@@ -8,6 +8,26 @@ import { router } from "./router";
 import { AuthProvider } from "./components/AuthContext";
 import "./styles/globals.css";
 
+const dsn = import.meta.env.VITE_SENTRY_DSN;
+
+if (dsn) {
+  Sentry.init({
+    dsn,
+    integrations: [
+      Sentry.browserTracingIntegration(),
+      Sentry.replayIntegration({
+        maskAllText: false,
+        blockAllMedia: false,
+      }),
+    ],
+    tracesSampleRate: 0.1,
+    replaysSessionSampleRate: 0.0,
+    replaysOnErrorSampleRate: 1.0,
+    environment: import.meta.env.MODE,
+    release: import.meta.env.VITE_GIT_SHA,
+  });
+}
+
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
