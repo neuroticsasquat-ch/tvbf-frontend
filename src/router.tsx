@@ -1,7 +1,6 @@
 import { createBrowserRouter } from "react-router";
 import { AppShell } from "@/components/AppShell";
 import { SearchPage } from "@/pages/SearchPage";
-import { HomePage } from "@/pages/HomePage";
 import { ShowDetailPage } from "@/pages/ShowDetailPage";
 import { EpisodesPage } from "@/pages/EpisodesPage";
 import { EpisodePage } from "@/pages/EpisodePage";
@@ -23,13 +22,12 @@ export const router = createBrowserRouter([
       {
         element: <RequireAuth />,
         children: [
-          { index: true, element: <HomePage /> },
+          { index: true, element: <WatchNextPage /> },
           { path: "search", element: <SearchPage /> },
           { path: "shows/:id", element: <ShowDetailPage /> },
           { path: "shows/:id/episodes", element: <EpisodesPage /> },
           { path: "episodes/:episodeId", element: <EpisodePage /> },
           { path: "my-shows", element: <MyShowsPage /> },
-          { path: "watch-next", element: <WatchNextPage /> },
           { path: "upcoming", element: <UpcomingPage /> },
           { path: "*", element: <NotFoundPage /> },
         ],

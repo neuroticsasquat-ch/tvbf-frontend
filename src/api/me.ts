@@ -8,7 +8,6 @@ import type {
   UpcomingEntry,
   UpcomingSort,
   WatchNextEntry,
-  WatchNextSort,
 } from "./types";
 
 const FIVE_MINUTES = 5 * 60 * 1000;
@@ -21,10 +20,10 @@ export function useMyShows(sort: MyShowsSort = "recent_activity") {
   });
 }
 
-export function useWatchNext(sort: WatchNextSort = "airdate_desc") {
+export function useWatchNext() {
   return useQuery<WatchNextEntry[]>({
-    queryKey: ["watch-next", sort],
-    queryFn: () => apiFetch<WatchNextEntry[]>(`/me/watch-next?sort=${sort}`),
+    queryKey: ["watch-next"],
+    queryFn: () => apiFetch<WatchNextEntry[]>(`/me/watch-next`),
   });
 }
 

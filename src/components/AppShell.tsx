@@ -38,13 +38,10 @@ export function AppShell() {
             {user ? (
               <>
                 <Link to="/" className={linkClass}>
-                  Home
+                  Watch Next
                 </Link>
                 <Link to="/my-shows" className={linkClass}>
                   My Shows
-                </Link>
-                <Link to="/watch-next" className={linkClass}>
-                  Watch Next
                 </Link>
                 <Link to="/upcoming" className={linkClass}>
                   Upcoming
@@ -100,17 +97,12 @@ export function AppShell() {
               <ul className="text-base">
                 <li>
                   <Link to="/" className={drawerLink}>
-                    Home
+                    Watch Next
                   </Link>
                 </li>
                 <li>
                   <Link to="/my-shows" className={drawerLink}>
                     My Shows
-                  </Link>
-                </li>
-                <li>
-                  <Link to="/watch-next" className={drawerLink}>
-                    Watch Next
                   </Link>
                 </li>
                 <li>
