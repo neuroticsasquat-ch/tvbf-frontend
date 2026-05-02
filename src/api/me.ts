@@ -70,6 +70,10 @@ function placeholderMyShowEntry(showId: number): MyShowEntry {
     },
     watched_episode_count: 0,
     total_episode_count: 0,
+    aired_episode_count: 0,
+    upcoming_episode_count: 0,
+    last_aired: null,
+    last_watched_at: null,
     next_episode: null,
     added_at: new Date().toISOString(),
   };

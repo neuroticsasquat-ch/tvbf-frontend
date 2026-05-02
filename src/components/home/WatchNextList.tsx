@@ -1,12 +1,22 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Link } from "react-router";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { ArrowDown, ArrowUp, Check } from "lucide-react";
-import { useUpcoming } from "@/api/me";
-import type { UpcomingSort } from "@/api/types";
+import { useWatchNext } from "@/api/me";
+import type { WatchNextEntry, WatchNextSort } from "@/api/types";
 import { usePersistedSort } from "@/hooks/usePersistedSort";
 import { cn } from "@/lib/cn";
 import { WatchProgressBar } from "@/components/WatchProgressBar";
+
+const SORTS: { key: WatchNextSort; label: string }[] = [
+  { key: "oldest_unwatched_asc", label: "Oldest Unwatched" },
+  { key: "last_aired_desc", label: "Recently Aired" },
+  { key: "last_watched_desc", label: "Last Watched" },
+  { key: "added_desc", label: "Recently Added" },
+  { key: "name_asc", label: "Show Title" },
+];
+
+const nameKey = (s: string) => s.toLowerCase().replace(/^(the|a|an)\s+/i, "");
 
 const DATE_FMT = new Intl.DateTimeFormat("en-US", {
   weekday: "short",
@@ -20,26 +30,50 @@ function formatAirdate(iso: string): string {
   return DATE_FMT.format(new Date(y, m - 1, d));
 }
 
-const SORTS: { key: UpcomingSort; label: string }[] = [
-  { key: "airdate_asc", label: "Air Date" },
-  { key: "name_asc", label: "Show Title" },
-];
+function compareEntries(a: WatchNextEntry, b: WatchNextEntry, sort: WatchNextSort): number {
+  const tiebreak = nameKey(a.show.name).localeCompare(nameKey(b.show.name));
+  const cmpNullable = (av: string | null | undefined, bv: string | null | undefined, desc: boolean) => {
+    if (!av && !bv) return tiebreak;
+    if (!av) return 1;
+    if (!bv) return -1;
+    return desc ? bv.localeCompare(av) : av.localeCompare(bv);
+  };
+  switch (sort) {
+    case "oldest_unwatched_asc":
+      return cmpNullable(a.episode.airdate, b.episode.airdate, false) || tiebreak;
+    case "last_watched_desc":
+      return cmpNullable(a.last_watched_at, b.last_watched_at, true) || tiebreak;
+    case "last_aired_desc":
+      return cmpNullable(a.last_aired, b.last_aired, true) || tiebreak;
+    case "added_desc":
+      return cmpNullable(a.added_at, b.added_at, true) || tiebreak;
+    case "name_asc":
+      return tiebreak;
+  }
+}
 
 const SORT_KEYS = SORTS.map((s) => s.key);
 
-export function UpcomingPage() {
-  const [sort, setSort] = usePersistedSort<UpcomingSort>("upcoming", SORT_KEYS, "airdate_asc");
+export function WatchNextList() {
+  const [sort, setSort] = usePersistedSort<WatchNextSort>(
+    "watch-next",
+    SORT_KEYS,
+    "oldest_unwatched_asc",
+  );
   const [sheetOpen, setSheetOpen] = useState(false);
-  const { data, isLoading } = useUpcoming(sort);
+  const { data, isLoading } = useWatchNext();
+  const sorted = useMemo(
+    () => (data ? [...data].sort((a, b) => compareEntries(a, b, sort)) : data),
+    [data, sort],
+  );
   const currentLabel = SORTS.find((s) => s.key === sort)?.label ?? "";
 
   return (
     <div>
-      <div className="flex items-baseline justify-between mb-6">
-        <h1 className="text-2xl font-semibold">Upcoming</h1>
+      <div className="flex items-baseline justify-end mb-4">
         <DialogPrimitive.Root open={sheetOpen} onOpenChange={setSheetOpen}>
           <DialogPrimitive.Trigger
-            aria-label={`Sort Upcoming (current: ${currentLabel})`}
+            aria-label={`Sort Watch Next (current: ${currentLabel})`}
             className="text-sm rounded border border-border px-2 py-1 bg-background hover:bg-accent inline-flex items-center gap-1"
           >
             <ArrowDown className="h-4 w-4" aria-hidden />
@@ -53,7 +87,7 @@ export function UpcomingPage() {
               className="fixed inset-x-0 bottom-0 z-50 rounded-t-xl border-t border-border bg-background p-4 pb-[max(1rem,env(safe-area-inset-bottom))] shadow-lg data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:slide-out-to-bottom data-[state=open]:slide-in-from-bottom data-[state=open]:duration-200 data-[state=closed]:duration-150"
             >
               <DialogPrimitive.Title className="text-base font-semibold mb-3">
-                Sort Upcoming
+                Sort Watch Next
               </DialogPrimitive.Title>
               <ul className="flex flex-col">
                 {SORTS.map((s) => {
@@ -85,12 +119,14 @@ export function UpcomingPage() {
         </DialogPrimitive.Root>
       </div>
       {isLoading && <p>Loading…</p>}
-      {!isLoading && data && data.length === 0 && (
-        <p className="text-muted-foreground">No upcoming episodes scheduled for your shows.</p>
+      {!isLoading && sorted && sorted.length === 0 && (
+        <p className="text-muted-foreground">
+          You're caught up. Add shows or wait for new episodes.
+        </p>
       )}
-      {!isLoading && data && data.length > 0 && (
+      {!isLoading && sorted && sorted.length > 0 && (
         <ul className="space-y-3">
-          {data.map((entry) => (
+          {sorted.map((entry) => (
             <li key={entry.show.id}>
               <Link
                 to={`/shows/${entry.show.id}`}
@@ -106,7 +142,7 @@ export function UpcomingPage() {
                 <div className="flex-1 min-w-0">
                   <p className="font-semibold text-lg mb-1">{entry.show.name}</p>
                   <div className="text-xs text-muted-foreground leading-tight">
-                    <p><em>Upcoming:</em></p>
+                    <p><em>Watch Next:</em></p>
                     <p>
                       S{entry.episode.season}E{entry.episode.number}
                       {entry.episode.name && (

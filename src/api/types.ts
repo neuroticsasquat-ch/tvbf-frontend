@@ -114,10 +114,22 @@ export interface ShowFilters {
 
 export type MyShowsSort = "recent_activity" | "name_asc" | "name_desc" | "added";
 export type WatchNextSort =
-  | "last_watched_desc"
+  | "oldest_unwatched_asc"
   | "last_aired_desc"
+  | "last_watched_desc"
+  | "added_desc"
   | "name_asc";
-export type UpcomingSort = "airdate_asc" | "airdate_desc" | "name_asc" | "name_desc";
+export type UpcomingSort =
+  | "airdate_asc"
+  | "airdate_desc"
+  | "added_desc"
+  | "name_asc"
+  | "name_desc";
+export type WatchedSort =
+  | "last_watched_desc"
+  | "name_asc"
+  | "name_desc"
+  | "added_desc";
 
 export interface User {
   id: string;
@@ -134,6 +146,10 @@ export interface MyShowEntry {
   show: ShowSummary;
   watched_episode_count: number;
   total_episode_count: number;
+  aired_episode_count: number;
+  upcoming_episode_count: number;
+  last_aired: string | null;
+  last_watched_at: string | null;
   next_episode: EpisodeOut | null;
   added_at: string;
 }
@@ -146,6 +162,7 @@ export interface WatchNextEntry {
   watched_episode_count: number;
   aired_episode_count: number;
   upcoming_episode_count: number;
+  added_at: string | null;
 }
 
 export interface UpcomingEntry {
@@ -154,6 +171,7 @@ export interface UpcomingEntry {
   watched_episode_count: number;
   aired_episode_count: number;
   upcoming_episode_count: number;
+  added_at: string | null;
 }
 
 export interface EpisodeWatchOut {
