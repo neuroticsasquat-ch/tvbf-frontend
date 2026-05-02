@@ -85,3 +85,15 @@ tasks:
     desc: 'Add a dev dependency (task deps:add-dev -- <package>)'
     cmds:
       - "{{.EXEC}} pnpm add -D {{.CLI_ARGS}}"
+
+  changelog:
+    desc: 'Update CHANGELOG.md (task changelog -- --tag v2026.05). Runs git-cliff on the host.'
+    dir: '{{.USER_WORKING_DIR}}'
+    cmds:
+      - git-cliff {{.CLI_ARGS}} -o CHANGELOG.md
+
+  changelog:preview:
+    desc: 'Preview unreleased changelog entries since the last tag (no file write)'
+    dir: '{{.USER_WORKING_DIR}}'
+    cmds:
+      - git-cliff --unreleased
