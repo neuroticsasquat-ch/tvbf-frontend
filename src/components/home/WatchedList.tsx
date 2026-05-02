@@ -2,17 +2,19 @@ import { useMemo, useState } from "react";
 import { Link } from "react-router";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { ArrowDown, ArrowUp, Check } from "lucide-react";
-import { useWatchNext } from "@/api/me";
-import type { WatchNextEntry, WatchNextSort } from "@/api/types";
+import { useMyShows } from "@/api/me";
+import type { MyShowEntry, WatchedSort } from "@/api/types";
 import { usePersistedSort } from "@/hooks/usePersistedSort";
 import { cn } from "@/lib/cn";
-import { WatchProgressBar } from "@/components/WatchProgressBar";
 
-const SORTS: { key: WatchNextSort; label: string }[] = [
-  { key: "last_aired_desc", label: "Newest" },
+const SORTS: { key: WatchedSort; label: string }[] = [
   { key: "last_watched_desc", label: "Last Watched" },
-  { key: "name_asc", label: "Show Title" },
+  { key: "added_desc", label: "Recently Added" },
+  { key: "name_asc", label: "Name A→Z" },
+  { key: "name_desc", label: "Name Z→A" },
 ];
+
+const SORT_KEYS = SORTS.map((s) => s.key);
 
 const nameKey = (s: string) => s.toLowerCase().replace(/^(the|a|an)\s+/i, "");
 
@@ -23,14 +25,21 @@ const DATE_FMT = new Intl.DateTimeFormat("en-US", {
   year: "numeric",
 });
 
-function formatAirdate(iso: string): string {
-  const [y, m, d] = iso.split("-").map(Number);
+function formatDate(iso: string): string {
+  // last_watched_at is a full ISO datetime; take the date portion.
+  const [y, m, d] = iso.slice(0, 10).split("-").map(Number);
   return DATE_FMT.format(new Date(y, m - 1, d));
 }
 
-function compareEntries(a: WatchNextEntry, b: WatchNextEntry, sort: WatchNextSort): number {
+function isCaughtUp(entry: MyShowEntry): boolean {
+  return (
+    entry.aired_episode_count > 0 &&
+    entry.watched_episode_count >= entry.aired_episode_count
+  );
+}
+
+function compareEntries(a: MyShowEntry, b: MyShowEntry, sort: WatchedSort): number {
   const tiebreak = nameKey(a.show.name).localeCompare(nameKey(b.show.name));
-  // null/undefined sorts to bottom regardless of asc/desc
   const cmpNullable = (av: string | null | undefined, bv: string | null | undefined, desc: boolean) => {
     if (!av && !bv) return tiebreak;
     if (!av) return 1;
@@ -40,36 +49,36 @@ function compareEntries(a: WatchNextEntry, b: WatchNextEntry, sort: WatchNextSor
   switch (sort) {
     case "last_watched_desc":
       return cmpNullable(a.last_watched_at, b.last_watched_at, true) || tiebreak;
-    case "last_aired_desc":
-      return cmpNullable(a.last_aired, b.last_aired, true) || tiebreak;
+    case "added_desc":
+      return cmpNullable(a.added_at, b.added_at, true) || tiebreak;
     case "name_asc":
       return tiebreak;
+    case "name_desc":
+      return -tiebreak;
   }
 }
 
-const SORT_KEYS = SORTS.map((s) => s.key);
-
-export function WatchNextPage() {
-  const [sort, setSort] = usePersistedSort<WatchNextSort>(
-    "watch-next",
+export function WatchedList() {
+  // Use the default `recent_activity` sort upstream — we filter and re-sort here.
+  const [sort, setSort] = usePersistedSort<WatchedSort>(
+    "watched",
     SORT_KEYS,
-    "last_aired_desc",
+    "last_watched_desc",
   );
   const [sheetOpen, setSheetOpen] = useState(false);
-  const { data, isLoading } = useWatchNext();
-  const sorted = useMemo(
-    () => (data ? [...data].sort((a, b) => compareEntries(a, b, sort)) : data),
-    [data, sort],
-  );
+  const { data, isLoading } = useMyShows();
+  const filteredAndSorted = useMemo(() => {
+    if (!data) return data;
+    return data.filter(isCaughtUp).sort((a, b) => compareEntries(a, b, sort));
+  }, [data, sort]);
   const currentLabel = SORTS.find((s) => s.key === sort)?.label ?? "";
 
   return (
     <div>
-      <div className="flex items-baseline justify-between mb-6">
-        <h1 className="text-2xl font-semibold">Watch Next</h1>
+      <div className="flex items-baseline justify-end mb-4">
         <DialogPrimitive.Root open={sheetOpen} onOpenChange={setSheetOpen}>
           <DialogPrimitive.Trigger
-            aria-label={`Sort Watch Next (current: ${currentLabel})`}
+            aria-label={`Sort Watched (current: ${currentLabel})`}
             className="text-sm rounded border border-border px-2 py-1 bg-background hover:bg-accent inline-flex items-center gap-1"
           >
             <ArrowDown className="h-4 w-4" aria-hidden />
@@ -83,7 +92,7 @@ export function WatchNextPage() {
               className="fixed inset-x-0 bottom-0 z-50 rounded-t-xl border-t border-border bg-background p-4 pb-[max(1rem,env(safe-area-inset-bottom))] shadow-lg data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:slide-out-to-bottom data-[state=open]:slide-in-from-bottom data-[state=open]:duration-200 data-[state=closed]:duration-150"
             >
               <DialogPrimitive.Title className="text-base font-semibold mb-3">
-                Sort Watch Next
+                Sort Watched
               </DialogPrimitive.Title>
               <ul className="flex flex-col">
                 {SORTS.map((s) => {
@@ -115,14 +124,14 @@ export function WatchNextPage() {
         </DialogPrimitive.Root>
       </div>
       {isLoading && <p>Loading…</p>}
-      {!isLoading && sorted && sorted.length === 0 && (
+      {!isLoading && filteredAndSorted && filteredAndSorted.length === 0 && (
         <p className="text-muted-foreground">
-          You're caught up. Add shows or wait for new episodes.
+          Nothing here yet — finish a show to see it here.
         </p>
       )}
-      {!isLoading && sorted && sorted.length > 0 && (
+      {!isLoading && filteredAndSorted && filteredAndSorted.length > 0 && (
         <ul className="space-y-3">
-          {sorted.map((entry) => (
+          {filteredAndSorted.map((entry) => (
             <li key={entry.show.id}>
               <Link
                 to={`/shows/${entry.show.id}`}
@@ -137,24 +146,12 @@ export function WatchNextPage() {
                 )}
                 <div className="flex-1 min-w-0">
                   <p className="font-semibold text-lg mb-1">{entry.show.name}</p>
-                  <div className="text-xs text-muted-foreground leading-tight">
-                    <p><em>Watch Next:</em></p>
-                    <p>
-                      S{entry.episode.season}E{entry.episode.number}
-                      {entry.episode.name && (
-                        <>
-                          {" — "}
-                          <span className="font-semibold">{entry.episode.name}</span>
-                        </>
-                      )}
-                    </p>
-                    {entry.episode.airdate && <p>{formatAirdate(entry.episode.airdate)}</p>}
-                  </div>
-                  <WatchProgressBar
-                    watched={entry.watched_episode_count}
-                    aired={entry.aired_episode_count}
-                    upcoming={entry.upcoming_episode_count}
-                  />
+                  <p className="text-xs text-muted-foreground leading-tight">
+                    Caught up
+                    {entry.last_watched_at && (
+                      <> · last watched {formatDate(entry.last_watched_at)}</>
+                    )}
+                  </p>
                 </div>
               </Link>
             </li>

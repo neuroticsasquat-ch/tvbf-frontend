@@ -1,4 +1,4 @@
-import { createBrowserRouter } from "react-router";
+import { createBrowserRouter, Navigate } from "react-router";
 import { AppShell } from "@/components/AppShell";
 import { SearchPage } from "@/pages/SearchPage";
 import { ShowDetailPage } from "@/pages/ShowDetailPage";
@@ -8,9 +8,7 @@ import { NotFoundPage } from "@/pages/NotFoundPage";
 import { LoginPage } from "@/pages/LoginPage";
 import { SignupPage } from "@/pages/SignupPage";
 import { RequireAuth } from "@/components/RequireAuth";
-import { MyShowsPage } from "@/pages/MyShowsPage";
-import { WatchNextPage } from "@/pages/WatchNextPage";
-import { UpcomingPage } from "@/pages/UpcomingPage";
+import { HomePage } from "@/pages/HomePage";
 
 export const router = createBrowserRouter([
   {
@@ -22,13 +20,17 @@ export const router = createBrowserRouter([
       {
         element: <RequireAuth />,
         children: [
-          { index: true, element: <WatchNextPage /> },
+          { index: true, element: <HomePage /> },
+          { path: "upcoming", element: <HomePage /> },
+          { path: "all", element: <HomePage /> },
+          { path: "watched", element: <HomePage /> },
+          // Redirects from old paths.
+          { path: "watch-next", element: <Navigate to="/" replace /> },
+          { path: "my-shows", element: <Navigate to="/" replace /> },
           { path: "search", element: <SearchPage /> },
           { path: "shows/:id", element: <ShowDetailPage /> },
           { path: "shows/:id/episodes", element: <EpisodesPage /> },
           { path: "episodes/:episodeId", element: <EpisodePage /> },
-          { path: "my-shows", element: <MyShowsPage /> },
-          { path: "upcoming", element: <UpcomingPage /> },
           { path: "*", element: <NotFoundPage /> },
         ],
       },
