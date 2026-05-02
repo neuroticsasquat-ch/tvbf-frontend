@@ -113,7 +113,12 @@ export interface ShowFilters {
 }
 
 export type MyShowsSort = "recent_activity" | "name_asc" | "name_desc" | "added";
-export type WatchNextSort = "airdate_desc" | "airdate_asc" | "name_asc" | "name_desc";
+export type WatchNextSort =
+  | "last_watched_desc"
+  | "last_aired_desc"
+  | "premiered_desc"
+  | "premiered_asc"
+  | "name_asc";
 export type UpcomingSort = "airdate_asc" | "airdate_desc" | "name_asc" | "name_desc";
 
 export interface User {
@@ -138,6 +143,8 @@ export interface MyShowEntry {
 export interface WatchNextEntry {
   show: ShowSummary;
   episode: EpisodeOut;
+  last_watched_at: string | null;
+  last_aired: string | null;
 }
 
 export interface UpcomingEntry {
