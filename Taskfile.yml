@@ -22,9 +22,10 @@ tasks:
       - "{{.COMPOSE}} down"
 
   build:
-    desc: Rebuild the frontend image
+    desc: Rebuild the frontend image and sync deps into the node_modules volume
     cmds:
       - "{{.COMPOSE}} build"
+      - "{{.COMPOSE}} run --rm --no-deps {{.SVC}} pnpm install"
 
   logs:
     desc: Follow frontend logs
