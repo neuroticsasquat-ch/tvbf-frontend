@@ -17,15 +17,6 @@ jobs:
         with:
           fetch-depth: 0
 
-<<<<<<< Updated upstream:.github/workflows/rebase-dependencies.yml
-      - name: Rebase updates/dependencies from main
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git checkout updates/dependencies || git checkout -b updates/dependencies
-          git rebase origin/main
-          git push --force-with-lease origin updates/dependencies
-=======
       - name: Skip if updates/dependencies is already up to date
         id: check
         run: |
@@ -67,4 +58,3 @@ jobs:
 
           # Merge as a true merge commit (not squash) so main's SHAs become ancestors.
           gh pr merge "$pr" --merge --delete-branch=false
->>>>>>> Stashed changes:.github/workflows/merge-main-into-dependencies.yml
