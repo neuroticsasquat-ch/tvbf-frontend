@@ -17,7 +17,9 @@ jobs:
         with:
           fetch-depth: 0
 
-<<<<<<< Updated upstream:.github/workflows/rebase-dependencies.yml
+      - name: Skip if updates/dependencies is already up to date
+        id: check
+        run: |
       - name: Rebase updates/dependencies from main
         run: |
           git config user.name "github-actions[bot]"
@@ -25,10 +27,6 @@ jobs:
           git checkout updates/dependencies || git checkout -b updates/dependencies
           git rebase origin/main
           git push --force-with-lease origin updates/dependencies
-=======
-      - name: Skip if updates/dependencies is already up to date
-        id: check
-        run: |
           git fetch origin main updates/dependencies
           if git merge-base --is-ancestor origin/main origin/updates/dependencies; then
             echo "skip=true" >> "$GITHUB_OUTPUT"
@@ -67,4 +65,3 @@ jobs:
 
           # Merge as a true merge commit (not squash) so main's SHAs become ancestors.
           gh pr merge "$pr" --merge --delete-branch=false
->>>>>>> Stashed changes:.github/workflows/merge-main-into-dependencies.yml
