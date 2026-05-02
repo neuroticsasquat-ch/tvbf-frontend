@@ -6,13 +6,12 @@ import { useWatchNext } from "@/api/me";
 import type { WatchNextEntry, WatchNextSort } from "@/api/types";
 import { usePersistedSort } from "@/hooks/usePersistedSort";
 import { cn } from "@/lib/cn";
+import { WatchProgressBar } from "@/components/WatchProgressBar";
 
 const SORTS: { key: WatchNextSort; label: string }[] = [
-  { key: "last_aired_desc", label: "Last Aired" },
+  { key: "last_aired_desc", label: "Newest" },
   { key: "last_watched_desc", label: "Last Watched" },
-  { key: "premiered_desc", label: "Premiered — Newest" },
-  { key: "premiered_asc", label: "Premiered — Oldest" },
-  { key: "name_asc", label: "Name" },
+  { key: "name_asc", label: "Show Title" },
 ];
 
 const nameKey = (s: string) => s.toLowerCase().replace(/^(the|a|an)\s+/i, "");
@@ -43,10 +42,6 @@ function compareEntries(a: WatchNextEntry, b: WatchNextEntry, sort: WatchNextSor
       return cmpNullable(a.last_watched_at, b.last_watched_at, true) || tiebreak;
     case "last_aired_desc":
       return cmpNullable(a.last_aired, b.last_aired, true) || tiebreak;
-    case "premiered_desc":
-      return cmpNullable(a.show.premiered, b.show.premiered, true) || tiebreak;
-    case "premiered_asc":
-      return cmpNullable(a.show.premiered, b.show.premiered, false) || tiebreak;
     case "name_asc":
       return tiebreak;
   }
@@ -143,7 +138,7 @@ export function WatchNextPage() {
                 <div className="flex-1 min-w-0">
                   <p className="font-semibold text-lg mb-1">{entry.show.name}</p>
                   <div className="text-xs text-muted-foreground leading-tight">
-                    <p><em>Next up:</em></p>
+                    <p><em>Watch Next:</em></p>
                     <p>
                       S{entry.episode.season}E{entry.episode.number}
                       {entry.episode.name && (
@@ -155,6 +150,11 @@ export function WatchNextPage() {
                     </p>
                     {entry.episode.airdate && <p>{formatAirdate(entry.episode.airdate)}</p>}
                   </div>
+                  <WatchProgressBar
+                    watched={entry.watched_episode_count}
+                    aired={entry.aired_episode_count}
+                    upcoming={entry.upcoming_episode_count}
+                  />
                 </div>
               </Link>
             </li>

@@ -40,11 +40,11 @@ export function AppShell() {
                 <Link to="/" className={linkClass}>
                   Watch Next
                 </Link>
-                <Link to="/my-shows" className={linkClass}>
-                  My Shows
-                </Link>
                 <Link to="/upcoming" className={linkClass}>
                   Upcoming
+                </Link>
+                <Link to="/my-shows" className={linkClass}>
+                  My Shows
                 </Link>
                 <Link to="/search" className={linkClass}>
                   Search
@@ -101,13 +101,13 @@ export function AppShell() {
                   </Link>
                 </li>
                 <li>
-                  <Link to="/my-shows" className={drawerLink}>
-                    My Shows
+                  <Link to="/upcoming" className={drawerLink}>
+                    Upcoming
                   </Link>
                 </li>
                 <li>
-                  <Link to="/upcoming" className={drawerLink}>
-                    Upcoming
+                  <Link to="/my-shows" className={drawerLink}>
+                    My Shows
                   </Link>
                 </li>
                 <li>

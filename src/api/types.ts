@@ -116,8 +116,6 @@ export type MyShowsSort = "recent_activity" | "name_asc" | "name_desc" | "added"
 export type WatchNextSort =
   | "last_watched_desc"
   | "last_aired_desc"
-  | "premiered_desc"
-  | "premiered_asc"
   | "name_asc";
 export type UpcomingSort = "airdate_asc" | "airdate_desc" | "name_asc" | "name_desc";
 
@@ -145,11 +143,17 @@ export interface WatchNextEntry {
   episode: EpisodeOut;
   last_watched_at: string | null;
   last_aired: string | null;
+  watched_episode_count: number;
+  aired_episode_count: number;
+  upcoming_episode_count: number;
 }
 
 export interface UpcomingEntry {
   show: ShowSummary;
   episode: EpisodeOut;
+  watched_episode_count: number;
+  aired_episode_count: number;
+  upcoming_episode_count: number;
 }
 
 export interface EpisodeWatchOut {
