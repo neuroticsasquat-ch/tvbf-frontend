@@ -1,8 +1,17 @@
 import { useQuery } from "@tanstack/react-query";
 import { apiFetch, buildShowsQuery } from "./client";
-import type { EpisodeOut, ShowDetail, ShowFilters, ShowListPage } from "./types";
+import type { EpisodeOut, GenreOut, ShowDetail, ShowFilters, ShowListPage } from "./types";
 
 const FIVE_MINUTES = 5 * 60 * 1000;
+const ONE_HOUR = 60 * 60 * 1000;
+
+export function useGenres() {
+  return useQuery<GenreOut[]>({
+    queryKey: ["genres"],
+    queryFn: () => apiFetch<GenreOut[]>("/genres"),
+    staleTime: ONE_HOUR,
+  });
+}
 
 export function useShows(filters: ShowFilters, options: { enabled?: boolean } = {}) {
   const queryString = buildShowsQuery(filters);

@@ -8,7 +8,9 @@ import { NotFoundPage } from "@/pages/NotFoundPage";
 import { LoginPage } from "@/pages/LoginPage";
 import { SignupPage } from "@/pages/SignupPage";
 import { RequireAuth } from "@/components/RequireAuth";
-import { HomePage } from "@/pages/HomePage";
+import { WatchNextPage } from "@/pages/WatchNextPage";
+import { UpcomingPage } from "@/pages/UpcomingPage";
+import { MyShowsPage } from "@/pages/MyShowsPage";
 
 export const router = createBrowserRouter([
   {
@@ -20,13 +22,14 @@ export const router = createBrowserRouter([
       {
         element: <RequireAuth />,
         children: [
-          { index: true, element: <HomePage /> },
-          { path: "upcoming", element: <HomePage /> },
-          { path: "all", element: <HomePage /> },
-          { path: "watched", element: <HomePage /> },
+          { index: true, element: <WatchNextPage /> },
+          { path: "upcoming", element: <UpcomingPage /> },
+          { path: "my-shows", element: <MyShowsPage /> },
           // Redirects from old paths.
           { path: "watch-next", element: <Navigate to="/" replace /> },
-          { path: "my-shows", element: <Navigate to="/" replace /> },
+          { path: "all", element: <Navigate to="/my-shows" replace /> },
+          { path: "watched", element: <Navigate to="/my-shows" replace /> },
+          { path: "my-shows/watched", element: <Navigate to="/my-shows" replace /> },
           { path: "search", element: <SearchPage /> },
           { path: "shows/:id", element: <ShowDetailPage /> },
           { path: "shows/:id/episodes", element: <EpisodesPage /> },

@@ -6,7 +6,7 @@ import { cn } from "@/lib/cn";
 type UserMenuProps = {
   onChangePassword: () => void;
   onDeleteAccount: () => void;
-  variant?: "icon" | "bottom-tab";
+  variant?: "icon" | "bottom-tab" | "icon-only";
 };
 
 export function UserMenu({
@@ -35,10 +35,15 @@ export function UserMenu({
           "flex flex-col items-center justify-center flex-1 py-2 text-xs gap-0.5",
           open ? "text-foreground" : "text-muted-foreground hover:text-foreground",
         )
-      : cn(
-          "inline-flex items-center justify-center h-9 w-9 rounded hover:bg-accent",
-          open ? "text-foreground bg-accent" : "text-muted-foreground hover:text-foreground",
-        );
+      : variant === "icon-only"
+        ? cn(
+            "inline-flex items-center justify-center h-9 w-9 rounded hover:bg-accent",
+            open ? "text-foreground bg-accent" : "text-muted-foreground hover:text-foreground",
+          )
+        : cn(
+            "inline-flex items-center h-9 px-3 rounded hover:bg-accent gap-1.5 text-sm",
+            open ? "text-foreground bg-accent" : "text-muted-foreground hover:text-foreground",
+          );
 
   // Bottom-tab menu opens upward so it doesn't get clipped by the screen edge.
   const menuPositionCls =
@@ -57,7 +62,7 @@ export function UserMenu({
         className={triggerCls}
       >
         <UserIcon className="h-5 w-5" aria-hidden />
-        {variant === "bottom-tab" && <span>Account</span>}
+        {variant !== "icon-only" && <span>Account</span>}
       </button>
       {open && (
         <ul
