@@ -151,21 +151,10 @@ export function WatchNextList() {
             const thumbnail = entry.episode.image_medium;
             return (
               <li key={entry.show.id} className="border border-border rounded p-3 hover:bg-accent">
-                <Link
-                  to={`/shows/${entry.show.id}`}
-                  className="block font-semibold text-lg mb-2 truncate"
-                >
-                  {entry.show.name}
-                  {entry.show.premiered && (
-                    <span className="font-normal text-muted-foreground">
-                      {" "}({entry.show.premiered.slice(0, 4)})
-                    </span>
-                  )}
-                </Link>
                 <div className="flex items-center gap-4">
                   <Link
                     to={`/episodes/${entry.episode.id}`}
-                    className="flex flex-1 min-w-0 items-center gap-4"
+                    className="flex min-w-0 flex-1 items-center gap-4"
                   >
                     {thumbnail ? (
                       <img
@@ -183,18 +172,27 @@ export function WatchNextList() {
                       </div>
                     )}
                     <div className="flex-1 min-w-0">
-                      <p className="text-base text-foreground leading-tight truncate">
-                        S{entry.episode.season}E{entry.episode.number}
-                        {entry.episode.name && (
-                          <>
-                            {" — "}
-                            <span className="font-semibold">{entry.episode.name}</span>
-                          </>
+                      <p className="text-sm font-semibold text-foreground leading-tight truncate">
+                        {entry.show.name}
+                        {entry.show.premiered && (
+                          <span className="font-normal text-muted-foreground">
+                            {" "}({entry.show.premiered.slice(0, 4)})
+                          </span>
                         )}
                       </p>
-                      {entry.episode.airdate && (
+                      <p className="text-xs text-muted-foreground leading-tight">
+                        S{entry.episode.season}E{entry.episode.number}
+                      </p>
+                      {entry.episode.name && (
+                        <p className="text-sm text-foreground leading-tight truncate">
+                          {entry.episode.name}
+                        </p>
+                      )}
+                      {(entry.episode.airdate || entry.episode.runtime) && (
                         <p className="text-xs text-muted-foreground leading-tight">
-                          {formatAirdate(entry.episode.airdate)}
+                          {entry.episode.airdate ? formatAirdate(entry.episode.airdate) : ""}
+                          {entry.episode.airdate && entry.episode.runtime ? " · " : ""}
+                          {entry.episode.runtime ? `${entry.episode.runtime} min` : ""}
                         </p>
                       )}
                     </div>

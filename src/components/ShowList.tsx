@@ -25,7 +25,7 @@ export function ShowList({ shows }: { shows: ShowSummary[] }) {
             <img
               src={show.image_medium ?? FALLBACK_POSTER}
               alt=""
-              className="w-16 aspect-[2/3] object-cover rounded"
+              className="w-16 aspect-[210/295] object-cover rounded"
               loading="lazy"
             />
             <div className="flex-1 min-w-0">

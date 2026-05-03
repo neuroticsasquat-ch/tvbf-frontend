@@ -14,15 +14,19 @@ export function FilterSheet<T extends string>({
   value,
   onChange,
   active = false,
+  triggerClassName,
+  triggerAlign = "center",
 }: {
   title: string;
-  triggerLabel: string;
+  triggerLabel: ReactNode;
   triggerIcon?: ReactNode;
   ariaLabel: string;
   options: readonly Option<T>[];
   value: T;
   onChange: (next: T) => void;
   active?: boolean;
+  triggerClassName?: string;
+  triggerAlign?: "center" | "start";
 }) {
   const [open, setOpen] = useState(false);
   return (
@@ -30,10 +34,13 @@ export function FilterSheet<T extends string>({
       <DialogPrimitive.Trigger
         aria-label={ariaLabel}
         className={cn(
-          "text-sm rounded px-2 py-1 inline-flex items-center gap-1 hover:bg-accent",
+          "rounded px-2 py-1 inline-flex gap-1 text-left hover:bg-accent",
+          triggerAlign === "start" ? "items-start" : "items-center",
+          !triggerClassName && "text-sm",
           active
             ? "border border-foreground bg-accent font-medium text-foreground"
             : "border border-border bg-background",
+          triggerClassName,
         )}
       >
         {triggerIcon}

@@ -31,18 +31,6 @@ import {
   type MyShowsTabSort,
 } from "@/components/home/myShowsSort";
 
-const DATE_FMT = new Intl.DateTimeFormat("en-US", {
-  weekday: "short",
-  month: "short",
-  day: "numeric",
-  year: "numeric",
-});
-
-function formatAirdate(iso: string): string {
-  const [y, m, d] = iso.split("-").map(Number);
-  return DATE_FMT.format(new Date(y, m - 1, d));
-}
-
 export function MyShowsList() {
   const [sort, setSort] = usePersistedSort<MyShowsTabSort>(
     "my-shows",
@@ -76,20 +64,9 @@ export function MyShowsList() {
 
   return (
     <div>
-      <div className="flex flex-wrap items-center gap-2 mb-4">
-        <WatchStateFilter value={watchState} onChange={setWatchState} />
-        <ShowStatusFilterPicker value={status} onChange={setStatus} />
-        <GenreFilter value={genre} onChange={setGenre} />
-        {(watchState !== "all" || status !== "all" || genre !== "all") && (
-          <ClearFiltersButton
-            onClear={() => {
-              setWatchState("all");
-              setStatus("all");
-              setGenre("all");
-            }}
-          />
-        )}
-        <div className="ml-auto flex items-center gap-2">
+      <div className="flex items-baseline justify-between gap-2 mb-4">
+        <h1 className="text-2xl font-semibold">My Shows</h1>
+        <div className="flex items-center gap-2">
           <ViewToggle value={view} onChange={setView} ariaLabel="My Shows display" />
           <FilterSheet
             title="Sort My Shows"
@@ -106,6 +83,20 @@ export function MyShowsList() {
             onChange={setSort}
           />
         </div>
+      </div>
+      <div className="mb-4 flex flex-wrap items-center gap-2">
+        <WatchStateFilter value={watchState} onChange={setWatchState} />
+        <ShowStatusFilterPicker value={status} onChange={setStatus} />
+        <GenreFilter value={genre} onChange={setGenre} />
+        {(watchState !== "all" || status !== "all" || genre !== "all") && (
+          <ClearFiltersButton
+            onClear={() => {
+              setWatchState("all");
+              setStatus("all");
+              setGenre("all");
+            }}
+          />
+        )}
       </div>
       {isLoading && <p>Loading…</p>}
       {!isLoading && filteredAndSorted && filteredAndSorted.length === 0 && (
@@ -132,7 +123,7 @@ export function MyShowsList() {
                   <img
                     src={entry.show.image_medium}
                     alt=""
-                    className="w-16 aspect-[2/3] object-cover rounded"
+                    className="w-16 aspect-[210/295] object-cover rounded"
                   />
                 )}
                 <div className="flex-1 min-w-0">
@@ -149,10 +140,6 @@ export function MyShowsList() {
                     aired={entry.aired_episode_count}
                     upcoming={entry.upcoming_episode_count}
                   />
-                  <p className="mt-2 text-xs text-muted-foreground leading-tight">
-                    <em>Last Aired:</em>{" "}
-                    {entry.last_aired ? formatAirdate(entry.last_aired) : "—"}
-                  </p>
                 </div>
               </Link>
             </li>

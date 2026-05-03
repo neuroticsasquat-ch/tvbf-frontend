@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { Link } from "react-router";
-import { ArrowDown, ArrowUp } from "lucide-react";
+import { ArrowDown, ArrowUp, Tv } from "lucide-react";
 import { useUpcoming } from "@/api/me";
 import type { UpcomingSort } from "@/api/types";
 import { usePersistedSort } from "@/hooks/usePersistedSort";
@@ -117,43 +117,54 @@ export function UpcomingList() {
       {!isLoading && filtered && filtered.length > 0 && (
         <ul className="space-y-3">
           {filtered.map((entry) => (
-            <li key={entry.show.id}>
-              <Link
-                to={`/episodes/${entry.episode.id}`}
-                className="border border-border rounded p-3 flex items-center gap-4 hover:bg-accent"
-              >
-                {entry.show.image_medium && (
-                  <img
-                    src={entry.show.image_medium}
-                    alt=""
-                    className="w-16 aspect-[2/3] object-cover rounded shrink-0"
-                  />
-                )}
-                <div className="flex-1 min-w-0">
-                  <p className="font-semibold text-lg mb-1 truncate">
-                    {entry.show.name}
-                    {entry.show.premiered && (
-                      <span className="font-normal text-muted-foreground">
-                        {" "}({entry.show.premiered.slice(0, 4)})
-                      </span>
-                    )}
-                  </p>
-                  <p className="text-base text-foreground leading-tight truncate">
-                    S{entry.episode.season}E{entry.episode.number}
-                    {entry.episode.name && (
-                      <>
-                        {" — "}
-                        <span className="font-semibold">{entry.episode.name}</span>
-                      </>
-                    )}
-                  </p>
-                  {entry.episode.airdate && (
-                    <p className="text-xs text-muted-foreground leading-tight">
-                      {formatAirdate(entry.episode.airdate)}
-                    </p>
+            <li key={entry.show.id} className="border border-border rounded p-3 hover:bg-accent">
+              <div className="flex items-center gap-4">
+                <Link
+                  to={`/episodes/${entry.episode.id}`}
+                  className="flex min-w-0 flex-1 items-center gap-4"
+                >
+                  {entry.show.image_medium ? (
+                    <img
+                      src={entry.show.image_medium}
+                      alt=""
+                      className="w-16 aspect-[210/295] object-cover rounded shrink-0"
+                      loading="lazy"
+                    />
+                  ) : (
+                    <div
+                      aria-hidden
+                      className="w-16 aspect-[210/295] rounded shrink-0 bg-muted text-muted-foreground flex items-center justify-center"
+                    >
+                      <Tv className="h-6 w-6" />
+                    </div>
                   )}
-                </div>
-              </Link>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-foreground leading-tight truncate">
+                      {entry.show.name}
+                      {entry.show.premiered && (
+                        <span className="font-normal text-muted-foreground">
+                          {" "}({entry.show.premiered.slice(0, 4)})
+                        </span>
+                      )}
+                    </p>
+                    <p className="text-xs text-muted-foreground leading-tight">
+                      S{entry.episode.season}E{entry.episode.number}
+                    </p>
+                    {entry.episode.name && (
+                      <p className="text-sm text-foreground leading-tight truncate">
+                        {entry.episode.name}
+                      </p>
+                    )}
+                    {(entry.episode.airdate || entry.episode.runtime) && (
+                      <p className="text-xs text-muted-foreground leading-tight">
+                        {entry.episode.airdate ? formatAirdate(entry.episode.airdate) : ""}
+                        {entry.episode.airdate && entry.episode.runtime ? " · " : ""}
+                        {entry.episode.runtime ? `${entry.episode.runtime} min` : ""}
+                      </p>
+                    )}
+                  </div>
+                </Link>
+              </div>
             </li>
           ))}
         </ul>
