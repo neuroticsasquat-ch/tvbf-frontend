@@ -29,8 +29,8 @@ describe("EpisodesPage", () => {
     const user = userEvent.setup();
     renderWithProviders(routed(), { route: "/shows/100/episodes" });
     await waitFor(() => expect(screen.getByText("Pilot")).toBeInTheDocument());
-    await user.click(screen.getByRole("combobox", { name: /season/i }));
-    await user.click(screen.getByRole("option", { name: /Season 2/ }));
+    await user.click(screen.getByRole("button", { name: /Select season/i }));
+    await user.click(screen.getByRole("button", { name: "Season 2" }));
     await waitFor(() => expect(screen.getByText("S2 Pilot")).toBeInTheDocument());
   });
 });

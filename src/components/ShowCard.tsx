@@ -18,7 +18,7 @@ export function ShowCard({ show }: { show: ShowSummary }) {
       <img
         src={show.image_medium ?? FALLBACK_POSTER}
         alt=""
-        className="aspect-[3/4] w-full object-cover"
+        className="aspect-[210/295] w-full object-cover"
         loading="lazy"
       />
       <div className="p-1.5">

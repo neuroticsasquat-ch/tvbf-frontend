@@ -18,7 +18,7 @@ export function MyShowCard({ entry }: { entry: MyShowEntry }) {
       <img
         src={entry.show.image_medium ?? FALLBACK_POSTER}
         alt=""
-        className="aspect-[3/4] w-full object-cover"
+        className="aspect-[210/295] w-full object-cover"
         loading="lazy"
       />
       <div className="p-1.5">
@@ -32,6 +32,7 @@ export function MyShowCard({ entry }: { entry: MyShowEntry }) {
           watched={entry.watched_episode_count}
           aired={entry.aired_episode_count}
           upcoming={entry.upcoming_episode_count}
+          stack
         />
       </div>
     </Link>

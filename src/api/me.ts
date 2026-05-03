@@ -34,6 +34,20 @@ export function useUpcoming(sort: UpcomingSort = "airdate_asc") {
   });
 }
 
+export interface SeasonProgress {
+  season: number;
+  aired: number;
+  watched: number;
+}
+
+export function useSeasonProgress(showId: number, enabled = true) {
+  return useQuery<SeasonProgress[]>({
+    queryKey: ["season-progress", showId],
+    queryFn: () => apiFetch<SeasonProgress[]>(`/me/shows/${showId}/seasons/progress`),
+    enabled,
+  });
+}
+
 export function useWatchedEpisodes(showId: number, enabled = true) {
   return useQuery<Set<number>>({
     queryKey: ["watched-episodes", showId],
@@ -50,6 +64,7 @@ function invalidateAll(qc: ReturnType<typeof useQueryClient>) {
   qc.invalidateQueries({ queryKey: ["watch-next"] });
   qc.invalidateQueries({ queryKey: ["upcoming"] });
   qc.invalidateQueries({ queryKey: ["watched-episodes"] });
+  qc.invalidateQueries({ queryKey: ["season-progress"] });
 }
 
 function placeholderMyShowEntry(showId: number): MyShowEntry {
@@ -222,6 +237,33 @@ export function useUnmarkSeason() {
       return snap;
     },
     onError: (_err, _vars, ctx) => {
+      if (ctx) qc.setQueryData(ctx.key, ctx.prev);
+    },
+    onSettled: () => invalidateAll(qc),
+  });
+}
+
+export function useMarkShow() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (showId: number) =>
+      apiFetch<{ marked: number }>(`/me/shows/${showId}/watched`, { method: "POST" }),
+    onSettled: () => invalidateAll(qc),
+  });
+}
+
+export function useUnmarkShow() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (showId: number) =>
+      apiFetch<void>(`/me/shows/${showId}/watched`, { method: "DELETE" }),
+    onMutate: async (showId) => {
+      await qc.cancelQueries({ queryKey: ["watched-episodes", showId] });
+      const snap = snapshotWatched(qc, showId);
+      applyWatchedUpdate(qc, snap.key, snap.prev, (s) => s.clear());
+      return snap;
+    },
+    onError: (_err, _showId, ctx) => {
       if (ctx) qc.setQueryData(ctx.key, ctx.prev);
     },
     onSettled: () => invalidateAll(qc),
