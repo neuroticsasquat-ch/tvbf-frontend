@@ -1,3 +1,4 @@
+import { Library } from "lucide-react";
 import { useAuth } from "./AuthContext";
 import { useAddShow, useMyShows, useRemoveShow } from "@/api/me";
 
@@ -15,8 +16,9 @@ export function MyShowsToggle({ showId }: { showId: number }) {
         type="button"
         disabled
         aria-busy="true"
-        className="rounded border border-border px-3 py-1 text-sm text-muted-foreground opacity-70"
+        className="inline-flex items-center gap-1.5 rounded border border-border px-3 py-1 text-sm text-muted-foreground opacity-70"
       >
+        <Library className="h-4 w-4" aria-hidden />
         Loading…
       </button>
     );
@@ -33,12 +35,13 @@ export function MyShowsToggle({ showId }: { showId: number }) {
     <button
       type="button"
       onClick={onClick}
-      className={`rounded border px-3 py-1 text-sm ${
+      className={`inline-flex items-center gap-1.5 rounded border px-3 py-1 text-sm ${
         tracked
           ? "border-border bg-background text-foreground"
           : "border-foreground bg-foreground text-background"
       }`}
     >
+      <Library className="h-4 w-4" aria-hidden />
       {tracked ? "Remove from My Shows" : "Add to My Shows"}
     </button>
   );

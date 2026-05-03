@@ -8,7 +8,6 @@ import type {
   UpcomingEntry,
   UpcomingSort,
   WatchNextEntry,
-  WatchNextSort,
 } from "./types";
 
 const FIVE_MINUTES = 5 * 60 * 1000;
@@ -21,10 +20,10 @@ export function useMyShows(sort: MyShowsSort = "recent_activity") {
   });
 }
 
-export function useWatchNext(sort: WatchNextSort = "airdate_desc") {
+export function useWatchNext() {
   return useQuery<WatchNextEntry[]>({
-    queryKey: ["watch-next", sort],
-    queryFn: () => apiFetch<WatchNextEntry[]>(`/me/watch-next?sort=${sort}`),
+    queryKey: ["watch-next"],
+    queryFn: () => apiFetch<WatchNextEntry[]>(`/me/watch-next`),
   });
 }
 
@@ -32,6 +31,20 @@ export function useUpcoming(sort: UpcomingSort = "airdate_asc") {
   return useQuery<UpcomingEntry[]>({
     queryKey: ["upcoming", sort],
     queryFn: () => apiFetch<UpcomingEntry[]>(`/me/upcoming?sort=${sort}`),
+  });
+}
+
+export interface SeasonProgress {
+  season: number;
+  aired: number;
+  watched: number;
+}
+
+export function useSeasonProgress(showId: number, enabled = true) {
+  return useQuery<SeasonProgress[]>({
+    queryKey: ["season-progress", showId],
+    queryFn: () => apiFetch<SeasonProgress[]>(`/me/shows/${showId}/seasons/progress`),
+    enabled,
   });
 }
 
@@ -51,6 +64,7 @@ function invalidateAll(qc: ReturnType<typeof useQueryClient>) {
   qc.invalidateQueries({ queryKey: ["watch-next"] });
   qc.invalidateQueries({ queryKey: ["upcoming"] });
   qc.invalidateQueries({ queryKey: ["watched-episodes"] });
+  qc.invalidateQueries({ queryKey: ["season-progress"] });
 }
 
 function placeholderMyShowEntry(showId: number): MyShowEntry {
@@ -71,6 +85,10 @@ function placeholderMyShowEntry(showId: number): MyShowEntry {
     },
     watched_episode_count: 0,
     total_episode_count: 0,
+    aired_episode_count: 0,
+    upcoming_episode_count: 0,
+    last_aired: null,
+    last_watched_at: null,
     next_episode: null,
     added_at: new Date().toISOString(),
   };
@@ -219,6 +237,33 @@ export function useUnmarkSeason() {
       return snap;
     },
     onError: (_err, _vars, ctx) => {
+      if (ctx) qc.setQueryData(ctx.key, ctx.prev);
+    },
+    onSettled: () => invalidateAll(qc),
+  });
+}
+
+export function useMarkShow() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (showId: number) =>
+      apiFetch<{ marked: number }>(`/me/shows/${showId}/watched`, { method: "POST" }),
+    onSettled: () => invalidateAll(qc),
+  });
+}
+
+export function useUnmarkShow() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (showId: number) =>
+      apiFetch<void>(`/me/shows/${showId}/watched`, { method: "DELETE" }),
+    onMutate: async (showId) => {
+      await qc.cancelQueries({ queryKey: ["watched-episodes", showId] });
+      const snap = snapshotWatched(qc, showId);
+      applyWatchedUpdate(qc, snap.key, snap.prev, (s) => s.clear());
+      return snap;
+    },
+    onError: (_err, _showId, ctx) => {
       if (ctx) qc.setQueryData(ctx.key, ctx.prev);
     },
     onSettled: () => invalidateAll(qc),
