@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { Link } from "react-router";
-import { ArrowDown, ArrowUp } from "lucide-react";
+import { ArrowDown, ArrowUp, Tv } from "lucide-react";
 import { useWatchNext } from "@/api/me";
 import type { WatchNextEntry, WatchNextSort } from "@/api/types";
 import { usePersistedSort } from "@/hooks/usePersistedSort";
@@ -147,54 +147,68 @@ export function WatchNextList() {
       )}
       {!isLoading && filteredAndSorted && filteredAndSorted.length > 0 && (
         <ul className="space-y-3">
-          {filteredAndSorted.map((entry) => (
-            <li key={entry.show.id} className="border border-border rounded">
-              <div className="p-3 flex items-center gap-4">
+          {filteredAndSorted.map((entry) => {
+            const thumbnail = entry.episode.image_medium;
+            return (
+              <li key={entry.show.id} className="border border-border rounded p-3 hover:bg-accent">
                 <Link
-                  to={`/episodes/${entry.episode.id}`}
-                  className="flex flex-1 min-w-0 items-center gap-4 hover:opacity-90"
+                  to={`/shows/${entry.show.id}`}
+                  className="block font-semibold text-lg mb-2 truncate"
                 >
-                  {entry.show.image_medium && (
-                    <img
-                      src={entry.show.image_medium}
-                      alt=""
-                      className="w-16 aspect-[2/3] object-cover rounded shrink-0"
-                    />
+                  {entry.show.name}
+                  {entry.show.premiered && (
+                    <span className="font-normal text-muted-foreground">
+                      {" "}({entry.show.premiered.slice(0, 4)})
+                    </span>
                   )}
-                  <div className="flex-1 min-w-0">
-                    <p className="font-semibold text-lg mb-1 truncate">
-                      {entry.show.name}
-                      {entry.show.premiered && (
-                        <span className="font-normal text-muted-foreground">
-                          {" "}({entry.show.premiered.slice(0, 4)})
-                        </span>
-                      )}
-                    </p>
-                    <p className="text-base text-foreground leading-tight truncate">
-                      S{entry.episode.season}E{entry.episode.number}
-                      {entry.episode.name && (
-                        <>
-                          {" — "}
-                          <span className="font-semibold">{entry.episode.name}</span>
-                        </>
-                      )}
-                    </p>
-                    {entry.episode.airdate && (
-                      <p className="text-xs text-muted-foreground leading-tight">
-                        {formatAirdate(entry.episode.airdate)}
-                      </p>
-                    )}
-                  </div>
                 </Link>
-                <div className="ml-auto shrink-0">
-                  <EpisodeWatchCheckbox
-                    showId={entry.show.id}
-                    episodeId={entry.episode.id}
-                  />
+                <div className="flex items-center gap-4">
+                  <Link
+                    to={`/episodes/${entry.episode.id}`}
+                    className="flex flex-1 min-w-0 items-center gap-4"
+                  >
+                    {thumbnail ? (
+                      <img
+                        src={thumbnail}
+                        alt=""
+                        className="w-32 aspect-video object-cover rounded shrink-0"
+                        loading="lazy"
+                      />
+                    ) : (
+                      <div
+                        aria-hidden
+                        className="w-32 aspect-video rounded shrink-0 bg-muted text-muted-foreground flex items-center justify-center"
+                      >
+                        <Tv className="h-6 w-6" />
+                      </div>
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <p className="text-base text-foreground leading-tight truncate">
+                        S{entry.episode.season}E{entry.episode.number}
+                        {entry.episode.name && (
+                          <>
+                            {" — "}
+                            <span className="font-semibold">{entry.episode.name}</span>
+                          </>
+                        )}
+                      </p>
+                      {entry.episode.airdate && (
+                        <p className="text-xs text-muted-foreground leading-tight">
+                          {formatAirdate(entry.episode.airdate)}
+                        </p>
+                      )}
+                    </div>
+                  </Link>
+                  <div className="ml-auto shrink-0">
+                    <EpisodeWatchCheckbox
+                      showId={entry.show.id}
+                      episodeId={entry.episode.id}
+                    />
+                  </div>
                 </div>
-              </div>
-            </li>
-          ))}
+              </li>
+            );
+          })}
         </ul>
       )}
     </div>
