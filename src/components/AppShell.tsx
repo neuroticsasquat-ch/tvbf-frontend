@@ -38,9 +38,11 @@ export function AppShell() {
   }, []);
 
   // Clear search overlay whenever the user navigates anywhere.
-  useEffect(() => {
+  const [prevLocationKey, setPrevLocationKey] = useState(location.key);
+  if (prevLocationKey !== location.key) {
+    setPrevLocationKey(location.key);
     setSearchInput("");
-  }, [location.pathname, location.search, location.hash]);
+  }
 
   const overlayActive = !!user && searchInput.trim().length > 0;
 

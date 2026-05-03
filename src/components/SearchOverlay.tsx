@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { ArrowDown, ArrowUp } from "lucide-react";
 
 import { useShows } from "@/api/shows";
@@ -49,9 +49,12 @@ export function SearchOverlay({ search }: { search: string }) {
   const [page, setPage] = useState(1);
 
   // Reset to page 1 whenever the query or filters change.
-  useEffect(() => {
+  const resetKey = `${trimmed}|${sort}|${status}|${genre}`;
+  const [prevResetKey, setPrevResetKey] = useState(resetKey);
+  if (prevResetKey !== resetKey) {
+    setPrevResetKey(resetKey);
     setPage(1);
-  }, [trimmed, sort, status, genre]);
+  }
 
   const query = useShows(
     {
