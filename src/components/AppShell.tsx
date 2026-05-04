@@ -262,7 +262,9 @@ function HeaderSearch({
           onChange={(e) => onChange(e.target.value)}
           placeholder="Search shows"
           aria-label="Search shows"
-          className="w-full rounded border border-border bg-background py-1.5 pl-7 pr-2 text-sm focus:outline-none focus:ring-1 focus:ring-foreground"
+          // text-base (16px) on mobile prevents iOS Safari auto-zoom on focus;
+          // sm:text-sm restores the tighter desktop visual.
+          className="w-full rounded border border-border bg-background py-1.5 pl-7 pr-2 text-base sm:text-sm focus:outline-none focus:ring-1 focus:ring-foreground"
         />
       </div>
     </form>
