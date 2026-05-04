@@ -25,6 +25,11 @@ export function ShowCard({ show }: { show: ShowSummary }) {
         <h3 className="truncate text-xs font-medium leading-tight group-hover:underline">
           {show.name}
         </h3>
+        {show.matched_aka && (
+          <p className="truncate text-[10px] text-muted-foreground leading-tight italic">
+            {show.matched_aka}
+          </p>
+        )}
         <p className="text-[10px] text-muted-foreground leading-tight">{year(show.premiered)}</p>
       </div>
     </Link>

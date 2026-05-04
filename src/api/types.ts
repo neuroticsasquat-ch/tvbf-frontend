@@ -85,6 +85,7 @@ export interface ShowSummary {
   network: NetworkRef | null;
   web_channel: NetworkRef | null;
   genres: string[];
+  matched_aka: string | null;
 }
 
 export interface ShowDetail extends ShowSummary {

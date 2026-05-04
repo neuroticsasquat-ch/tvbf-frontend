@@ -24,6 +24,7 @@ export const fixtureShow: ShowDetail = {
   network: { id: 10, name: "HBO" },
   web_channel: null,
   genres: ["Drama"],
+  matched_aka: null,
   summary: "<p>A <b>test</b> show.</p>",
   runtime: 60,
   official_site: "https://example.com/show",
@@ -74,6 +75,7 @@ export const fixtureShowListPage: ShowListPage = {
       network: { id: 10, name: "HBO" },
       web_channel: null,
       genres: ["Drama"],
+      matched_aka: null,
     },
     {
       id: 101,
@@ -88,6 +90,7 @@ export const fixtureShowListPage: ShowListPage = {
       network: { id: 11, name: "BBC One" },
       web_channel: null,
       genres: ["Comedy"],
+      matched_aka: null,
     },
   ],
   page: 1,
