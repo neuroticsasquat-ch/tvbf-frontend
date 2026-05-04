@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type FormEvent } from "react";
-import { NavLink, Outlet, useLocation } from "react-router";
+import { Link, NavLink, Outlet, useLocation } from "react-router";
 import {
   PlayCircle as WatchNextIcon,
   Calendar as CalendarIcon,
@@ -144,10 +144,14 @@ export function AppShell() {
         className="sticky top-0 z-30 border-b border-border bg-background"
       >
         <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-3 px-4 py-3">
-          <span className="inline-flex shrink-0 items-center gap-2 text-lg font-semibold">
+          <Link
+            to="/"
+            className="inline-flex shrink-0 items-center gap-2 text-lg font-semibold hover:underline"
+            aria-label="TV Binge Friend home"
+          >
             <TvIcon className="h-5 w-5" aria-hidden />
             TV Binge Friend
-          </span>
+          </Link>
           {user && (
             <>
               <HeaderSearch
