@@ -119,9 +119,10 @@ export interface ShowFilters {
 
 export type MyShowsSort = "recent_activity" | "name_asc" | "name_desc" | "added";
 export type WatchNextSort =
-  | "oldest_unwatched_asc"
   | "last_aired_desc"
   | "last_watched_desc"
+  | "oldest_unwatched_asc"
+  | "newest_unwatched_desc"
   | "added_desc"
   | "name_asc";
 export type UpcomingSort =

@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import { Link } from "react-router";
 import { ArrowDown, ArrowUp, Tv } from "lucide-react";
 import { useWatchNext } from "@/api/me";
-import type { WatchNextEntry, WatchNextSort } from "@/api/types";
+import type { WatchNextSort } from "@/api/types";
 import { usePersistedSort } from "@/hooks/usePersistedSort";
 import { usePersistedString } from "@/hooks/usePersistedString";
 import { EpisodeWatchCheckbox } from "@/components/EpisodeWatchCheckbox";
@@ -22,20 +22,13 @@ import {
   type ShowStatusFilter,
   type WatchState,
 } from "@/components/home/filterTypes";
+import {
+  WATCH_NEXT_SORTS,
+  WATCH_NEXT_SORT_KEYS,
+  compareWatchNextEntries,
+} from "@/components/home/watchNextSort";
 
 const ACTIVE_WATCH_STATE_KEYS = ACTIVE_WATCH_STATES.map((s) => s.key);
-
-const SORTS: { key: WatchNextSort; label: string }[] = [
-  { key: "last_aired_desc", label: "Last Aired" },
-  { key: "last_watched_desc", label: "Last Watched" },
-  { key: "oldest_unwatched_asc", label: "Oldest Unwatched" },
-  { key: "added_desc", label: "Recently Added" },
-  { key: "name_asc", label: "Show Title" },
-];
-
-const SORT_KEYS = SORTS.map((s) => s.key);
-
-const nameKey = (s: string) => s.toLowerCase().replace(/^(the|a|an)\s+/i, "");
 
 const DATE_FMT = new Intl.DateTimeFormat("en-US", {
   weekday: "short",
@@ -49,32 +42,10 @@ function formatAirdate(iso: string): string {
   return DATE_FMT.format(new Date(y, m - 1, d));
 }
 
-function compareEntries(a: WatchNextEntry, b: WatchNextEntry, sort: WatchNextSort): number {
-  const tiebreak = nameKey(a.show.name).localeCompare(nameKey(b.show.name));
-  const cmpNullable = (av: string | null | undefined, bv: string | null | undefined, desc: boolean) => {
-    if (!av && !bv) return tiebreak;
-    if (!av) return 1;
-    if (!bv) return -1;
-    return desc ? bv.localeCompare(av) : av.localeCompare(bv);
-  };
-  switch (sort) {
-    case "oldest_unwatched_asc":
-      return cmpNullable(a.episode.airdate, b.episode.airdate, false) || tiebreak;
-    case "last_watched_desc":
-      return cmpNullable(a.last_watched_at, b.last_watched_at, true) || tiebreak;
-    case "last_aired_desc":
-      return cmpNullable(a.episode.airdate, b.episode.airdate, true) || tiebreak;
-    case "added_desc":
-      return cmpNullable(a.added_at, b.added_at, true) || tiebreak;
-    case "name_asc":
-      return tiebreak;
-  }
-}
-
 export function WatchNextList() {
   const [sort, setSort] = usePersistedSort<WatchNextSort>(
     "watch-next",
-    SORT_KEYS,
+    WATCH_NEXT_SORT_KEYS,
     "last_aired_desc",
   );
   const [watchState, setWatchState] = usePersistedSort<WatchState>(
@@ -96,9 +67,9 @@ export function WatchNextList() {
       .filter((e) => watchState === "all" || watchStateOf(e) === watchState)
       .filter((e) => matchesStatus(e.show, status))
       .filter((e) => matchesGenre(e.show, genre))
-      .sort((a, b) => compareEntries(a, b, sort));
+      .sort((a, b) => compareWatchNextEntries(a, b, sort));
   }, [data, sort, watchState, status, genre]);
-  const sortLabel = SORTS.find((s) => s.key === sort)?.label ?? "";
+  const sortLabel = WATCH_NEXT_SORTS.find((s) => s.key === sort)?.label ?? "";
 
   return (
     <div>
@@ -114,7 +85,7 @@ export function WatchNextList() {
             </>
           }
           ariaLabel={`Sort Watch Next (current: ${sortLabel})`}
-          options={SORTS}
+          options={WATCH_NEXT_SORTS}
           value={sort}
           onChange={setSort}
         />
