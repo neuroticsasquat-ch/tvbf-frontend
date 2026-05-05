@@ -23,7 +23,7 @@ export function AppShell() {
   const [delOpen, setDelOpen] = useState(false);
   const [searchInput, setSearchInput] = useState("");
   const searchFormRef = useRef<HTMLFormElement>(null);
-  const overlayRef = useRef<HTMLDivElement>(null);
+  const overlayRef = useRef<HTMLElement>(null);
 
   // Clear search overlay whenever the user navigates anywhere.
   const [prevLocationKey, setPrevLocationKey] = useState(location.key);
@@ -42,6 +42,10 @@ export function AppShell() {
       if (!target) return;
       if (searchFormRef.current?.contains(target)) return;
       if (overlayRef.current?.contains(target)) return;
+      // Radix Dialog content (FilterSheet) renders into a portal, so its DOM
+      // sits outside the overlay's subtree. Treat any open dialog as inside-the-overlay
+      // for dismiss purposes.
+      if (target instanceof Element && target.closest('[role="dialog"][data-state="open"]')) return;
       setSearchInput("");
     }
     document.addEventListener("pointerdown", onPointerDown);
