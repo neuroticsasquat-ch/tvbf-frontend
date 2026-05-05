@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2026-05-05] - 2026-05-05
+
+### Features
+
+- Fix Last Aired sort and add Newest Unwatched option (#45)
+
 ## [2026-05-04] - 2026-05-05
 
 ### Bug Fixes
