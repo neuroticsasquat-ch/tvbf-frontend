@@ -33,6 +33,11 @@ export function ShowList({ shows }: { shows: ShowSummary[] }) {
                 {show.name}
                 <span className="font-normal text-muted-foreground"> ({year(show.premiered)})</span>
               </p>
+              {show.matched_aka && (
+                <p className="text-xs text-muted-foreground leading-tight italic">
+                  Matched: {show.matched_aka}
+                </p>
+              )}
               <p className="text-xs text-muted-foreground leading-tight">
                 {[show.network?.name, show.status, show.language]
                   .filter(Boolean)

@@ -82,6 +82,7 @@ function placeholderMyShowEntry(showId: number): MyShowEntry {
       network: null,
       web_channel: null,
       genres: [],
+      matched_aka: null,
     },
     watched_episode_count: 0,
     total_episode_count: 0,

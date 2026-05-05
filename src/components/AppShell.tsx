@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useLayoutEffect, useRef, useState, type FormEvent } from "react";
-import { NavLink, Outlet, useLocation } from "react-router";
+import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
+import { Link, NavLink, Outlet, useLocation } from "react-router";
 import {
   PlayCircle as WatchNextIcon,
   Calendar as CalendarIcon,
@@ -22,20 +22,8 @@ export function AppShell() {
   const [pwOpen, setPwOpen] = useState(false);
   const [delOpen, setDelOpen] = useState(false);
   const [searchInput, setSearchInput] = useState("");
-  const headerRef = useRef<HTMLElement>(null);
   const searchFormRef = useRef<HTMLFormElement>(null);
-  const overlayRef = useRef<HTMLDivElement>(null);
-  const [headerHeight, setHeaderHeight] = useState(0);
-
-  // Measure header height so the overlay can sit just below it.
-  useLayoutEffect(() => {
-    if (!headerRef.current) return;
-    const observer = new ResizeObserver(([entry]) => {
-      setHeaderHeight(entry.contentRect.height);
-    });
-    observer.observe(headerRef.current);
-    return () => observer.disconnect();
-  }, []);
+  const overlayRef = useRef<HTMLElement>(null);
 
   // Clear search overlay whenever the user navigates anywhere.
   const [prevLocationKey, setPrevLocationKey] = useState(location.key);
@@ -54,6 +42,10 @@ export function AppShell() {
       if (!target) return;
       if (searchFormRef.current?.contains(target)) return;
       if (overlayRef.current?.contains(target)) return;
+      // Radix Dialog content (FilterSheet) renders into a portal, so its DOM
+      // sits outside the overlay's subtree. Treat any open dialog as inside-the-overlay
+      // for dismiss purposes.
+      if (target instanceof Element && target.closest('[role="dialog"][data-state="open"]')) return;
       setSearchInput("");
     }
     document.addEventListener("pointerdown", onPointerDown);
@@ -138,16 +130,21 @@ export function AppShell() {
   );
 
   return (
-    <div className="flex min-h-screen flex-col">
+    // pb-20 reserves space at the document bottom on mobile so the fixed
+    // bottom nav doesn't visually cover the footer. Removed at md+.
+    <div className={cn("flex min-h-screen flex-col", user && "pb-20 md:pb-0")}>
       <header
-        ref={headerRef}
         className="sticky top-0 z-30 border-b border-border bg-background"
       >
         <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-3 px-4 py-3">
-          <span className="inline-flex shrink-0 items-center gap-2 text-lg font-semibold">
+          <Link
+            to="/"
+            className="inline-flex shrink-0 items-center gap-2 text-lg font-semibold hover:underline"
+            aria-label="TV Binge Friend home"
+          >
             <TvIcon className="h-5 w-5" aria-hidden />
             TV Binge Friend
-          </span>
+          </Link>
           {user && (
             <>
               <HeaderSearch
@@ -168,25 +165,19 @@ export function AppShell() {
         </div>
       </header>
 
-      <main
-        className={cn("mx-auto w-full max-w-6xl flex-1 px-4 py-6", user && "pb-20 md:pb-6")}
-        inert={overlayActive}
-      >
-        <Outlet />
-      </main>
-
-      {overlayActive && (
-        <div
+      {overlayActive ? (
+        <section
           ref={overlayRef}
           role="region"
           aria-label="Search results"
-          className="fixed inset-x-0 bottom-0 z-20 overflow-y-auto bg-background pb-20 md:pb-6"
-          style={{ top: headerHeight }}
+          className="mx-auto w-full max-w-6xl flex-1 px-4 py-6"
         >
-          <div className="mx-auto w-full max-w-6xl px-4 py-6">
-            <SearchOverlay search={searchInput} />
-          </div>
-        </div>
+          <SearchOverlay search={searchInput} />
+        </section>
+      ) : (
+        <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-6">
+          <Outlet />
+        </main>
       )}
 
       <footer className="border-t border-border">
@@ -262,7 +253,9 @@ function HeaderSearch({
           onChange={(e) => onChange(e.target.value)}
           placeholder="Search shows"
           aria-label="Search shows"
-          className="w-full rounded border border-border bg-background py-1.5 pl-7 pr-2 text-sm focus:outline-none focus:ring-1 focus:ring-foreground"
+          // text-base (16px) on mobile prevents iOS Safari auto-zoom on focus;
+          // sm:text-sm restores the tighter desktop visual.
+          className="w-full rounded border border-border bg-background py-1.5 pl-7 pr-2 text-base sm:text-sm focus:outline-none focus:ring-1 focus:ring-foreground"
         />
       </div>
     </form>
