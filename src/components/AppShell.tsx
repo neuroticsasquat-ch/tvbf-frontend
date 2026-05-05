@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useLayoutEffect, useRef, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
 import { Link, NavLink, Outlet, useLocation } from "react-router";
 import {
   PlayCircle as WatchNextIcon,
@@ -22,20 +22,8 @@ export function AppShell() {
   const [pwOpen, setPwOpen] = useState(false);
   const [delOpen, setDelOpen] = useState(false);
   const [searchInput, setSearchInput] = useState("");
-  const headerRef = useRef<HTMLElement>(null);
   const searchFormRef = useRef<HTMLFormElement>(null);
   const overlayRef = useRef<HTMLDivElement>(null);
-  const [headerHeight, setHeaderHeight] = useState(0);
-
-  // Measure header height so the overlay can sit just below it.
-  useLayoutEffect(() => {
-    if (!headerRef.current) return;
-    const observer = new ResizeObserver(([entry]) => {
-      setHeaderHeight(entry.contentRect.height);
-    });
-    observer.observe(headerRef.current);
-    return () => observer.disconnect();
-  }, []);
 
   // Clear search overlay whenever the user navigates anywhere.
   const [prevLocationKey, setPrevLocationKey] = useState(location.key);
@@ -138,9 +126,10 @@ export function AppShell() {
   );
 
   return (
-    <div className="flex min-h-screen flex-col">
+    // pb-20 reserves space at the document bottom on mobile so the fixed
+    // bottom nav doesn't visually cover the footer. Removed at md+.
+    <div className={cn("flex min-h-screen flex-col", user && "pb-20 md:pb-0")}>
       <header
-        ref={headerRef}
         className="sticky top-0 z-30 border-b border-border bg-background"
       >
         <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-3 px-4 py-3">
@@ -172,25 +161,19 @@ export function AppShell() {
         </div>
       </header>
 
-      <main
-        className={cn("mx-auto w-full max-w-6xl flex-1 px-4 py-6", user && "pb-20 md:pb-6")}
-        inert={overlayActive}
-      >
-        <Outlet />
-      </main>
-
-      {overlayActive && (
-        <div
+      {overlayActive ? (
+        <section
           ref={overlayRef}
           role="region"
           aria-label="Search results"
-          className="fixed inset-x-0 bottom-0 z-20 overflow-y-auto bg-background pb-20 md:pb-6"
-          style={{ top: headerHeight }}
+          className="mx-auto w-full max-w-6xl flex-1 px-4 py-6"
         >
-          <div className="mx-auto w-full max-w-6xl px-4 py-6">
-            <SearchOverlay search={searchInput} />
-          </div>
-        </div>
+          <SearchOverlay search={searchInput} />
+        </section>
+      ) : (
+        <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-6">
+          <Outlet />
+        </main>
       )}
 
       <footer className="border-t border-border">
