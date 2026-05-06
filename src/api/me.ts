@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiFetch } from "./client";
+import { localToday } from "./today";
 import type {
   EpisodeOut,
   EpisodeWatchOut,
@@ -13,24 +14,27 @@ import type {
 const FIVE_MINUTES = 5 * 60 * 1000;
 
 export function useMyShows(sort: MyShowsSort = "recent_activity") {
+  const today = localToday();
   return useQuery<MyShowEntry[]>({
-    queryKey: ["my-shows", sort],
-    queryFn: () => apiFetch<MyShowEntry[]>(`/me/shows?sort=${sort}`),
+    queryKey: ["my-shows", sort, today],
+    queryFn: () => apiFetch<MyShowEntry[]>(`/me/shows?sort=${sort}&today=${today}`),
     staleTime: FIVE_MINUTES,
   });
 }
 
 export function useWatchNext() {
+  const today = localToday();
   return useQuery<WatchNextEntry[]>({
-    queryKey: ["watch-next"],
-    queryFn: () => apiFetch<WatchNextEntry[]>(`/me/watch-next`),
+    queryKey: ["watch-next", today],
+    queryFn: () => apiFetch<WatchNextEntry[]>(`/me/watch-next?today=${today}`),
   });
 }
 
 export function useUpcoming(sort: UpcomingSort = "airdate_asc") {
+  const today = localToday();
   return useQuery<UpcomingEntry[]>({
-    queryKey: ["upcoming", sort],
-    queryFn: () => apiFetch<UpcomingEntry[]>(`/me/upcoming?sort=${sort}`),
+    queryKey: ["upcoming", sort, today],
+    queryFn: () => apiFetch<UpcomingEntry[]>(`/me/upcoming?sort=${sort}&today=${today}`),
   });
 }
 
