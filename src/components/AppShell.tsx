@@ -34,6 +34,34 @@ export function AppShell() {
 
   const overlayActive = !!user && searchInput.trim().length > 0;
 
+  // Hide the mobile bottom nav while a text input is focused. On iOS Safari
+  // the layout viewport doesn't shrink for the keyboard, so a fixed-bottom
+  // nav otherwise floats above the keyboard with a transparent strip of
+  // Safari chrome between them.
+  const [inputFocused, setInputFocused] = useState(false);
+  useEffect(() => {
+    function isTextInput(t: EventTarget | null): boolean {
+      if (!(t instanceof HTMLElement)) return false;
+      if (t.isContentEditable) return true;
+      if (t.tagName === "TEXTAREA") return true;
+      if (t.tagName === "INPUT") {
+        const type = (t as HTMLInputElement).type;
+        return type !== "checkbox" && type !== "radio" && type !== "button" && type !== "submit";
+      }
+      return false;
+    }
+    const onFocusIn = (e: FocusEvent) => {
+      if (isTextInput(e.target)) setInputFocused(true);
+    };
+    const onFocusOut = () => setInputFocused(false);
+    document.addEventListener("focusin", onFocusIn);
+    document.addEventListener("focusout", onFocusOut);
+    return () => {
+      document.removeEventListener("focusin", onFocusIn);
+      document.removeEventListener("focusout", onFocusOut);
+    };
+  }, []);
+
   // Click outside the search box or overlay clears the input.
   useEffect(() => {
     if (!overlayActive) return;
@@ -204,7 +232,7 @@ export function AppShell() {
         </div>
       </footer>
 
-      {user && (
+      {user && !inputFocused && (
         <nav
           aria-label="Primary"
           className="md:hidden fixed inset-x-0 bottom-0 z-40 flex border-t border-border bg-background pb-[env(safe-area-inset-bottom)]"

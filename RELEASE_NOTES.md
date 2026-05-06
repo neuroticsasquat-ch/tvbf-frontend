@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2026-05-06] - 2026-05-06
+
+### Bug Fixes
+
+- Hide mobile bottom nav while a text input is focused (#50)
+- Send local today on watch-next/upcoming/my-shows requests (#49)
+
 ## [2026-05-05] - 2026-05-05
 
 ### Features
