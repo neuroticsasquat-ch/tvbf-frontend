@@ -43,6 +43,7 @@ function makeEntry(overrides: {
       summary: null,
       image_medium: null,
       image_original: null,
+      watched: false,
     },
     last_watched_at: overrides.last_watched_at ?? null,
     last_aired: overrides.last_aired ?? null,

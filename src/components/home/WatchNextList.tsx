@@ -172,6 +172,7 @@ export function WatchNextList() {
                     <EpisodeWatchCheckbox
                       showId={entry.show.id}
                       episodeId={entry.episode.id}
+                      watched={entry.episode.watched ?? false}
                     />
                   </div>
                 </div>

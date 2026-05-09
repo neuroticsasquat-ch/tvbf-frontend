@@ -113,6 +113,7 @@ export const fixtureEpisodes: EpisodeOut[] = [
     summary: "<p>Opening episode.</p>",
     image_medium: null,
     image_original: null,
+    watched: false,
   },
   {
     id: 5001,
@@ -127,6 +128,7 @@ export const fixtureEpisodes: EpisodeOut[] = [
     summary: null,
     image_medium: null,
     image_original: null,
+    watched: false,
   },
 ];
 
@@ -144,6 +146,7 @@ export const fixtureSeason2Episodes: EpisodeOut[] = [
     summary: null,
     image_medium: null,
     image_original: null,
+    watched: false,
   },
 ];
 
