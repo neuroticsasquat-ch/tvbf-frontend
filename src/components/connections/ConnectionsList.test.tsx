@@ -99,6 +99,27 @@ describe("ConnectionsList", () => {
     expect(screen.getByText("Alice")).toBeInTheDocument();
   });
 
+  it("blocks a user from the connection row", async () => {
+    vi.spyOn(connectionsApi, "listConnections").mockResolvedValue([
+      { user: { id: "u-1", display_name: "Alice" }, since: "2026-04-01T00:00:00Z" },
+    ]);
+    const block = vi.spyOn(connectionsApi, "blockUser").mockResolvedValue({
+      user: { id: "u-1", display_name: "Alice" },
+      blocked_at: "2026-05-09T00:00:00Z",
+    });
+
+    renderWithProviders(<ConnectionsList />);
+    await waitFor(() => expect(screen.getByText("Alice")).toBeInTheDocument());
+
+    fireEvent.click(screen.getByRole("button", { name: /^block$/i }));
+    fireEvent.click(await screen.findByRole("button", { name: /^confirm$/i }));
+
+    await waitFor(() => expect(block).toHaveBeenCalledWith("u-1"));
+    await waitFor(() =>
+      expect(screen.queryByText("Alice")).not.toBeInTheDocument(),
+    );
+  });
+
   it("renders empty state pointing at user search", async () => {
     vi.spyOn(connectionsApi, "listConnections").mockResolvedValue([]);
     renderWithProviders(<ConnectionsList />);

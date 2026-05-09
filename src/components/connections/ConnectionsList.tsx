@@ -4,6 +4,8 @@ import { toast } from "sonner";
 import { listConnections, removeConnection } from "@/api/connections";
 import type { ConnectionOut } from "@/api/types";
 import { Button } from "@/components/ui/button";
+import { ConfirmDialog } from "./ConfirmDialog";
+import { useBlockUser } from "./useBlockUser";
 
 const CONNECTIONS_KEY = ["connections"] as const;
 
@@ -23,6 +25,8 @@ export function ConnectionsList() {
     queryFn: listConnections,
   });
   const [pendingRemove, setPendingRemove] = useState<ConnectionOut | null>(null);
+  const [pendingBlock, setPendingBlock] = useState<ConnectionOut | null>(null);
+  const block = useBlockUser();
 
   if (isLoading) {
     return <p className="text-sm text-muted-foreground">Loading…</p>;
@@ -52,14 +56,24 @@ export function ConnectionsList() {
                 Connected {formatDate(c.since)}
               </span>
             </div>
-            <Button
-              type="button"
-              size="sm"
-              variant="outline"
-              onClick={() => setPendingRemove(c)}
-            >
-              Remove
-            </Button>
+            <div className="flex gap-2">
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={() => setPendingRemove(c)}
+              >
+                Remove
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={() => setPendingBlock(c)}
+              >
+                Block
+              </Button>
+            </div>
           </li>
         ))}
       </ul>
@@ -67,6 +81,20 @@ export function ConnectionsList() {
         <RemoveConfirmDialog
           connection={pendingRemove}
           onClose={() => setPendingRemove(null)}
+        />
+      )}
+      {pendingBlock && (
+        <ConfirmDialog
+          title="Block user"
+          description={`Block ${pendingBlock.user.display_name}? This removes the connection and prevents future requests until you unblock them.`}
+          confirmLabel="Confirm"
+          destructive
+          pending={block.isPending}
+          onConfirm={() => {
+            block.mutate(pendingBlock.user.id);
+            setPendingBlock(null);
+          }}
+          onClose={() => setPendingBlock(null)}
         />
       )}
     </>

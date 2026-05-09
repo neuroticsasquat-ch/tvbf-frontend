@@ -1,7 +1,7 @@
 import { useSearchParams } from "react-router";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { listBlocks } from "@/api/connections";
+import { useQueryClient } from "@tanstack/react-query";
 import type { ConnectionRequestList } from "@/api/types";
+import { BlockedList } from "@/components/connections/BlockedList";
 import { ConnectionsList } from "@/components/connections/ConnectionsList";
 import { FindPeople } from "@/components/connections/FindPeople";
 import { RequestsInbox } from "@/components/connections/RequestsInbox";
@@ -115,15 +115,5 @@ function RequestsTab() {
 }
 
 function BlockedTab() {
-  const { data, isLoading, isError } = useQuery({
-    queryKey: ["blocks"],
-    queryFn: listBlocks,
-  });
-  if (isLoading) return <p className="text-sm text-muted-foreground">Loading…</p>;
-  if (isError) return <p className="text-sm text-destructive">Failed to load blocked users.</p>;
-  if (!data || data.length === 0) {
-    return <p className="text-sm text-muted-foreground">No blocked users.</p>;
-  }
-  // Block list UI ships in NEU-83.
-  return null;
+  return <BlockedList />;
 }
