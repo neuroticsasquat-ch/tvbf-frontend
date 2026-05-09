@@ -128,12 +128,7 @@ export type WatchNextSort =
   | "newest_unwatched_desc"
   | "added_desc"
   | "name_asc";
-export type UpcomingSort =
-  | "airdate_asc"
-  | "airdate_desc"
-  | "added_desc"
-  | "name_asc"
-  | "name_desc";
+export type UpcomingSort = "airdate_asc" | "airdate_desc" | "added_desc" | "name_asc" | "name_desc";
 export type WatchedSort = "last_watched_desc" | "name_asc" | "name_desc";
 export type WatchedStatusFilter = "all" | "finished" | "in_progress";
 export type WatchedStatus = "finished" | "in_progress";

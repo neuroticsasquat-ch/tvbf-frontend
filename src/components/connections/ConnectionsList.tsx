@@ -47,34 +47,16 @@ export function ConnectionsList() {
     <>
       <ul className="flex flex-col divide-y divide-border rounded border border-border">
         {data.map((c) => (
-          <li
-            key={c.user.id}
-            className="flex items-center justify-between gap-3 px-3 py-2"
-          >
-            <Link
-              to={`/users/${c.user.id}`}
-              className="flex flex-col hover:underline"
-            >
+          <li key={c.user.id} className="flex items-center justify-between gap-3 px-3 py-2">
+            <Link to={`/users/${c.user.id}`} className="flex flex-col hover:underline">
               <span className="text-sm">{c.user.display_name}</span>
-              <span className="text-xs text-muted-foreground">
-                Connected {formatDate(c.since)}
-              </span>
+              <span className="text-xs text-muted-foreground">Connected {formatDate(c.since)}</span>
             </Link>
             <div className="flex gap-2">
-              <Button
-                type="button"
-                size="sm"
-                variant="outline"
-                onClick={() => setPendingRemove(c)}
-              >
+              <Button type="button" size="sm" variant="outline" onClick={() => setPendingRemove(c)}>
                 Remove
               </Button>
-              <Button
-                type="button"
-                size="sm"
-                variant="outline"
-                onClick={() => setPendingBlock(c)}
-              >
+              <Button type="button" size="sm" variant="outline" onClick={() => setPendingBlock(c)}>
                 Block
               </Button>
             </div>
@@ -82,10 +64,7 @@ export function ConnectionsList() {
         ))}
       </ul>
       {pendingRemove && (
-        <RemoveConfirmDialog
-          connection={pendingRemove}
-          onClose={() => setPendingRemove(null)}
-        />
+        <RemoveConfirmDialog connection={pendingRemove} onClose={() => setPendingRemove(null)} />
       )}
       {pendingBlock && (
         <ConfirmDialog
@@ -143,19 +122,14 @@ function RemoveConfirmDialog({
       <div className="bg-background rounded p-6 w-96 border border-border">
         <h2 className="text-lg font-semibold mb-2">Remove connection</h2>
         <p className="text-sm text-muted-foreground mb-4">
-          Disconnect from {connection.user.display_name}? You can reconnect
-          later by sending another request.
+          Disconnect from {connection.user.display_name}? You can reconnect later by sending another
+          request.
         </p>
         <div className="flex gap-2 justify-end">
           <Button type="button" variant="outline" size="sm" onClick={onClose}>
             Cancel
           </Button>
-          <Button
-            type="button"
-            size="sm"
-            onClick={confirm}
-            disabled={mutation.isPending}
-          >
+          <Button type="button" size="sm" onClick={confirm} disabled={mutation.isPending}>
             Confirm
           </Button>
         </div>

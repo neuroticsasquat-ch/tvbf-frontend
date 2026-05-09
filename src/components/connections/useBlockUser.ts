@@ -1,11 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { blockUser } from "@/api/connections";
-import type {
-  BlockedUserOut,
-  ConnectionOut,
-  ConnectionRequestList,
-} from "@/api/types";
+import type { BlockedUserOut, ConnectionOut, ConnectionRequestList } from "@/api/types";
 
 const BLOCKS_KEY = ["blocks"] as const;
 const CONNECTIONS_KEY = ["connections"] as const;

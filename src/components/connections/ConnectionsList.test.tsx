@@ -41,12 +41,8 @@ describe("ConnectionsList", () => {
   });
 
   it("opens confirm dialog and keeps row when canceled", async () => {
-    vi.spyOn(connectionsApi, "listConnections").mockResolvedValue([
-      makeConn("u-1", "Alice"),
-    ]);
-    const remove = vi
-      .spyOn(connectionsApi, "removeConnection")
-      .mockResolvedValue(undefined);
+    vi.spyOn(connectionsApi, "listConnections").mockResolvedValue([makeConn("u-1", "Alice")]);
+    const remove = vi.spyOn(connectionsApi, "removeConnection").mockResolvedValue(undefined);
 
     renderWithProviders(<ConnectionsList />);
     await waitFor(() => expect(screen.getByText("Alice")).toBeInTheDocument());
@@ -62,12 +58,8 @@ describe("ConnectionsList", () => {
   });
 
   it("removes the row optimistically when confirmed", async () => {
-    vi.spyOn(connectionsApi, "listConnections").mockResolvedValue([
-      makeConn("u-1", "Alice"),
-    ]);
-    const remove = vi
-      .spyOn(connectionsApi, "removeConnection")
-      .mockResolvedValue(undefined);
+    vi.spyOn(connectionsApi, "listConnections").mockResolvedValue([makeConn("u-1", "Alice")]);
+    const remove = vi.spyOn(connectionsApi, "removeConnection").mockResolvedValue(undefined);
 
     renderWithProviders(<ConnectionsList />);
     await waitFor(() => expect(screen.getByText("Alice")).toBeInTheDocument());
@@ -76,18 +68,12 @@ describe("ConnectionsList", () => {
     fireEvent.click(await screen.findByRole("button", { name: /^confirm$/i }));
 
     await waitFor(() => expect(remove).toHaveBeenCalledWith("u-1"));
-    await waitFor(() =>
-      expect(screen.queryByText("Alice")).not.toBeInTheDocument(),
-    );
+    await waitFor(() => expect(screen.queryByText("Alice")).not.toBeInTheDocument());
   });
 
   it("restores the row and toasts on error", async () => {
-    vi.spyOn(connectionsApi, "listConnections").mockResolvedValue([
-      makeConn("u-1", "Alice"),
-    ]);
-    vi.spyOn(connectionsApi, "removeConnection").mockRejectedValue(
-      new ApiError(500, "boom", null),
-    );
+    vi.spyOn(connectionsApi, "listConnections").mockResolvedValue([makeConn("u-1", "Alice")]);
+    vi.spyOn(connectionsApi, "removeConnection").mockRejectedValue(new ApiError(500, "boom", null));
 
     renderWithProviders(<ConnectionsList />);
     await waitFor(() => expect(screen.getByText("Alice")).toBeInTheDocument());
@@ -115,16 +101,12 @@ describe("ConnectionsList", () => {
     fireEvent.click(await screen.findByRole("button", { name: /^confirm$/i }));
 
     await waitFor(() => expect(block).toHaveBeenCalledWith("u-1"));
-    await waitFor(() =>
-      expect(screen.queryByText("Alice")).not.toBeInTheDocument(),
-    );
+    await waitFor(() => expect(screen.queryByText("Alice")).not.toBeInTheDocument());
   });
 
   it("renders empty state pointing at user search", async () => {
     vi.spyOn(connectionsApi, "listConnections").mockResolvedValue([]);
     renderWithProviders(<ConnectionsList />);
-    await waitFor(() =>
-      expect(screen.getByText(/find people/i)).toBeInTheDocument(),
-    );
+    await waitFor(() => expect(screen.getByText(/find people/i)).toBeInTheDocument());
   });
 });

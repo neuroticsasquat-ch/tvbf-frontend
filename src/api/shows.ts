@@ -41,11 +41,7 @@ export function useEpisode(id: number) {
   });
 }
 
-export function useShowEpisodes(
-  id: number,
-  season?: number,
-  options: { enabled?: boolean } = {},
-) {
+export function useShowEpisodes(id: number, season?: number, options: { enabled?: boolean } = {}) {
   const suffix = season !== undefined ? `?season=${season}` : "";
   const enabled = (options.enabled ?? true) && Number.isFinite(id) && id > 0;
   return useQuery<EpisodeOut[]>({

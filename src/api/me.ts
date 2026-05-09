@@ -8,33 +8,71 @@ import type {
   MyShowsSort,
   UpcomingEntry,
   UpcomingSort,
+  WatchedEntry,
+  WatchedSort,
+  WatchedStatusFilter,
   WatchNextEntry,
 } from "./types";
 
 const FIVE_MINUTES = 5 * 60 * 1000;
 
+export function fetchMyShows(opts: { sort: MyShowsSort; today: string }): Promise<MyShowEntry[]> {
+  return apiFetch<MyShowEntry[]>(`/me/shows?sort=${opts.sort}&today=${opts.today}`);
+}
+
 export function useMyShows(sort: MyShowsSort = "recent_activity") {
   const today = localToday();
   return useQuery<MyShowEntry[]>({
     queryKey: ["my-shows", sort, today],
-    queryFn: () => apiFetch<MyShowEntry[]>(`/me/shows?sort=${sort}&today=${today}`),
+    queryFn: () => fetchMyShows({ sort, today }),
     staleTime: FIVE_MINUTES,
   });
+}
+
+export function fetchWatchNext(opts: { today: string }): Promise<WatchNextEntry[]> {
+  return apiFetch<WatchNextEntry[]>(`/me/watch-next?today=${opts.today}`);
 }
 
 export function useWatchNext() {
   const today = localToday();
   return useQuery<WatchNextEntry[]>({
     queryKey: ["watch-next", today],
-    queryFn: () => apiFetch<WatchNextEntry[]>(`/me/watch-next?today=${today}`),
+    queryFn: () => fetchWatchNext({ today }),
   });
+}
+
+export function fetchUpcoming(opts: {
+  sort: UpcomingSort;
+  today: string;
+}): Promise<UpcomingEntry[]> {
+  return apiFetch<UpcomingEntry[]>(`/me/upcoming?sort=${opts.sort}&today=${opts.today}`);
 }
 
 export function useUpcoming(sort: UpcomingSort = "airdate_asc") {
   const today = localToday();
   return useQuery<UpcomingEntry[]>({
     queryKey: ["upcoming", sort, today],
-    queryFn: () => apiFetch<UpcomingEntry[]>(`/me/upcoming?sort=${sort}&today=${today}`),
+    queryFn: () => fetchUpcoming({ sort, today }),
+  });
+}
+
+export function fetchMyWatched(opts: {
+  status: WatchedStatusFilter;
+  sort: WatchedSort;
+}): Promise<WatchedEntry[]> {
+  const params = new URLSearchParams({ status: opts.status, sort: opts.sort });
+  return apiFetch<WatchedEntry[]>(`/me/watched?${params.toString()}`);
+}
+
+export function useMyWatched(
+  status: WatchedStatusFilter = "all",
+  sort: WatchedSort = "last_watched_desc",
+  enabled = true,
+) {
+  return useQuery<WatchedEntry[]>({
+    queryKey: ["my-watched", status, sort],
+    queryFn: () => fetchMyWatched({ status, sort }),
+    enabled,
   });
 }
 
@@ -102,8 +140,7 @@ function placeholderMyShowEntry(showId: number): MyShowEntry {
 export function useAddShow() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (showId: number) =>
-      apiFetch<void>(`/me/shows/${showId}`, { method: "PUT" }),
+    mutationFn: (showId: number) => apiFetch<void>(`/me/shows/${showId}`, { method: "PUT" }),
     onMutate: async (showId: number) => {
       await qc.cancelQueries({ queryKey: ["my-shows"] });
       const snapshots = qc.getQueriesData<MyShowEntry[]>({ queryKey: ["my-shows"] });
@@ -124,8 +161,7 @@ export function useAddShow() {
 export function useRemoveShow() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (showId: number) =>
-      apiFetch<void>(`/me/shows/${showId}`, { method: "DELETE" }),
+    mutationFn: (showId: number) => apiFetch<void>(`/me/shows/${showId}`, { method: "DELETE" }),
     onMutate: async (showId: number) => {
       await qc.cancelQueries({ queryKey: ["my-shows"] });
       const snapshots = qc.getQueriesData<MyShowEntry[]>({ queryKey: ["my-shows"] });
@@ -209,10 +245,9 @@ export function useMarkSeason() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (vars: { showId: number; season: number }) =>
-      apiFetch<{ marked: number }>(
-        `/me/shows/${vars.showId}/season/${vars.season}/watched`,
-        { method: "POST" },
-      ),
+      apiFetch<{ marked: number }>(`/me/shows/${vars.showId}/season/${vars.season}/watched`, {
+        method: "POST",
+      }),
     onMutate: async (vars) => {
       await qc.cancelQueries({ queryKey: ["watched-episodes", vars.showId] });
       const snap = snapshotWatched(qc, vars.showId);

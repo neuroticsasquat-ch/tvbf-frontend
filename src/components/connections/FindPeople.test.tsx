@@ -61,16 +61,14 @@ describe("FindPeople", () => {
     vi.spyOn(connectionsApi, "searchUsers").mockResolvedValue([
       { id: "u-1", display_name: "Alice" },
     ]);
-    const send = vi
-      .spyOn(connectionsApi, "sendConnectionRequest")
-      .mockResolvedValue({
-        id: "r-1",
-        requester: { id: "me", display_name: "Me" },
-        addressee: { id: "u-1", display_name: "Alice" },
-        state: "pending",
-        created_at: "2026-05-09T00:00:00Z",
-        responded_at: null,
-      });
+    const send = vi.spyOn(connectionsApi, "sendConnectionRequest").mockResolvedValue({
+      id: "r-1",
+      requester: { id: "me", display_name: "Me" },
+      addressee: { id: "u-1", display_name: "Alice" },
+      state: "pending",
+      created_at: "2026-05-09T00:00:00Z",
+      responded_at: null,
+    });
 
     renderWithProviders(<FindPeople />);
     fireEvent.change(screen.getByRole("searchbox", { name: /find people/i }), {
@@ -79,25 +77,17 @@ describe("FindPeople", () => {
     act(() => {
       vi.advanceTimersByTime(250);
     });
-    await waitFor(() =>
-      expect(screen.getByText("Alice")).toBeInTheDocument(),
-    );
+    await waitFor(() => expect(screen.getByText("Alice")).toBeInTheDocument());
 
     const button = screen.getByRole("button", { name: /connect/i });
     fireEvent.click(button);
 
     await waitFor(() => expect(send).toHaveBeenCalledWith("u-1"));
-    await waitFor(() =>
-      expect(
-        screen.getByRole("button", { name: /sent/i }),
-      ).toBeDisabled(),
-    );
+    await waitFor(() => expect(screen.getByRole("button", { name: /sent/i })).toBeDisabled());
   });
 
   it("toasts and keeps button idle on 409", async () => {
-    vi.spyOn(connectionsApi, "searchUsers").mockResolvedValue([
-      { id: "u-2", display_name: "Bob" },
-    ]);
+    vi.spyOn(connectionsApi, "searchUsers").mockResolvedValue([{ id: "u-2", display_name: "Bob" }]);
     vi.spyOn(connectionsApi, "sendConnectionRequest").mockRejectedValue(
       new ApiError(409, "connection_exists", { detail: "connection_exists" }),
     );
@@ -130,8 +120,6 @@ describe("FindPeople", () => {
       vi.advanceTimersByTime(250);
     });
 
-    await waitFor(() =>
-      expect(screen.getByText(/no matches/i)).toBeInTheDocument(),
-    );
+    await waitFor(() => expect(screen.getByText(/no matches/i)).toBeInTheDocument());
   });
 });

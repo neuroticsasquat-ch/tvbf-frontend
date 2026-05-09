@@ -3,10 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Check, Search as SearchIcon } from "lucide-react";
 import { toast } from "sonner";
 import { ApiError } from "@/api/client";
-import {
-  searchUsers,
-  sendConnectionRequest,
-} from "@/api/connections";
+import { searchUsers, sendConnectionRequest } from "@/api/connections";
 import type { UserSearchResult } from "@/api/types";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/cn";
@@ -103,9 +100,7 @@ function SearchResults({
   onConnect: (userId: string) => void;
 }) {
   if (isError) {
-    return (
-      <p className="text-sm text-destructive">Failed to search users.</p>
-    );
+    return <p className="text-sm text-destructive">Failed to search users.</p>;
   }
   if (isFetching && !results) {
     return <p className="text-sm text-muted-foreground">Searching…</p>;
@@ -118,15 +113,9 @@ function SearchResults({
       {results.map((u) => {
         const state = states[u.id] ?? "idle";
         return (
-          <li
-            key={u.id}
-            className="flex items-center justify-between px-3 py-2"
-          >
+          <li key={u.id} className="flex items-center justify-between px-3 py-2">
             <span className="text-sm">{u.display_name}</span>
-            <ConnectButton
-              state={state}
-              onClick={() => onConnect(u.id)}
-            />
+            <ConnectButton state={state} onClick={() => onConnect(u.id)} />
           </li>
         );
       })}
@@ -134,34 +123,17 @@ function SearchResults({
   );
 }
 
-function ConnectButton({
-  state,
-  onClick,
-}: {
-  state: ConnectState;
-  onClick: () => void;
-}) {
+function ConnectButton({ state, onClick }: { state: ConnectState; onClick: () => void }) {
   if (state === "sent") {
     return (
-      <Button
-        type="button"
-        size="sm"
-        variant="outline"
-        disabled
-        className={cn("text-emerald-700")}
-      >
+      <Button type="button" size="sm" variant="outline" disabled className={cn("text-emerald-700")}>
         <Check className="h-4 w-4" aria-hidden />
         Sent
       </Button>
     );
   }
   return (
-    <Button
-      type="button"
-      size="sm"
-      onClick={onClick}
-      disabled={state === "sending"}
-    >
+    <Button type="button" size="sm" onClick={onClick} disabled={state === "sending"}>
       {state === "sending" ? "Sending…" : "Connect"}
     </Button>
   );

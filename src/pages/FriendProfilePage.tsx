@@ -4,12 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { ApiError } from "@/api/client";
 import { listConnections } from "@/api/connections";
 import { getFriendShows, getFriendWatched } from "@/api/friends";
-import type {
-  ConnectionOut,
-  MyShowEntry,
-  WatchedEntry,
-  WatchedStatusFilter,
-} from "@/api/types";
+import type { ConnectionOut, MyShowEntry, WatchedEntry, WatchedStatusFilter } from "@/api/types";
 import { localToday } from "@/api/today";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/cn";
@@ -107,21 +102,14 @@ function ActiveTab({ userId }: { userId: string }) {
     return <p className="text-sm text-muted-foreground">Loading…</p>;
   }
   if (!data || data.length === 0) {
-    return (
-      <p className="text-sm text-muted-foreground">
-        Nothing tracked here yet.
-      </p>
-    );
+    return <p className="text-sm text-muted-foreground">Nothing tracked here yet.</p>;
   }
 
   return (
     <ul className="flex flex-col divide-y divide-border rounded border border-border">
       {data.map((entry) => (
         <li key={entry.show.id} className="px-3 py-2">
-          <Link
-            to={`/shows/${entry.show.id}`}
-            className="text-sm hover:underline"
-          >
+          <Link to={`/shows/${entry.show.id}`} className="text-sm hover:underline">
             {entry.show.name}
           </Link>
           {entry.total_episode_count > 0 && (
@@ -140,8 +128,7 @@ function WatchedTab({ userId }: { userId: string }) {
 
   const { data, isLoading, error } = useQuery<WatchedEntry[]>({
     queryKey: ["friend-watched", userId, status, "last_watched_desc"],
-    queryFn: () =>
-      getFriendWatched(userId, { status, sort: "last_watched_desc" }),
+    queryFn: () => getFriendWatched(userId, { status, sort: "last_watched_desc" }),
     retry: false,
   });
 
@@ -165,9 +152,7 @@ function WatchedTab({ userId }: { userId: string }) {
         ))}
       </div>
 
-      {isLoading && (
-        <p className="text-sm text-muted-foreground">Loading…</p>
-      )}
+      {isLoading && <p className="text-sm text-muted-foreground">Loading…</p>}
       {!isLoading && data && data.length === 0 && (
         <p className="text-sm text-muted-foreground">
           {status === "finished"
@@ -180,14 +165,8 @@ function WatchedTab({ userId }: { userId: string }) {
       {!isLoading && data && data.length > 0 && (
         <ul className="flex flex-col divide-y divide-border rounded border border-border">
           {data.map((entry) => (
-            <li
-              key={entry.show.id}
-              className="flex items-center gap-3 px-3 py-2"
-            >
-              <Link
-                to={`/shows/${entry.show.id}`}
-                className="text-sm hover:underline"
-              >
+            <li key={entry.show.id} className="flex items-center gap-3 px-3 py-2">
+              <Link to={`/shows/${entry.show.id}`} className="text-sm hover:underline">
                 {entry.show.name}
               </Link>
               <span className="text-xs text-muted-foreground">
@@ -215,9 +194,7 @@ function UserNotFound() {
   return (
     <section className="flex flex-col gap-2 py-8 text-center">
       <h1 className="text-xl font-semibold">User not found</h1>
-      <p className="text-sm text-muted-foreground">
-        This profile is unavailable.
-      </p>
+      <p className="text-sm text-muted-foreground">This profile is unavailable.</p>
     </section>
   );
 }

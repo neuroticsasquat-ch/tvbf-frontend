@@ -15,7 +15,9 @@ export function ViewToggle({
   const btnCls = (active: boolean) =>
     cn(
       "inline-flex items-center justify-center h-8 w-8 border border-border",
-      active ? "bg-accent text-foreground" : "bg-background text-muted-foreground hover:text-foreground",
+      active
+        ? "bg-accent text-foreground"
+        : "bg-background text-muted-foreground hover:text-foreground",
     );
   return (
     <div role="group" aria-label={ariaLabel} className="inline-flex rounded overflow-hidden">

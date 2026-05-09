@@ -20,9 +20,7 @@ export function getFriendShows(
   if (opts.sort) params.set("sort", opts.sort);
   if (opts.today) params.set("today", opts.today);
   const qs = params.toString();
-  return apiFetch<MyShowEntry[]>(
-    `/users/${userId}/shows${qs ? `?${qs}` : ""}`,
-  );
+  return apiFetch<MyShowEntry[]>(`/users/${userId}/shows${qs ? `?${qs}` : ""}`);
 }
 
 export interface FriendWatchedOptions {
@@ -40,7 +38,5 @@ export function getFriendWatched(
   if (opts.sort) params.set("sort", opts.sort);
   if (opts.today) params.set("today", opts.today);
   const qs = params.toString();
-  return apiFetch<WatchedEntry[]>(
-    `/users/${userId}/watched${qs ? `?${qs}` : ""}`,
-  );
+  return apiFetch<WatchedEntry[]>(`/users/${userId}/watched${qs ? `?${qs}` : ""}`);
 }

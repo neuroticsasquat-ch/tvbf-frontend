@@ -20,22 +20,15 @@ export function listConnectionRequests(): Promise<ConnectionRequestList> {
   return apiFetch<ConnectionRequestList>("/me/connection-requests");
 }
 
-export function sendConnectionRequest(
-  addresseeId: string,
-): Promise<ConnectionRequestOut> {
+export function sendConnectionRequest(addresseeId: string): Promise<ConnectionRequestOut> {
   return apiFetch<ConnectionRequestOut>("/connection-requests", {
     method: "POST",
     body: JSON.stringify({ addressee_id: addresseeId }),
   });
 }
 
-export function acceptConnectionRequest(
-  id: string,
-): Promise<ConnectionRequestOut> {
-  return apiFetch<ConnectionRequestOut>(
-    `/connection-requests/${id}/accept`,
-    { method: "POST" },
-  );
+export function acceptConnectionRequest(id: string): Promise<ConnectionRequestOut> {
+  return apiFetch<ConnectionRequestOut>(`/connection-requests/${id}/accept`, { method: "POST" });
 }
 
 export function deleteConnectionRequest(id: string): Promise<void> {

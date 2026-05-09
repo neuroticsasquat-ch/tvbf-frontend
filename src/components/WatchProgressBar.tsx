@@ -25,15 +25,12 @@ export function WatchProgressBar({ watched, aired, upcoming, stack = false }: Pr
             {pct}% watched ({watched}/{aired})
           </p>
           {upcoming > 0 && (
-            <p className="text-[10px] text-muted-foreground leading-tight">
-              {upcoming} upcoming
-            </p>
+            <p className="text-[10px] text-muted-foreground leading-tight">{upcoming} upcoming</p>
           )}
         </>
       ) : (
         <p className="text-[10px] text-muted-foreground mt-0.5">
-          {pct}% watched ({watched}/{aired})
-          {upcoming > 0 && ` - ${upcoming} upcoming`}
+          {pct}% watched ({watched}/{aired}){upcoming > 0 && ` - ${upcoming} upcoming`}
         </p>
       )}
     </div>

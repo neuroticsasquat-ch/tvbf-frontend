@@ -10,11 +10,7 @@ type UserMenuProps = {
   variant?: "icon" | "bottom-tab" | "icon-only";
 };
 
-export function UserMenu({
-  onChangePassword,
-  onDeleteAccount,
-  variant = "icon",
-}: UserMenuProps) {
+export function UserMenu({ onChangePassword, onDeleteAccount, variant = "icon" }: UserMenuProps) {
   const { user, logout } = useAuth();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement | null>(null);
@@ -68,10 +64,7 @@ export function UserMenu({
       {open && (
         <ul
           role="menu"
-          className={cn(
-            menuPositionCls,
-            "rounded border border-border bg-background shadow z-50",
-          )}
+          className={cn(menuPositionCls, "rounded border border-border bg-background shadow z-50")}
         >
           <li className="px-3 py-2 text-xs text-muted-foreground border-b border-border">
             Signed in as {user.display_name}

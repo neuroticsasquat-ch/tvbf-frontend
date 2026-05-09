@@ -21,10 +21,8 @@ function makeReq(
 ) {
   return {
     id,
-    requester:
-      side === "incoming" ? other : { id: callerId, display_name: "Me" },
-    addressee:
-      side === "incoming" ? { id: callerId, display_name: "Me" } : other,
+    requester: side === "incoming" ? other : { id: callerId, display_name: "Me" },
+    addressee: side === "incoming" ? { id: callerId, display_name: "Me" } : other,
     state: "pending" as const,
     created_at: "2026-05-08T12:00:00Z",
     responded_at: null,
@@ -63,9 +61,7 @@ describe("RequestsInbox", () => {
     });
     const accept = vi
       .spyOn(connectionsApi, "acceptConnectionRequest")
-      .mockResolvedValue(
-        makeReq("r-in", { id: "u-1", display_name: "Alice" }, "incoming"),
-      );
+      .mockResolvedValue(makeReq("r-in", { id: "u-1", display_name: "Alice" }, "incoming"));
 
     renderWithProviders(<RequestsInbox />);
 
@@ -81,9 +77,7 @@ describe("RequestsInbox", () => {
       incoming: [makeReq("r-in", { id: "u-1", display_name: "Alice" }, "incoming")],
       outgoing: [],
     });
-    const del = vi
-      .spyOn(connectionsApi, "deleteConnectionRequest")
-      .mockResolvedValue(undefined);
+    const del = vi.spyOn(connectionsApi, "deleteConnectionRequest").mockResolvedValue(undefined);
 
     renderWithProviders(<RequestsInbox />);
     await waitFor(() => expect(screen.getByText("Alice")).toBeInTheDocument());
@@ -98,9 +92,7 @@ describe("RequestsInbox", () => {
       incoming: [],
       outgoing: [makeReq("r-out", { id: "u-2", display_name: "Bob" }, "outgoing")],
     });
-    const del = vi
-      .spyOn(connectionsApi, "deleteConnectionRequest")
-      .mockResolvedValue(undefined);
+    const del = vi.spyOn(connectionsApi, "deleteConnectionRequest").mockResolvedValue(undefined);
 
     renderWithProviders(<RequestsInbox />);
     await waitFor(() => expect(screen.getByText("Bob")).toBeInTheDocument());
@@ -130,9 +122,7 @@ describe("RequestsInbox", () => {
 
   it("blocks the requester from an incoming row", async () => {
     vi.spyOn(connectionsApi, "listConnectionRequests").mockResolvedValue({
-      incoming: [
-        makeReq("r-in", { id: "u-1", display_name: "Alice" }, "incoming"),
-      ],
+      incoming: [makeReq("r-in", { id: "u-1", display_name: "Alice" }, "incoming")],
       outgoing: [],
     });
     const block = vi.spyOn(connectionsApi, "blockUser").mockResolvedValue({
@@ -147,9 +137,7 @@ describe("RequestsInbox", () => {
     fireEvent.click(await screen.findByRole("button", { name: /^confirm$/i }));
 
     await waitFor(() => expect(block).toHaveBeenCalledWith("u-1"));
-    await waitFor(() =>
-      expect(screen.queryByText("Alice")).not.toBeInTheDocument(),
-    );
+    await waitFor(() => expect(screen.queryByText("Alice")).not.toBeInTheDocument());
   });
 
   it("renders empty state for both sections when no requests", async () => {
@@ -159,9 +147,7 @@ describe("RequestsInbox", () => {
     });
 
     renderWithProviders(<RequestsInbox />);
-    await waitFor(() =>
-      expect(screen.getByText(/no incoming requests/i)).toBeInTheDocument(),
-    );
+    await waitFor(() => expect(screen.getByText(/no incoming requests/i)).toBeInTheDocument());
     expect(screen.getByText(/no outgoing requests/i)).toBeInTheDocument();
   });
 });

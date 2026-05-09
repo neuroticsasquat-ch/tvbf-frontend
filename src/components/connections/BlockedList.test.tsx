@@ -41,12 +41,8 @@ describe("BlockedList", () => {
   });
 
   it("opens confirm dialog and keeps row when canceled", async () => {
-    vi.spyOn(connectionsApi, "listBlocks").mockResolvedValue([
-      makeBlock("u-1", "Alice"),
-    ]);
-    const unblock = vi
-      .spyOn(connectionsApi, "unblockUser")
-      .mockResolvedValue(undefined);
+    vi.spyOn(connectionsApi, "listBlocks").mockResolvedValue([makeBlock("u-1", "Alice")]);
+    const unblock = vi.spyOn(connectionsApi, "unblockUser").mockResolvedValue(undefined);
 
     renderWithProviders(<BlockedList />);
     await waitFor(() => expect(screen.getByText("Alice")).toBeInTheDocument());
@@ -60,12 +56,8 @@ describe("BlockedList", () => {
   });
 
   it("removes the row optimistically when confirmed", async () => {
-    vi.spyOn(connectionsApi, "listBlocks").mockResolvedValue([
-      makeBlock("u-1", "Alice"),
-    ]);
-    const unblock = vi
-      .spyOn(connectionsApi, "unblockUser")
-      .mockResolvedValue(undefined);
+    vi.spyOn(connectionsApi, "listBlocks").mockResolvedValue([makeBlock("u-1", "Alice")]);
+    const unblock = vi.spyOn(connectionsApi, "unblockUser").mockResolvedValue(undefined);
 
     renderWithProviders(<BlockedList />);
     await waitFor(() => expect(screen.getByText("Alice")).toBeInTheDocument());
@@ -74,18 +66,12 @@ describe("BlockedList", () => {
     fireEvent.click(await screen.findByRole("button", { name: /^confirm$/i }));
 
     await waitFor(() => expect(unblock).toHaveBeenCalledWith("u-1"));
-    await waitFor(() =>
-      expect(screen.queryByText("Alice")).not.toBeInTheDocument(),
-    );
+    await waitFor(() => expect(screen.queryByText("Alice")).not.toBeInTheDocument());
   });
 
   it("restores the row and toasts on error", async () => {
-    vi.spyOn(connectionsApi, "listBlocks").mockResolvedValue([
-      makeBlock("u-1", "Alice"),
-    ]);
-    vi.spyOn(connectionsApi, "unblockUser").mockRejectedValue(
-      new ApiError(500, "boom", null),
-    );
+    vi.spyOn(connectionsApi, "listBlocks").mockResolvedValue([makeBlock("u-1", "Alice")]);
+    vi.spyOn(connectionsApi, "unblockUser").mockRejectedValue(new ApiError(500, "boom", null));
 
     renderWithProviders(<BlockedList />);
     await waitFor(() => expect(screen.getByText("Alice")).toBeInTheDocument());
@@ -100,8 +86,6 @@ describe("BlockedList", () => {
   it("renders empty state", async () => {
     vi.spyOn(connectionsApi, "listBlocks").mockResolvedValue([]);
     renderWithProviders(<BlockedList />);
-    await waitFor(() =>
-      expect(screen.getByText(/no blocked users/i)).toBeInTheDocument(),
-    );
+    await waitFor(() => expect(screen.getByText(/no blocked users/i)).toBeInTheDocument());
   });
 });

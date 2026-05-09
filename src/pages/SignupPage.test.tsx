@@ -84,9 +84,7 @@ describe("SignupPage", () => {
     renderAt("/signup");
     await fillCommonFields("bogus-code");
     await userEvent.click(screen.getByRole("button", { name: /sign up/i }));
-    await waitFor(() =>
-      expect(screen.getByText(/invite code is invalid/i)).toBeInTheDocument(),
-    );
+    await waitFor(() => expect(screen.getByText(/invite code is invalid/i)).toBeInTheDocument());
   });
 
   it("pre-fills the invite code from the ?invite= query param", () => {
