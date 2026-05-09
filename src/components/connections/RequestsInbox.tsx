@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import {
@@ -8,8 +9,11 @@ import {
 import type {
   ConnectionRequestList,
   ConnectionRequestOut,
+  UserBrief,
 } from "@/api/types";
 import { Button } from "@/components/ui/button";
+import { ConfirmDialog } from "./ConfirmDialog";
+import { useBlockUser } from "./useBlockUser";
 
 const REQUESTS_KEY = ["connection-requests"] as const;
 
@@ -28,6 +32,8 @@ export function RequestsInbox() {
     queryKey: REQUESTS_KEY,
     queryFn: listConnectionRequests,
   });
+  const [pendingBlock, setPendingBlock] = useState<UserBrief | null>(null);
+  const block = useBlockUser();
 
   if (isLoading) {
     return <p className="text-sm text-muted-foreground">Loading…</p>;
@@ -42,14 +48,36 @@ export function RequestsInbox() {
     <div className="flex flex-col gap-6">
       <Section title="Incoming" emptyText="No incoming requests.">
         {incoming.map((row) => (
-          <IncomingRow key={row.id} row={row} />
+          <IncomingRow
+            key={row.id}
+            row={row}
+            onBlock={() => setPendingBlock(row.requester)}
+          />
         ))}
       </Section>
       <Section title="Outgoing" emptyText="No outgoing requests.">
         {outgoing.map((row) => (
-          <OutgoingRow key={row.id} row={row} />
+          <OutgoingRow
+            key={row.id}
+            row={row}
+            onBlock={() => setPendingBlock(row.addressee)}
+          />
         ))}
       </Section>
+      {pendingBlock && (
+        <ConfirmDialog
+          title="Block user"
+          description={`Block ${pendingBlock.display_name}? This removes the request and prevents future requests until you unblock them.`}
+          confirmLabel="Confirm"
+          destructive
+          pending={block.isPending}
+          onConfirm={() => {
+            block.mutate(pendingBlock.id);
+            setPendingBlock(null);
+          }}
+          onClose={() => setPendingBlock(null)}
+        />
+      )}
     </div>
   );
 }
@@ -81,7 +109,13 @@ function Section({
   );
 }
 
-function IncomingRow({ row }: { row: ConnectionRequestOut }) {
+function IncomingRow({
+  row,
+  onBlock,
+}: {
+  row: ConnectionRequestOut;
+  onBlock: () => void;
+}) {
   const accept = useRequestMutation(
     (id: string) => acceptConnectionRequest(id),
     "Could not accept request.",
@@ -90,6 +124,7 @@ function IncomingRow({ row }: { row: ConnectionRequestOut }) {
     (id: string) => deleteConnectionRequest(id),
     "Could not reject request.",
   );
+  const busy = accept.isPending || reject.isPending;
   return (
     <li className="flex items-center justify-between gap-3 px-3 py-2">
       <div className="flex flex-col">
@@ -103,7 +138,7 @@ function IncomingRow({ row }: { row: ConnectionRequestOut }) {
           type="button"
           size="sm"
           onClick={() => accept.mutate(row.id)}
-          disabled={accept.isPending || reject.isPending}
+          disabled={busy}
         >
           Accept
         </Button>
@@ -112,16 +147,31 @@ function IncomingRow({ row }: { row: ConnectionRequestOut }) {
           size="sm"
           variant="outline"
           onClick={() => reject.mutate(row.id)}
-          disabled={accept.isPending || reject.isPending}
+          disabled={busy}
         >
           Reject
+        </Button>
+        <Button
+          type="button"
+          size="sm"
+          variant="outline"
+          onClick={onBlock}
+          disabled={busy}
+        >
+          Block
         </Button>
       </div>
     </li>
   );
 }
 
-function OutgoingRow({ row }: { row: ConnectionRequestOut }) {
+function OutgoingRow({
+  row,
+  onBlock,
+}: {
+  row: ConnectionRequestOut;
+  onBlock: () => void;
+}) {
   const cancel = useRequestMutation(
     (id: string) => deleteConnectionRequest(id),
     "Could not cancel request.",
@@ -134,15 +184,26 @@ function OutgoingRow({ row }: { row: ConnectionRequestOut }) {
           {formatDate(row.created_at)}
         </span>
       </div>
-      <Button
-        type="button"
-        size="sm"
-        variant="outline"
-        onClick={() => cancel.mutate(row.id)}
-        disabled={cancel.isPending}
-      >
-        Cancel
-      </Button>
+      <div className="flex gap-2">
+        <Button
+          type="button"
+          size="sm"
+          variant="outline"
+          onClick={() => cancel.mutate(row.id)}
+          disabled={cancel.isPending}
+        >
+          Cancel
+        </Button>
+        <Button
+          type="button"
+          size="sm"
+          variant="outline"
+          onClick={onBlock}
+          disabled={cancel.isPending}
+        >
+          Block
+        </Button>
+      </div>
     </li>
   );
 }

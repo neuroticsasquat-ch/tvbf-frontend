@@ -128,6 +128,30 @@ describe("RequestsInbox", () => {
     expect(screen.getByText("Alice")).toBeInTheDocument();
   });
 
+  it("blocks the requester from an incoming row", async () => {
+    vi.spyOn(connectionsApi, "listConnectionRequests").mockResolvedValue({
+      incoming: [
+        makeReq("r-in", { id: "u-1", display_name: "Alice" }, "incoming"),
+      ],
+      outgoing: [],
+    });
+    const block = vi.spyOn(connectionsApi, "blockUser").mockResolvedValue({
+      user: { id: "u-1", display_name: "Alice" },
+      blocked_at: "2026-05-09T00:00:00Z",
+    });
+
+    renderWithProviders(<RequestsInbox />);
+    await waitFor(() => expect(screen.getByText("Alice")).toBeInTheDocument());
+
+    fireEvent.click(screen.getByRole("button", { name: /^block$/i }));
+    fireEvent.click(await screen.findByRole("button", { name: /^confirm$/i }));
+
+    await waitFor(() => expect(block).toHaveBeenCalledWith("u-1"));
+    await waitFor(() =>
+      expect(screen.queryByText("Alice")).not.toBeInTheDocument(),
+    );
+  });
+
   it("renders empty state for both sections when no requests", async () => {
     vi.spyOn(connectionsApi, "listConnectionRequests").mockResolvedValue({
       incoming: [],
