@@ -1,11 +1,9 @@
 import { useSearchParams } from "react-router";
-import { useQuery } from "@tanstack/react-query";
-import {
-  listBlocks,
-  listConnectionRequests,
-  listConnections,
-} from "@/api/connections";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { listBlocks, listConnections } from "@/api/connections";
+import type { ConnectionRequestList } from "@/api/types";
 import { FindPeople } from "@/components/connections/FindPeople";
+import { RequestsInbox } from "@/components/connections/RequestsInbox";
 import { cn } from "@/lib/cn";
 
 type Tab = "connections" | "requests" | "blocked";
@@ -38,30 +36,7 @@ export function ConnectionsPage() {
     <section className="flex flex-col gap-4">
       <h1 className="text-2xl font-semibold">Connections</h1>
 
-      <div role="tablist" aria-label="Connections sections" className="flex gap-1 border-b border-border">
-        {TABS.map((t) => {
-          const selected = t.key === active;
-          return (
-            <button
-              key={t.key}
-              type="button"
-              role="tab"
-              aria-selected={selected}
-              aria-controls={`connections-panel-${t.key}`}
-              id={`connections-tab-${t.key}`}
-              onClick={() => selectTab(t.key)}
-              className={cn(
-                "px-3 py-2 text-sm border-b-2 -mb-px",
-                selected
-                  ? "border-foreground font-medium text-foreground"
-                  : "border-transparent text-muted-foreground hover:text-foreground",
-              )}
-            >
-              {t.label}
-            </button>
-          );
-        })}
-      </div>
+      <TabBar active={active} onSelect={selectTab} />
 
       <div
         role="tabpanel"
@@ -73,6 +48,55 @@ export function ConnectionsPage() {
         {active === "blocked" && <BlockedTab />}
       </div>
     </section>
+  );
+}
+
+function TabBar({
+  active,
+  onSelect,
+}: {
+  active: Tab;
+  onSelect: (next: Tab) => void;
+}) {
+  const qc = useQueryClient();
+  // Read incoming-pending count from cache only, so the badge appears once
+  // the user has visited the Requests tab without forcing a fetch on mount.
+  const cached = qc.getQueryData<ConnectionRequestList>([
+    "connection-requests",
+  ]);
+  const incomingCount = cached?.incoming.length ?? 0;
+
+  return (
+    <div
+      role="tablist"
+      aria-label="Connections sections"
+      className="flex gap-1 border-b border-border"
+    >
+      {TABS.map((t) => {
+        const selected = t.key === active;
+        const showBadge = t.key === "requests" && incomingCount > 0;
+        const label = showBadge ? `${t.label} (${incomingCount})` : t.label;
+        return (
+          <button
+            key={t.key}
+            type="button"
+            role="tab"
+            aria-selected={selected}
+            aria-controls={`connections-panel-${t.key}`}
+            id={`connections-tab-${t.key}`}
+            onClick={() => onSelect(t.key)}
+            className={cn(
+              "px-3 py-2 text-sm border-b-2 -mb-px",
+              selected
+                ? "border-foreground font-medium text-foreground"
+                : "border-transparent text-muted-foreground hover:text-foreground",
+            )}
+          >
+            {label}
+          </button>
+        );
+      })}
+    </div>
   );
 }
 
@@ -101,18 +125,7 @@ function ConnectionsTab() {
 }
 
 function RequestsTab() {
-  const { data, isLoading, isError } = useQuery({
-    queryKey: ["connection-requests"],
-    queryFn: listConnectionRequests,
-  });
-  if (isLoading) return <p className="text-sm text-muted-foreground">Loading…</p>;
-  if (isError) return <p className="text-sm text-destructive">Failed to load requests.</p>;
-  const total = (data?.incoming.length ?? 0) + (data?.outgoing.length ?? 0);
-  if (total === 0) {
-    return <p className="text-sm text-muted-foreground">No pending requests.</p>;
-  }
-  // Inbox UI ships in NEU-81.
-  return null;
+  return <RequestsInbox />;
 }
 
 function BlockedTab() {
