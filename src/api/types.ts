@@ -70,6 +70,9 @@ export interface EpisodeOut {
   summary: string | null;
   image_medium: string | null;
   image_original: string | null;
+  // Per-user watched flag. Populated by `/me/*` list endpoints; null on
+  // catalog-browse endpoints that have no user context.
+  watched: boolean | null;
 }
 
 export interface ShowSummary {

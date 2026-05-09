@@ -62,7 +62,11 @@ export function NextEpisodeCard({ showId }: { showId: number }) {
             </div>
           </Link>
           <div className="ml-auto shrink-0">
-            <EpisodeWatchCheckbox showId={showId} episodeId={ep.id} />
+            <EpisodeWatchCheckbox
+              showId={showId}
+              episodeId={ep.id}
+              watched={ep.watched ?? false}
+            />
           </div>
         </div>
       </div>

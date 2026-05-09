@@ -19,21 +19,28 @@ type ListSnapshots = {
 export function EpisodeWatchCheckbox({
   showId,
   episodeId,
+  watched: watchedProp,
   withLabel = false,
 }: {
   showId: number;
   episodeId: number;
+  // When supplied, the per-show watched-episodes set is NOT fetched and the
+  // checkbox state is read directly from this prop. List rows that already
+  // know whether their episode is watched (e.g. from `EpisodeOut.watched`)
+  // should pass it to avoid an N+1 fanout. See NEU-100.
+  watched?: boolean;
   withLabel?: boolean;
 }) {
   const { user } = useAuth();
   const qc = useQueryClient();
-  const { data: watchedSet } = useWatchedEpisodes(showId, !!user);
+  const fetchSet = !!user && watchedProp === undefined;
+  const { data: watchedSet } = useWatchedEpisodes(showId, fetchSet);
   const mark = useMarkEpisode();
   const unmark = useUnmarkEpisode();
 
   if (!user) return null;
 
-  const watched = watchedSet?.has(episodeId) ?? false;
+  const watched = watchedProp ?? watchedSet?.has(episodeId) ?? false;
 
   function snapshotLists(): ListSnapshots {
     return {
