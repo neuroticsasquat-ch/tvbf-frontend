@@ -6,11 +6,7 @@ import {
   deleteConnectionRequest,
   listConnectionRequests,
 } from "@/api/connections";
-import type {
-  ConnectionRequestList,
-  ConnectionRequestOut,
-  UserBrief,
-} from "@/api/types";
+import type { ConnectionRequestList, ConnectionRequestOut, UserBrief } from "@/api/types";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { useBlockUser } from "./useBlockUser";
@@ -48,20 +44,12 @@ export function RequestsInbox() {
     <div className="flex flex-col gap-6">
       <Section title="Incoming" emptyText="No incoming requests.">
         {incoming.map((row) => (
-          <IncomingRow
-            key={row.id}
-            row={row}
-            onBlock={() => setPendingBlock(row.requester)}
-          />
+          <IncomingRow key={row.id} row={row} onBlock={() => setPendingBlock(row.requester)} />
         ))}
       </Section>
       <Section title="Outgoing" emptyText="No outgoing requests.">
         {outgoing.map((row) => (
-          <OutgoingRow
-            key={row.id}
-            row={row}
-            onBlock={() => setPendingBlock(row.addressee)}
-          />
+          <OutgoingRow key={row.id} row={row} onBlock={() => setPendingBlock(row.addressee)} />
         ))}
       </Section>
       {pendingBlock && (
@@ -95,9 +83,7 @@ function Section({
   const hasContent = list.some((c) => c);
   return (
     <section className="flex flex-col gap-2">
-      <h2 className="text-sm font-medium uppercase tracking-wide text-muted-foreground">
-        {title}
-      </h2>
+      <h2 className="text-sm font-medium uppercase tracking-wide text-muted-foreground">{title}</h2>
       {hasContent ? (
         <ul className="flex flex-col divide-y divide-border rounded border border-border">
           {children}
@@ -109,13 +95,7 @@ function Section({
   );
 }
 
-function IncomingRow({
-  row,
-  onBlock,
-}: {
-  row: ConnectionRequestOut;
-  onBlock: () => void;
-}) {
+function IncomingRow({ row, onBlock }: { row: ConnectionRequestOut; onBlock: () => void }) {
   const accept = useRequestMutation(
     (id: string) => acceptConnectionRequest(id),
     "Could not accept request.",
@@ -129,17 +109,10 @@ function IncomingRow({
     <li className="flex items-center justify-between gap-3 px-3 py-2">
       <div className="flex flex-col">
         <span className="text-sm">{row.requester.display_name}</span>
-        <span className="text-xs text-muted-foreground">
-          {formatDate(row.created_at)}
-        </span>
+        <span className="text-xs text-muted-foreground">{formatDate(row.created_at)}</span>
       </div>
       <div className="flex gap-2">
-        <Button
-          type="button"
-          size="sm"
-          onClick={() => accept.mutate(row.id)}
-          disabled={busy}
-        >
+        <Button type="button" size="sm" onClick={() => accept.mutate(row.id)} disabled={busy}>
           Accept
         </Button>
         <Button
@@ -151,13 +124,7 @@ function IncomingRow({
         >
           Reject
         </Button>
-        <Button
-          type="button"
-          size="sm"
-          variant="outline"
-          onClick={onBlock}
-          disabled={busy}
-        >
+        <Button type="button" size="sm" variant="outline" onClick={onBlock} disabled={busy}>
           Block
         </Button>
       </div>
@@ -165,13 +132,7 @@ function IncomingRow({
   );
 }
 
-function OutgoingRow({
-  row,
-  onBlock,
-}: {
-  row: ConnectionRequestOut;
-  onBlock: () => void;
-}) {
+function OutgoingRow({ row, onBlock }: { row: ConnectionRequestOut; onBlock: () => void }) {
   const cancel = useRequestMutation(
     (id: string) => deleteConnectionRequest(id),
     "Could not cancel request.",
@@ -180,9 +141,7 @@ function OutgoingRow({
     <li className="flex items-center justify-between gap-3 px-3 py-2">
       <div className="flex flex-col">
         <span className="text-sm">{row.addressee.display_name}</span>
-        <span className="text-xs text-muted-foreground">
-          {formatDate(row.created_at)}
-        </span>
+        <span className="text-xs text-muted-foreground">{formatDate(row.created_at)}</span>
       </div>
       <div className="flex gap-2">
         <Button
@@ -208,10 +167,7 @@ function OutgoingRow({
   );
 }
 
-function useRequestMutation(
-  fn: (id: string) => Promise<unknown>,
-  errorMessage: string,
-) {
+function useRequestMutation(fn: (id: string) => Promise<unknown>, errorMessage: string) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: fn,

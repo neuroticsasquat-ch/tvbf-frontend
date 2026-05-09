@@ -28,11 +28,16 @@ export function DeleteAccountDialog({ open, onClose }: { open: boolean; onClose:
   }
 
   return (
-    <div role="dialog" aria-label="Delete account" className="fixed inset-0 bg-black/30 flex items-center justify-center z-20">
+    <div
+      role="dialog"
+      aria-label="Delete account"
+      className="fixed inset-0 bg-black/30 flex items-center justify-center z-20"
+    >
       <div className="bg-background rounded p-6 w-96 border border-border">
         <h2 className="text-lg font-semibold mb-2">Delete account</h2>
         <p className="text-sm text-muted-foreground mb-4">
-          This permanently deletes your account, your watchlist, and all watch history. This cannot be undone.
+          This permanently deletes your account, your watchlist, and all watch history. This cannot
+          be undone.
         </p>
         <form onSubmit={submit} className="space-y-3">
           <input
@@ -45,8 +50,14 @@ export function DeleteAccountDialog({ open, onClose }: { open: boolean; onClose:
           />
           {err && <p className="text-sm text-red-600">{err}</p>}
           <div className="flex gap-2 justify-end">
-            <button type="button" onClick={onClose} className="px-3 py-1">Cancel</button>
-            <button type="submit" disabled={submitting} className="rounded bg-red-600 text-white px-3 py-1 disabled:opacity-50">
+            <button type="button" onClick={onClose} className="px-3 py-1">
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={submitting}
+              className="rounded bg-red-600 text-white px-3 py-1 disabled:opacity-50"
+            >
               {submitting ? "Deleting…" : "Delete"}
             </button>
           </div>

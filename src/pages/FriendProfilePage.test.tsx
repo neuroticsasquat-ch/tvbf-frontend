@@ -93,10 +93,7 @@ describe("FriendProfilePage", () => {
       ).toBeInTheDocument(),
     );
     expect(screen.getAllByRole("tab")).toHaveLength(2);
-    expect(screen.getByRole("tab", { name: /active/i })).toHaveAttribute(
-      "aria-selected",
-      "true",
-    );
+    expect(screen.getByRole("tab", { name: /active/i })).toHaveAttribute("aria-selected", "true");
   });
 
   it("Active tab fetches getFriendShows and renders rows read-only", async () => {
@@ -115,66 +112,46 @@ describe("FriendProfilePage", () => {
 
   it("Watched tab is lazy (not fetched until clicked)", async () => {
     vi.spyOn(friendsApi, "getFriendShows").mockResolvedValue([]);
-    const watched = vi
-      .spyOn(friendsApi, "getFriendWatched")
-      .mockResolvedValue([]);
+    const watched = vi.spyOn(friendsApi, "getFriendWatched").mockResolvedValue([]);
 
     renderWithProviders(routed(), { route: `/users/${FRIEND_ID}` });
 
-    await waitFor(() =>
-      expect(
-        screen.getByRole("tab", { name: /active/i }),
-      ).toBeInTheDocument(),
-    );
+    await waitFor(() => expect(screen.getByRole("tab", { name: /active/i })).toBeInTheDocument());
     expect(watched).not.toHaveBeenCalled();
 
     fireEvent.click(screen.getByRole("tab", { name: /watched/i }));
-    await waitFor(() =>
-      expect(watched).toHaveBeenCalledWith(FRIEND_ID, expect.any(Object)),
-    );
+    await waitFor(() => expect(watched).toHaveBeenCalledWith(FRIEND_ID, expect.any(Object)));
   });
 
   it("Watched tab renders rows", async () => {
     vi.spyOn(friendsApi, "getFriendShows").mockResolvedValue([]);
-    vi.spyOn(friendsApi, "getFriendWatched").mockResolvedValue([
-      makeWatched(22, "The Wire"),
-    ]);
+    vi.spyOn(friendsApi, "getFriendWatched").mockResolvedValue([makeWatched(22, "The Wire")]);
 
     renderWithProviders(routed(), { route: `/users/${FRIEND_ID}` });
 
     fireEvent.click(await screen.findByRole("tab", { name: /watched/i }));
-    await waitFor(() =>
-      expect(screen.getByText("The Wire")).toBeInTheDocument(),
-    );
+    await waitFor(() => expect(screen.getByText("The Wire")).toBeInTheDocument());
   });
 
   it("renders 'user not found' when not in caller's connections", async () => {
     vi.spyOn(connectionsApi, "listConnections").mockResolvedValue([]);
     renderWithProviders(routed(), { route: `/users/${FRIEND_ID}` });
 
-    await waitFor(() =>
-      expect(screen.getByText(/user not found/i)).toBeInTheDocument(),
-    );
+    await waitFor(() => expect(screen.getByText(/user not found/i)).toBeInTheDocument());
   });
 
   it("renders 'user not found' when friend API returns 404", async () => {
     // Friend appears in the connection list but the friend endpoint 404s
     // (e.g., they unblocked us between renders, or stale cache).
-    vi.spyOn(friendsApi, "getFriendShows").mockRejectedValue(
-      new ApiError(404, "not_found", null),
-    );
+    vi.spyOn(friendsApi, "getFriendShows").mockRejectedValue(new ApiError(404, "not_found", null));
     renderWithProviders(routed(), { route: `/users/${FRIEND_ID}` });
 
-    await waitFor(() =>
-      expect(screen.getByText(/user not found/i)).toBeInTheDocument(),
-    );
+    await waitFor(() => expect(screen.getByText(/user not found/i)).toBeInTheDocument());
   });
 
   it("Watched tab status filter changes the query param", async () => {
     vi.spyOn(friendsApi, "getFriendShows").mockResolvedValue([]);
-    const watched = vi
-      .spyOn(friendsApi, "getFriendWatched")
-      .mockResolvedValue([]);
+    const watched = vi.spyOn(friendsApi, "getFriendWatched").mockResolvedValue([]);
 
     renderWithProviders(routed(), { route: `/users/${FRIEND_ID}` });
     fireEvent.click(await screen.findByRole("tab", { name: /watched/i }));

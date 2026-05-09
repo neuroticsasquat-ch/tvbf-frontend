@@ -31,7 +31,11 @@ export function ShowWatchCheckbox({ showId, watchedCount, airedCount }: Props) {
       size="sm"
       onClick={onClick}
       aria-pressed={fullyWatched}
-      title={fullyWatched ? "Show fully watched — click to unmark" : "Click to mark all aired episodes watched"}
+      title={
+        fullyWatched
+          ? "Show fully watched — click to unmark"
+          : "Click to mark all aired episodes watched"
+      }
       className={fullyWatched ? "text-emerald-700" : undefined}
     >
       {fullyWatched ? <CheckCircle2 aria-hidden /> : <Circle aria-hidden />}

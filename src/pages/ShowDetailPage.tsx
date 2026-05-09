@@ -93,12 +93,14 @@ export function ShowDetailPage() {
         <div className="mb-3 flex items-center justify-between gap-2">
           <h2 className="text-lg font-semibold">
             Seasons{" "}
-            <span className="font-normal text-muted-foreground">
-              ({show.seasons.length})
-            </span>
+            <span className="font-normal text-muted-foreground">({show.seasons.length})</span>
           </h2>
           {myEntry && progressQuery.data && (
-            <div role="radiogroup" aria-label="Filter seasons" className="inline-flex rounded border border-border text-sm">
+            <div
+              role="radiogroup"
+              aria-label="Filter seasons"
+              className="inline-flex rounded border border-border text-sm"
+            >
               {(["all", "unwatched"] as const).map((key) => (
                 <button
                   key={key}
@@ -119,9 +121,7 @@ export function ShowDetailPage() {
           )}
         </div>
         {(() => {
-          const progressMap = new Map(
-            (progressQuery.data ?? []).map((p) => [p.season, p]),
-          );
+          const progressMap = new Map((progressQuery.data ?? []).map((p) => [p.season, p]));
           const filtered =
             seasonFilter === "unwatched" && myEntry
               ? show.seasons.filter((s) => {
@@ -133,87 +133,75 @@ export function ShowDetailPage() {
             return <p className="text-sm text-muted-foreground">No seasons available.</p>;
           }
           if (filtered.length === 0) {
-            return (
-              <p className="text-sm text-muted-foreground">
-                No unwatched seasons.
-              </p>
-            );
+            return <p className="text-sm text-muted-foreground">No unwatched seasons.</p>;
           }
           return (
-          <ul className="space-y-3">
-            {filtered.map((s) => {
-              const p = progressMap.get(s.number);
-              const aired = p?.aired ?? 0;
-              const watched = p?.watched ?? 0;
-              const upcoming = (s.episode_order ?? 0) > aired ? (s.episode_order ?? 0) - aired : 0;
-              const year = s.premiere_date ? s.premiere_date.slice(0, 4) : null;
-              const title = s.name && s.name !== `Season ${s.number}` ? s.name : null;
-              const thumbnail = s.image_medium ?? show.image_medium;
-              return (
-                <li
-                  key={s.id}
-                  className="border border-border rounded p-3 hover:bg-accent"
-                >
-                  <div className="flex items-center gap-4">
-                    <Link
-                      to={`/shows/${show.id}/episodes?season=${s.number}`}
-                      className="flex flex-1 min-w-0 items-center gap-4"
-                    >
-                      {thumbnail ? (
-                        <img
-                          src={thumbnail}
-                          alt=""
-                          className="w-20 aspect-[210/295] object-cover rounded shrink-0"
-                          loading="lazy"
-                        />
-                      ) : (
-                        <div
-                          aria-hidden
-                          className="w-20 aspect-[210/295] rounded shrink-0 bg-muted text-muted-foreground flex items-center justify-center"
-                        >
-                          <Tv className="h-6 w-6" />
+            <ul className="space-y-3">
+              {filtered.map((s) => {
+                const p = progressMap.get(s.number);
+                const aired = p?.aired ?? 0;
+                const watched = p?.watched ?? 0;
+                const upcoming =
+                  (s.episode_order ?? 0) > aired ? (s.episode_order ?? 0) - aired : 0;
+                const year = s.premiere_date ? s.premiere_date.slice(0, 4) : null;
+                const title = s.name && s.name !== `Season ${s.number}` ? s.name : null;
+                const thumbnail = s.image_medium ?? show.image_medium;
+                return (
+                  <li key={s.id} className="border border-border rounded p-3 hover:bg-accent">
+                    <div className="flex items-center gap-4">
+                      <Link
+                        to={`/shows/${show.id}/episodes?season=${s.number}`}
+                        className="flex flex-1 min-w-0 items-center gap-4"
+                      >
+                        {thumbnail ? (
+                          <img
+                            src={thumbnail}
+                            alt=""
+                            className="w-20 aspect-[210/295] object-cover rounded shrink-0"
+                            loading="lazy"
+                          />
+                        ) : (
+                          <div
+                            aria-hidden
+                            className="w-20 aspect-[210/295] rounded shrink-0 bg-muted text-muted-foreground flex items-center justify-center"
+                          >
+                            <Tv className="h-6 w-6" />
+                          </div>
+                        )}
+                        <div className="flex-1 min-w-0">
+                          <p className="text-base text-foreground leading-tight truncate">
+                            Season {s.number}
+                            {title && (
+                              <>
+                                {" — "}
+                                <span className="font-semibold">{title}</span>
+                              </>
+                            )}
+                            {year && <span className="text-muted-foreground"> — {year}</span>}
+                          </p>
+                          <p className="text-xs text-muted-foreground leading-tight">
+                            {s.episode_order ?? "?"} episodes
+                          </p>
+                          {myEntry && p && aired > 0 && (
+                            <WatchProgressBar watched={watched} aired={aired} upcoming={upcoming} />
+                          )}
+                        </div>
+                      </Link>
+                      {myEntry && aired > 0 && (
+                        <div className="ml-auto shrink-0">
+                          <SeasonWatchCheckbox
+                            showId={show.id}
+                            season={s.number}
+                            aired={aired}
+                            watched={watched}
+                          />
                         </div>
                       )}
-                      <div className="flex-1 min-w-0">
-                        <p className="text-base text-foreground leading-tight truncate">
-                          Season {s.number}
-                          {title && (
-                            <>
-                              {" — "}
-                              <span className="font-semibold">{title}</span>
-                            </>
-                          )}
-                          {year && (
-                            <span className="text-muted-foreground"> — {year}</span>
-                          )}
-                        </p>
-                        <p className="text-xs text-muted-foreground leading-tight">
-                          {s.episode_order ?? "?"} episodes
-                        </p>
-                        {myEntry && p && aired > 0 && (
-                          <WatchProgressBar
-                            watched={watched}
-                            aired={aired}
-                            upcoming={upcoming}
-                          />
-                        )}
-                      </div>
-                    </Link>
-                    {myEntry && aired > 0 && (
-                      <div className="ml-auto shrink-0">
-                        <SeasonWatchCheckbox
-                          showId={show.id}
-                          season={s.number}
-                          aired={aired}
-                          watched={watched}
-                        />
-                      </div>
-                    )}
-                  </div>
-                </li>
-              );
-            })}
-          </ul>
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
           );
         })()}
       </section>

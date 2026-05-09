@@ -10,9 +10,7 @@ function year(dateStr: string | null): string {
 
 export function ShowList({ shows }: { shows: ShowSummary[] }) {
   if (shows.length === 0) {
-    return (
-      <p className="py-16 text-center text-muted-foreground">No shows match your filters.</p>
-    );
+    return <p className="py-16 text-center text-muted-foreground">No shows match your filters.</p>;
   }
   return (
     <ul className="space-y-3">
@@ -39,9 +37,7 @@ export function ShowList({ shows }: { shows: ShowSummary[] }) {
                 </p>
               )}
               <p className="text-xs text-muted-foreground leading-tight">
-                {[show.network?.name, show.status, show.language]
-                  .filter(Boolean)
-                  .join(" · ")}
+                {[show.network?.name, show.status, show.language].filter(Boolean).join(" · ")}
               </p>
               {show.genres.length > 0 && (
                 <p className="text-xs text-muted-foreground leading-tight">

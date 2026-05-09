@@ -31,7 +31,9 @@ export function SeasonWatchToggle({ showId, season }: { showId: number; season: 
       onClick={onClick}
       disabled={total === 0}
       aria-pressed={fullyWatched}
-      title={fullyWatched ? "Season fully watched — click to unmark" : "Click to mark season watched"}
+      title={
+        fullyWatched ? "Season fully watched — click to unmark" : "Click to mark season watched"
+      }
       className={fullyWatched ? "text-emerald-700" : undefined}
     >
       {fullyWatched ? <CheckCircle2 aria-hidden /> : <Circle aria-hidden />}

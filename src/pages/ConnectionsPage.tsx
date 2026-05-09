@@ -52,19 +52,11 @@ export function ConnectionsPage() {
   );
 }
 
-function TabBar({
-  active,
-  onSelect,
-}: {
-  active: Tab;
-  onSelect: (next: Tab) => void;
-}) {
+function TabBar({ active, onSelect }: { active: Tab; onSelect: (next: Tab) => void }) {
   const qc = useQueryClient();
   // Read incoming-pending count from cache only, so the badge appears once
   // the user has visited the Requests tab without forcing a fetch on mount.
-  const cached = qc.getQueryData<ConnectionRequestList>([
-    "connection-requests",
-  ]);
+  const cached = qc.getQueryData<ConnectionRequestList>(["connection-requests"]);
   const incomingCount = cached?.incoming.length ?? 0;
 
   return (

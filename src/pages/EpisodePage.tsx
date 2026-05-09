@@ -42,7 +42,10 @@ export function EpisodePage() {
   const prevSeasonNumber =
     idx === 0 && seasonIdx > 0 ? seasonsList[seasonIdx - 1].number : undefined;
   const nextSeasonNumber =
-    idx >= 0 && idx === seasonEpisodes.length - 1 && seasonIdx >= 0 && seasonIdx < seasonsList.length - 1
+    idx >= 0 &&
+    idx === seasonEpisodes.length - 1 &&
+    seasonIdx >= 0 &&
+    seasonIdx < seasonsList.length - 1
       ? seasonsList[seasonIdx + 1].number
       : undefined;
   const prevSeasonEpisodesQuery = useShowEpisodes(ep?.show_id ?? -1, prevSeasonNumber, {
@@ -62,10 +65,7 @@ export function EpisodePage() {
   if (episodeQuery.isPending) return <LoadingState rows={1} />;
   if (episodeQuery.isError) {
     return (
-      <ErrorState
-        message={episodeQuery.error.message}
-        onRetry={() => episodeQuery.refetch()}
-      />
+      <ErrorState message={episodeQuery.error.message} onRetry={() => episodeQuery.refetch()} />
     );
   }
   if (!ep) return <LoadingState rows={1} />;
@@ -76,8 +76,7 @@ export function EpisodePage() {
   const prevEps = prevSeasonEpisodesQuery.data;
   const nextEps = nextSeasonEpisodesQuery.data;
   const prev =
-    prevInSeason ??
-    (prevEps && prevEps.length > 0 ? prevEps[prevEps.length - 1] : undefined);
+    prevInSeason ?? (prevEps && prevEps.length > 0 ? prevEps[prevEps.length - 1] : undefined);
   const next = nextInSeason ?? (nextEps && nextEps.length > 0 ? nextEps[0] : undefined);
   const isFirstEverEpisode = seasonIdx === 0 && idx === 0;
   const isLastEverEpisode =
@@ -115,10 +114,7 @@ export function EpisodePage() {
                   Episode {ep.number ?? "—"}
                 </span>
                 <span className="flex items-start gap-1">
-                  <Film
-                    className="mt-1.5 h-5 w-5 shrink-0 text-muted-foreground"
-                    aria-hidden
-                  />
+                  <Film className="mt-1.5 h-5 w-5 shrink-0 text-muted-foreground" aria-hidden />
                   <span>{ep.name ?? `Episode ${ep.number ?? ""}`}</span>
                 </span>
               </span>

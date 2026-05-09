@@ -9,7 +9,7 @@ describe("SafeHtml", () => {
   });
 
   it("strips script tags", () => {
-    const { container } = render(<SafeHtml html='<p>ok</p><script>alert(1)</script>' />);
+    const { container } = render(<SafeHtml html="<p>ok</p><script>alert(1)</script>" />);
     expect(container.querySelector("script")).toBeNull();
   });
 

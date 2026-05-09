@@ -64,25 +64,22 @@ export function MyShowsList() {
 
   return (
     <div>
-      <div className="flex items-baseline justify-between gap-2 mb-4">
-        <h1 className="text-2xl font-semibold">My Shows</h1>
-        <div className="flex items-center gap-2">
-          <ViewToggle value={view} onChange={setView} ariaLabel="My Shows display" />
-          <FilterSheet
-            title="Sort My Shows"
-            triggerLabel={sortLabel}
-            triggerIcon={
-              <>
-                <ArrowDown className="h-4 w-4" aria-hidden />
-                <ArrowUp className="h-4 w-4 -ml-2" aria-hidden />
-              </>
-            }
-            ariaLabel={`Sort My Shows (current: ${sortLabel})`}
-            options={MY_SHOWS_SORTS}
-            value={sort}
-            onChange={setSort}
-          />
-        </div>
+      <div className="flex items-center justify-end gap-2 mb-4">
+        <ViewToggle value={view} onChange={setView} ariaLabel="My Shows display" />
+        <FilterSheet
+          title="Sort My Shows"
+          triggerLabel={sortLabel}
+          triggerIcon={
+            <>
+              <ArrowDown className="h-4 w-4" aria-hidden />
+              <ArrowUp className="h-4 w-4 -ml-2" aria-hidden />
+            </>
+          }
+          ariaLabel={`Sort My Shows (current: ${sortLabel})`}
+          options={MY_SHOWS_SORTS}
+          value={sort}
+          onChange={setSort}
+        />
       </div>
       <div className="mb-4 flex flex-wrap items-center gap-2">
         <WatchStateFilter value={watchState} onChange={setWatchState} />
@@ -100,9 +97,7 @@ export function MyShowsList() {
       </div>
       {isLoading && <p>Loading…</p>}
       {!isLoading && filteredAndSorted && filteredAndSorted.length === 0 && (
-        <p className="text-muted-foreground">
-          No shows match the current filters.
-        </p>
+        <p className="text-muted-foreground">No shows match the current filters.</p>
       )}
       {!isLoading && filteredAndSorted && filteredAndSorted.length > 0 && view === "grid" && (
         <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-8">
@@ -131,7 +126,8 @@ export function MyShowsList() {
                     {entry.show.name}
                     {entry.show.premiered && (
                       <span className="font-normal text-muted-foreground">
-                        {" "}({entry.show.premiered.slice(0, 4)})
+                        {" "}
+                        ({entry.show.premiered.slice(0, 4)})
                       </span>
                     )}
                   </p>

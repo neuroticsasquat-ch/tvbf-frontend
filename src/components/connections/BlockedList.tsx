@@ -39,44 +39,25 @@ export function BlockedList() {
     <>
       <ul className="flex flex-col divide-y divide-border rounded border border-border">
         {data.map((b) => (
-          <li
-            key={b.user.id}
-            className="flex items-center justify-between gap-3 px-3 py-2"
-          >
+          <li key={b.user.id} className="flex items-center justify-between gap-3 px-3 py-2">
             <div className="flex flex-col">
               <span className="text-sm">{b.user.display_name}</span>
               <span className="text-xs text-muted-foreground">
                 Blocked {formatDate(b.blocked_at)}
               </span>
             </div>
-            <Button
-              type="button"
-              size="sm"
-              variant="outline"
-              onClick={() => setPending(b)}
-            >
+            <Button type="button" size="sm" variant="outline" onClick={() => setPending(b)}>
               Unblock
             </Button>
           </li>
         ))}
       </ul>
-      {pending && (
-        <UnblockConfirm
-          row={pending}
-          onClose={() => setPending(null)}
-        />
-      )}
+      {pending && <UnblockConfirm row={pending} onClose={() => setPending(null)} />}
     </>
   );
 }
 
-function UnblockConfirm({
-  row,
-  onClose,
-}: {
-  row: BlockedUserOut;
-  onClose: () => void;
-}) {
+function UnblockConfirm({ row, onClose }: { row: BlockedUserOut; onClose: () => void }) {
   const qc = useQueryClient();
   const mutation = useMutation({
     mutationFn: (userId: string) => unblockUser(userId),

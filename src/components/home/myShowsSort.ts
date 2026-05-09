@@ -21,11 +21,7 @@ export const MY_SHOWS_SORT_KEYS = MY_SHOWS_SORTS.map((s) => s.key);
 
 const nameKey = (s: string) => s.toLowerCase().replace(/^(the|a|an)\s+/i, "");
 
-export function compareMyShowEntries(
-  a: MyShowEntry,
-  b: MyShowEntry,
-  sort: MyShowsTabSort,
-): number {
+export function compareMyShowEntries(a: MyShowEntry, b: MyShowEntry, sort: MyShowsTabSort): number {
   const tiebreak = nameKey(a.show.name).localeCompare(nameKey(b.show.name));
   const cmpNullable = (
     av: string | null | undefined,
