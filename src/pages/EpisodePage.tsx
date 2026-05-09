@@ -7,6 +7,7 @@ import { ErrorState } from "@/components/ErrorState";
 import { NotFoundPage } from "./NotFoundPage";
 import { SafeHtml } from "@/components/SafeHtml";
 import { EpisodeWatchCheckbox } from "@/components/EpisodeWatchCheckbox";
+import { EpisodeFriendsWatched } from "@/components/friends/FriendActivity";
 import { FilterSheet } from "@/components/home/FilterSheet";
 import { Button } from "@/components/ui/button";
 
@@ -137,6 +138,7 @@ export function EpisodePage() {
             {ep.runtime ? `${ep.runtime} min` : ""}
           </p>
         )}
+        <EpisodeFriendsWatched episodeId={ep.id} />
         <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
           <EpisodeWatchCheckbox showId={ep.show_id} episodeId={ep.id} withLabel />
           <div className="inline-flex">

@@ -107,6 +107,8 @@ function invalidateAll(qc: ReturnType<typeof useQueryClient>) {
   qc.invalidateQueries({ queryKey: ["upcoming"] });
   qc.invalidateQueries({ queryKey: ["watched-episodes"] });
   qc.invalidateQueries({ queryKey: ["season-progress"] });
+  // Friend engagement may include the caller in the future; keep honest.
+  qc.invalidateQueries({ queryKey: ["friend-activity"] });
 }
 
 function placeholderMyShowEntry(showId: number): MyShowEntry {
