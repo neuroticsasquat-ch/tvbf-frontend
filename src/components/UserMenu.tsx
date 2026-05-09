@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { Link } from "react-router";
 import { User as UserIcon } from "lucide-react";
 import { useAuth } from "./AuthContext";
 import { cn } from "@/lib/cn";
@@ -74,6 +75,16 @@ export function UserMenu({
         >
           <li className="px-3 py-2 text-xs text-muted-foreground border-b border-border">
             Signed in as {user.display_name}
+          </li>
+          <li>
+            <Link
+              role="menuitem"
+              to="/connections"
+              onClick={() => setOpen(false)}
+              className="block w-full text-left px-3 py-2 hover:bg-muted"
+            >
+              Connections
+            </Link>
           </li>
           <li>
             <button
