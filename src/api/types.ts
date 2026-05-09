@@ -134,11 +134,19 @@ export type UpcomingSort =
   | "added_desc"
   | "name_asc"
   | "name_desc";
-export type WatchedSort =
-  | "last_watched_desc"
-  | "name_asc"
-  | "name_desc"
-  | "added_desc";
+export type WatchedSort = "last_watched_desc" | "name_asc" | "name_desc";
+export type WatchedStatusFilter = "all" | "finished" | "in_progress";
+export type WatchedStatus = "finished" | "in_progress";
+
+export interface WatchedEntry {
+  show: ShowSummary;
+  watched_episode_count: number;
+  aired_episode_count: number;
+  total_episode_count: number;
+  last_watched_at: string | null;
+  in_my_shows: boolean;
+  status: WatchedStatus;
+}
 
 export interface User {
   id: string;
