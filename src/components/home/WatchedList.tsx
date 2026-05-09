@@ -1,8 +1,12 @@
 import { useState } from "react";
 import { Link } from "react-router";
-import { ArrowDown, ArrowUp, Check, Plus } from "lucide-react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { ArrowDown, ArrowUp, Check, Plus, Trash2 } from "lucide-react";
+import { toast } from "sonner";
+import { apiFetch } from "@/api/client";
 import { useAddShow, useMyWatched, useRemoveShow } from "@/api/me";
 import type { WatchedEntry, WatchedSort, WatchedStatusFilter } from "@/api/types";
+import { ConfirmDialog } from "@/components/connections/ConfirmDialog";
 import { Button } from "@/components/ui/button";
 import { FilterSheet } from "@/components/home/FilterSheet";
 import { usePersistedSort } from "@/hooks/usePersistedSort";
@@ -116,6 +120,8 @@ function WatchedRow({ entry }: { entry: WatchedEntry }) {
 
   const add = useAddShow();
   const remove = useRemoveShow();
+  const removeHistory = useRemoveFromHistory();
+  const [confirmingRemoveHistory, setConfirmingRemoveHistory] = useState(false);
 
   function onAdd() {
     setOverride(true);
@@ -172,7 +178,7 @@ function WatchedRow({ entry }: { entry: WatchedEntry }) {
           )}
         </div>
       </div>
-      <div className="shrink-0">
+      <div className="shrink-0 flex flex-col items-end gap-2">
         {inMyShows ? (
           <Button
             type="button"
@@ -190,7 +196,63 @@ function WatchedRow({ entry }: { entry: WatchedEntry }) {
             Add to My Shows
           </Button>
         )}
+        <Button
+          type="button"
+          size="sm"
+          variant="ghost"
+          onClick={() => setConfirmingRemoveHistory(true)}
+          aria-label={`Remove ${entry.show.name} from history`}
+          className="text-muted-foreground hover:text-destructive"
+        >
+          <Trash2 className="h-4 w-4" aria-hidden />
+          Remove from history
+        </Button>
       </div>
+      {confirmingRemoveHistory && (
+        <ConfirmDialog
+          title="Remove from history"
+          description={`Remove all watch history for ${entry.show.name}? This cannot be undone.`}
+          confirmLabel="Confirm"
+          destructive
+          pending={removeHistory.isPending}
+          onConfirm={() => {
+            removeHistory.mutate({ showId: entry.show.id });
+            setConfirmingRemoveHistory(false);
+          }}
+          onClose={() => setConfirmingRemoveHistory(false)}
+        />
+      )}
     </li>
   );
+}
+
+/** Bulk-clear the user's watch history for a show. Optimistically removes the
+ * row from `["my-watched"]` and invalidates dependent caches. */
+function useRemoveFromHistory() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (vars: { showId: number }) =>
+      apiFetch<void>(`/me/shows/${vars.showId}/watched`, { method: "DELETE" }),
+    onMutate: async (vars) => {
+      await qc.cancelQueries({ queryKey: ["my-watched"] });
+      const snapshots = qc.getQueriesData<WatchedEntry[]>({
+        queryKey: ["my-watched"],
+      });
+      qc.setQueriesData<WatchedEntry[]>({ queryKey: ["my-watched"] }, (cur) =>
+        cur ? cur.filter((e) => e.show.id !== vars.showId) : cur,
+      );
+      return { snapshots };
+    },
+    onError: (_err, _vars, ctx) => {
+      ctx?.snapshots.forEach(([key, data]) => qc.setQueryData(key, data));
+      toast.error("Could not remove watch history.");
+    },
+    onSuccess: (_data, vars) => {
+      qc.invalidateQueries({ queryKey: ["my-shows"] });
+      qc.invalidateQueries({ queryKey: ["watch-next"] });
+      qc.invalidateQueries({ queryKey: ["upcoming"] });
+      qc.invalidateQueries({ queryKey: ["watched-episodes", vars.showId] });
+      qc.invalidateQueries({ queryKey: ["season-progress", vars.showId] });
+    },
+  });
 }
