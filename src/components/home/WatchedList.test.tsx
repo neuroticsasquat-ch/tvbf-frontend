@@ -124,6 +124,48 @@ describe("WatchedList row UI", () => {
     expect(screen.getByRole("button", { name: /add to my shows/i })).toBeInTheDocument();
   });
 
+  it("Remove from history opens a confirm dialog and calls the API on confirm", async () => {
+    let unmarkCalls: number[] = [];
+    server.use(
+      http.delete(`${env.apiBaseUrl}/me/shows/:id/watched`, ({ params }) => {
+        unmarkCalls.push(Number(params.id));
+        return new HttpResponse(null, { status: 204 });
+      }),
+    );
+    watchedResponse = [makeWatched(106, "Lost")];
+    renderWithProviders(<WatchedList />);
+
+    await waitFor(() => expect(screen.getByText("Lost")).toBeInTheDocument());
+
+    fireEvent.click(screen.getByRole("button", { name: /remove .* from history/i }));
+    expect(await screen.findByRole("dialog")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /^confirm$/i }));
+
+    await waitFor(() => expect(unmarkCalls).toEqual([106]));
+    // Optimistic remove: row vanishes from the list.
+    await waitFor(() => expect(screen.queryByText("Lost")).not.toBeInTheDocument());
+  });
+
+  it("Remove from history cancel keeps the row and skips the API call", async () => {
+    let unmarkCalls: number[] = [];
+    server.use(
+      http.delete(`${env.apiBaseUrl}/me/shows/:id/watched`, ({ params }) => {
+        unmarkCalls.push(Number(params.id));
+        return new HttpResponse(null, { status: 204 });
+      }),
+    );
+    watchedResponse = [makeWatched(107, "Fringe")];
+    renderWithProviders(<WatchedList />);
+
+    await waitFor(() => expect(screen.getByText("Fringe")).toBeInTheDocument());
+
+    fireEvent.click(screen.getByRole("button", { name: /remove .* from history/i }));
+    fireEvent.click(await screen.findByRole("button", { name: /cancel/i }));
+
+    expect(unmarkCalls).toEqual([]);
+    expect(screen.getByText("Fringe")).toBeInTheDocument();
+  });
+
   it("row name links to the show detail page", async () => {
     watchedResponse = [makeWatched(105, "Deadwood")];
     renderWithProviders(<WatchedList />);
