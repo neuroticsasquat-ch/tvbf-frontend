@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Link } from "react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { listConnections, removeConnection } from "@/api/connections";
@@ -50,12 +51,15 @@ export function ConnectionsList() {
             key={c.user.id}
             className="flex items-center justify-between gap-3 px-3 py-2"
           >
-            <div className="flex flex-col">
+            <Link
+              to={`/users/${c.user.id}`}
+              className="flex flex-col hover:underline"
+            >
               <span className="text-sm">{c.user.display_name}</span>
               <span className="text-xs text-muted-foreground">
                 Connected {formatDate(c.since)}
               </span>
-            </div>
+            </Link>
             <div className="flex gap-2">
               <Button
                 type="button"
