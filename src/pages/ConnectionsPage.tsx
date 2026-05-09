@@ -1,7 +1,8 @@
 import { useSearchParams } from "react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { listBlocks, listConnections } from "@/api/connections";
+import { listBlocks } from "@/api/connections";
 import type { ConnectionRequestList } from "@/api/types";
+import { ConnectionsList } from "@/components/connections/ConnectionsList";
 import { FindPeople } from "@/components/connections/FindPeople";
 import { RequestsInbox } from "@/components/connections/RequestsInbox";
 import { cn } from "@/lib/cn";
@@ -101,25 +102,10 @@ function TabBar({
 }
 
 function ConnectionsTab() {
-  const { data, isLoading, isError } = useQuery({
-    queryKey: ["connections"],
-    queryFn: listConnections,
-  });
   return (
     <div className="flex flex-col gap-6">
       <FindPeople />
-      {isLoading && (
-        <p className="text-sm text-muted-foreground">Loading…</p>
-      )}
-      {isError && (
-        <p className="text-sm text-destructive">Failed to load connections.</p>
-      )}
-      {!isLoading && !isError && (!data || data.length === 0) && (
-        <p className="text-sm text-muted-foreground">
-          No connections yet. Find people in user search to connect.
-        </p>
-      )}
-      {/* List rendering ships in NEU-82. */}
+      <ConnectionsList />
     </div>
   );
 }
