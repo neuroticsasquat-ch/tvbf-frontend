@@ -187,3 +187,39 @@ export interface EpisodeWatchOut {
   episode_id: number;
   watched_at: string;
 }
+
+export interface UserBrief {
+  id: string;
+  display_name: string;
+}
+
+export interface UserSearchResult {
+  id: string;
+  display_name: string;
+}
+
+export type ConnectionState = "pending" | "accepted" | "blocked";
+
+export interface ConnectionRequestOut {
+  id: string;
+  requester: UserBrief;
+  addressee: UserBrief;
+  state: ConnectionState;
+  created_at: string;
+  responded_at: string | null;
+}
+
+export interface ConnectionRequestList {
+  incoming: ConnectionRequestOut[];
+  outgoing: ConnectionRequestOut[];
+}
+
+export interface ConnectionOut {
+  user: UserBrief;
+  since: string;
+}
+
+export interface BlockedUserOut {
+  user: UserBrief;
+  blocked_at: string;
+}
