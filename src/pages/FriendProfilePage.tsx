@@ -1,12 +1,20 @@
 import { useState } from "react";
 import { Link, useParams } from "react-router";
 import { useQuery } from "@tanstack/react-query";
+import { ArrowDown, ArrowUp } from "lucide-react";
 import { ApiError } from "@/api/client";
 import { listConnections } from "@/api/connections";
 import { getFriendShows, getFriendWatched } from "@/api/friends";
-import type { ConnectionOut, MyShowEntry, WatchedEntry, WatchedStatusFilter } from "@/api/types";
+import type {
+  ConnectionOut,
+  MyShowEntry,
+  WatchedEntry,
+  WatchedSort,
+  WatchedStatusFilter,
+} from "@/api/types";
 import { localToday } from "@/api/today";
 import { Button } from "@/components/ui/button";
+import { FilterSheet } from "@/components/home/FilterSheet";
 import { cn } from "@/lib/cn";
 
 type Tab = "active" | "watched";
@@ -15,6 +23,16 @@ const STATUS_FILTERS: { key: WatchedStatusFilter; label: string }[] = [
   { key: "all", label: "All" },
   { key: "finished", label: "Finished" },
   { key: "in_progress", label: "In progress" },
+];
+
+// Mirror the same six options as the user's own Watched view.
+const WATCHED_SORTS: { key: WatchedSort; label: string }[] = [
+  { key: "name_asc", label: "Show Title" },
+  { key: "last_watched_desc", label: "Last Watched" },
+  { key: "last_aired_desc", label: "Last Aired" },
+  { key: "premiered_asc", label: "Premiered First" },
+  { key: "premiered_desc", label: "Premiered Last" },
+  { key: "first_watched_desc", label: "Recently Added" },
 ];
 
 export function FriendProfilePage() {
@@ -125,10 +143,11 @@ function ActiveTab({ userId }: { userId: string }) {
 
 function WatchedTab({ userId }: { userId: string }) {
   const [status, setStatus] = useState<WatchedStatusFilter>("all");
+  const [sort, setSort] = useState<WatchedSort>("last_watched_desc");
 
   const { data, isLoading, error } = useQuery<WatchedEntry[]>({
-    queryKey: ["friend-watched", userId, status, "last_watched_desc"],
-    queryFn: () => getFriendWatched(userId, { status, sort: "last_watched_desc" }),
+    queryKey: ["friend-watched", userId, status, sort],
+    queryFn: () => getFriendWatched(userId, { status, sort }),
     retry: false,
   });
 
@@ -136,20 +155,38 @@ function WatchedTab({ userId }: { userId: string }) {
     return <UserNotFound />;
   }
 
+  const sortLabel = WATCHED_SORTS.find((s) => s.key === sort)?.label ?? "";
+
   return (
     <div className="flex flex-col gap-3">
-      <div className="flex flex-wrap gap-2">
-        {STATUS_FILTERS.map((f) => (
-          <Button
-            key={f.key}
-            type="button"
-            size="sm"
-            variant={status === f.key ? "default" : "outline"}
-            onClick={() => setStatus(f.key)}
-          >
-            {f.label}
-          </Button>
-        ))}
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="flex flex-wrap gap-2">
+          {STATUS_FILTERS.map((f) => (
+            <Button
+              key={f.key}
+              type="button"
+              size="sm"
+              variant={status === f.key ? "default" : "outline"}
+              onClick={() => setStatus(f.key)}
+            >
+              {f.label}
+            </Button>
+          ))}
+        </div>
+        <FilterSheet
+          title="Sort Watched"
+          triggerLabel={sortLabel}
+          triggerIcon={
+            <>
+              <ArrowDown className="h-4 w-4" aria-hidden />
+              <ArrowUp className="h-4 w-4 -ml-2" aria-hidden />
+            </>
+          }
+          ariaLabel={`Sort Watched (current: ${sortLabel})`}
+          options={WATCHED_SORTS}
+          value={sort}
+          onChange={setSort}
+        />
       </div>
 
       {isLoading && <p className="text-sm text-muted-foreground">Loading…</p>}

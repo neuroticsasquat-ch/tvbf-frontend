@@ -129,7 +129,13 @@ export type WatchNextSort =
   | "added_desc"
   | "name_asc";
 export type UpcomingSort = "airdate_asc" | "airdate_desc" | "added_desc" | "name_asc" | "name_desc";
-export type WatchedSort = "last_watched_desc" | "name_asc" | "name_desc";
+export type WatchedSort =
+  | "name_asc"
+  | "last_watched_desc"
+  | "last_aired_desc"
+  | "premiered_asc"
+  | "premiered_desc"
+  | "first_watched_desc";
 export type WatchedStatusFilter = "all" | "finished" | "in_progress";
 export type WatchedStatus = "finished" | "in_progress";
 
@@ -139,6 +145,8 @@ export interface WatchedEntry {
   aired_episode_count: number;
   total_episode_count: number;
   last_watched_at: string | null;
+  last_aired: string | null;
+  first_watched_at: string | null;
   in_my_shows: boolean;
   status: WatchedStatus;
 }

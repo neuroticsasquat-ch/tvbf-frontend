@@ -32,6 +32,8 @@ function makeWatched(
     aired_episode_count: 10,
     total_episode_count: 12,
     last_watched_at: "2026-04-15T00:00:00Z",
+    last_aired: "2026-04-10",
+    first_watched_at: "2026-03-01T00:00:00Z",
     in_my_shows: false,
     status: "in_progress",
     ...overrides,

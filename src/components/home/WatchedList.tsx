@@ -19,10 +19,15 @@ const STATUS_FILTERS: { key: WatchedStatusFilter; label: string }[] = [
 ];
 const STATUS_KEYS = STATUS_FILTERS.map((f) => f.key);
 
+// Mirrors MY_SHOWS_SORTS so Active and Watched offer the same options.
+// "Recently Added" on Watched maps to first-watched-date (NEU-114 decision).
 const SORTS: { key: WatchedSort; label: string }[] = [
-  { key: "last_watched_desc", label: "Last watched" },
-  { key: "name_asc", label: "Name A→Z" },
-  { key: "name_desc", label: "Name Z→A" },
+  { key: "name_asc", label: "Show Title" },
+  { key: "last_watched_desc", label: "Last Watched" },
+  { key: "last_aired_desc", label: "Last Aired" },
+  { key: "premiered_asc", label: "Premiered First" },
+  { key: "premiered_desc", label: "Premiered Last" },
+  { key: "first_watched_desc", label: "Recently Added" },
 ];
 const SORT_KEYS = SORTS.map((s) => s.key);
 
