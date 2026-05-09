@@ -62,7 +62,7 @@ describe("ConnectionsPage shell", () => {
       screen.getByRole("tab", { name: /requests/i }),
     ).toHaveAttribute("aria-selected", "true");
     await waitFor(() =>
-      expect(screen.getByText(/no pending requests/i)).toBeInTheDocument(),
+      expect(screen.getByText(/no incoming requests/i)).toBeInTheDocument(),
     );
   });
 
