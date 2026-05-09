@@ -2,6 +2,8 @@ import { apiFetch } from "./client";
 import type {
   MyShowEntry,
   MyShowsSort,
+  ShowFriendActivity,
+  UserBrief,
   WatchedEntry,
   WatchedSort,
   WatchedStatusFilter,
@@ -39,4 +41,14 @@ export function getFriendWatched(
   if (opts.today) params.set("today", opts.today);
   const qs = params.toString();
   return apiFetch<WatchedEntry[]>(`/users/${userId}/watched${qs ? `?${qs}` : ""}`);
+}
+
+// Friend engagement (NEU-112) ----------------------------------------------
+
+export function getShowFriendActivity(showId: number): Promise<ShowFriendActivity> {
+  return apiFetch<ShowFriendActivity>(`/shows/${showId}/friends`);
+}
+
+export function getEpisodeFriendsWatched(episodeId: number): Promise<UserBrief[]> {
+  return apiFetch<UserBrief[]>(`/episodes/${episodeId}/friends/watched`);
 }

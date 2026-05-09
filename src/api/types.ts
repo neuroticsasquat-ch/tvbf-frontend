@@ -226,3 +226,8 @@ export interface BlockedUserOut {
   user: UserBrief;
   blocked_at: string;
 }
+
+export interface ShowFriendActivity {
+  in_my_shows: UserBrief[];
+  watched: UserBrief[];
+}
