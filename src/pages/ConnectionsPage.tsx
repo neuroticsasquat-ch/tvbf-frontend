@@ -5,6 +5,7 @@ import {
   listConnectionRequests,
   listConnections,
 } from "@/api/connections";
+import { FindPeople } from "@/components/connections/FindPeople";
 import { cn } from "@/lib/cn";
 
 type Tab = "connections" | "requests" | "blocked";
@@ -80,17 +81,23 @@ function ConnectionsTab() {
     queryKey: ["connections"],
     queryFn: listConnections,
   });
-  if (isLoading) return <p className="text-sm text-muted-foreground">Loading…</p>;
-  if (isError) return <p className="text-sm text-destructive">Failed to load connections.</p>;
-  if (!data || data.length === 0) {
-    return (
-      <p className="text-sm text-muted-foreground">
-        No connections yet. Find people in user search to connect.
-      </p>
-    );
-  }
-  // List rendering ships in NEU-82.
-  return null;
+  return (
+    <div className="flex flex-col gap-6">
+      <FindPeople />
+      {isLoading && (
+        <p className="text-sm text-muted-foreground">Loading…</p>
+      )}
+      {isError && (
+        <p className="text-sm text-destructive">Failed to load connections.</p>
+      )}
+      {!isLoading && !isError && (!data || data.length === 0) && (
+        <p className="text-sm text-muted-foreground">
+          No connections yet. Find people in user search to connect.
+        </p>
+      )}
+      {/* List rendering ships in NEU-82. */}
+    </div>
+  );
 }
 
 function RequestsTab() {
