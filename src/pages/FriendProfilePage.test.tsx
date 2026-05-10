@@ -267,6 +267,55 @@ describe("FriendProfilePage", () => {
     expect(screen.queryByText(/^you:/i)).not.toBeInTheDocument();
   });
 
+  it("My Library filter only renders on friend tabs (not on self tabs)", async () => {
+    vi.spyOn(friendsApi, "getFriendShows").mockResolvedValue([makeMyShow(81, "Severance")]);
+
+    renderWithProviders(routed(), { route: `/users/${FRIEND_ID}` });
+
+    await waitFor(() => expect(screen.getByText("Severance")).toBeInTheDocument());
+    expect(
+      screen.getByRole("button", { name: /filter by my library membership/i }),
+    ).toBeInTheDocument();
+  });
+
+  it("My Library filter narrows friend rows by caller's relationship", async () => {
+    vi.spyOn(friendsApi, "getFriendShows").mockResolvedValue([
+      makeMyShow(91, "Severance"),
+      makeMyShow(92, "Lost"),
+      makeMyShow(93, "Fringe"),
+    ]);
+    server.use(
+      // Caller has Severance only.
+      http.get(`${env.apiBaseUrl}/me/shows`, () =>
+        HttpResponse.json([makeMyShow(91, "Severance")]),
+      ),
+    );
+
+    renderWithProviders(routed(), { route: `/users/${FRIEND_ID}` });
+
+    await waitFor(() => expect(screen.getByText("Severance")).toBeInTheDocument());
+    expect(screen.getByText("Lost")).toBeInTheDocument();
+    expect(screen.getByText("Fringe")).toBeInTheDocument();
+
+    // Pick "In my My Shows".
+    fireEvent.click(screen.getByRole("button", { name: /filter by my library membership/i }));
+    let dialog = await screen.findByRole("dialog");
+    fireEvent.click(within(dialog).getByRole("button", { name: /^in my my shows$/i }));
+
+    await waitFor(() => expect(screen.queryByText("Lost")).not.toBeInTheDocument());
+    expect(screen.queryByText("Fringe")).not.toBeInTheDocument();
+    expect(screen.getByText("Severance")).toBeInTheDocument();
+
+    // Switch to "Not in my My Shows".
+    fireEvent.click(screen.getByRole("button", { name: /filter by my library membership/i }));
+    dialog = await screen.findByRole("dialog");
+    fireEvent.click(within(dialog).getByRole("button", { name: /^not in my my shows$/i }));
+
+    await waitFor(() => expect(screen.queryByText("Severance")).not.toBeInTheDocument());
+    expect(screen.getByText("Lost")).toBeInTheDocument();
+    expect(screen.getByText("Fringe")).toBeInTheDocument();
+  });
+
   it("Watched tab Finished filter narrows rows client-side without refetching", async () => {
     vi.spyOn(friendsApi, "getFriendShows").mockResolvedValue([]);
     const watched = vi.spyOn(friendsApi, "getFriendWatched").mockResolvedValue([

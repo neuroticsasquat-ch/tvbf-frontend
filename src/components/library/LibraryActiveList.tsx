@@ -12,6 +12,7 @@ import { MyShowCard } from "@/components/MyShowCard";
 import { Button } from "@/components/ui/button";
 import { FilterSheet } from "@/components/home/FilterSheet";
 import {
+  CallerMembershipFilterPicker,
   ClearFiltersButton,
   GenreFilter,
   InMyShowsFilterPicker,
@@ -38,6 +39,7 @@ import {
 } from "@/components/home/librarySort";
 import { cn } from "@/lib/cn";
 import { callerHasShow, type CallerLibrary } from "./callerLibrary";
+import { matchesCallerMembership } from "./callerFilters";
 import { CallerPosterBadge, CallerProgressNote } from "./LibraryRowIndicators";
 
 // Disabled options on Active per NEU-121:
@@ -91,6 +93,11 @@ export function LibraryActiveList({
     IN_MY_SHOWS_KEYS,
     "all",
   );
+  const [callerMembership, setCallerMembership] = usePersistedSort<InMyShowsFilter>(
+    `${storagePrefix}-caller-membership`,
+    IN_MY_SHOWS_KEYS,
+    "all",
+  );
   const [genre, setGenre] = usePersistedString(`${storagePrefix}-genre`, "all");
   const [view, setView] = usePersistedView(storagePrefix, "list");
 
@@ -100,12 +107,17 @@ export function LibraryActiveList({
       .filter((e) => watchState === "all" || watchStateOf(e) === watchState)
       .filter((e) => matchesStatus(e.show, status))
       .filter((e) => matchesGenre(e.show, genre))
+      .filter((e) => matchesCallerMembership(e.show.id, callerMembership, callerLibrary))
       .sort((a, b) => compareLibraryEntries(a, b, sort));
-  }, [data, sort, watchState, status, genre]);
+  }, [data, sort, watchState, status, genre, callerMembership, callerLibrary]);
 
   const sortLabel = LIBRARY_SORTS.find((s) => s.key === sort)?.label ?? "";
   const filtersActive =
-    watchState !== "all" || status !== "all" || genre !== "all" || inMyShows !== "all";
+    watchState !== "all" ||
+    status !== "all" ||
+    genre !== "all" ||
+    inMyShows !== "all" ||
+    callerMembership !== "all";
 
   return (
     <div>
@@ -134,6 +146,12 @@ export function LibraryActiveList({
           onChange={setInMyShows}
           disabledOptions={DISABLED_IN_MY_SHOWS}
         />
+        {viewerContext === "friend" && (
+          <CallerMembershipFilterPicker
+            value={callerMembership}
+            onChange={setCallerMembership}
+          />
+        )}
         <GenreFilter value={genre} onChange={setGenre} />
         {filtersActive && (
           <ClearFiltersButton
@@ -141,6 +159,7 @@ export function LibraryActiveList({
               setWatchState("all");
               setStatus("all");
               setInMyShows("all");
+              setCallerMembership("all");
               setGenre("all");
             }}
           />

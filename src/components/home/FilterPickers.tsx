@@ -1,4 +1,4 @@
-import { BookmarkCheck, Eye, Tv, Tag, X } from "lucide-react";
+import { BookmarkCheck, Eye, Tv, Tag, User, X } from "lucide-react";
 import { useGenres } from "@/api/shows";
 import { FilterSheet } from "@/components/home/FilterSheet";
 import {
@@ -79,6 +79,38 @@ export function InMyShowsFilterPicker({
       triggerIcon={<BookmarkCheck className={ICON_CLS} aria-hidden />}
       ariaLabel={`Filter by My Shows membership (current: ${label})`}
       options={options}
+      value={value}
+      onChange={onChange}
+      active={value !== "all"}
+    />
+  );
+}
+
+/** Caller-relative membership filter for friend library tabs (NEU-129).
+ * Reuses the InMyShowsFilter shape but its semantics target the caller's own
+ * library, not the row's. Different label/icon avoids visual collision with
+ * `InMyShowsFilterPicker`. */
+const CALLER_MEMBERSHIP_OPTIONS: { key: InMyShowsFilter; label: string }[] = [
+  { key: "all", label: "All" },
+  { key: "in", label: "In my My Shows" },
+  { key: "not_in", label: "Not in my My Shows" },
+];
+
+export function CallerMembershipFilterPicker({
+  value,
+  onChange,
+}: {
+  value: InMyShowsFilter;
+  onChange: (next: InMyShowsFilter) => void;
+}) {
+  const label = CALLER_MEMBERSHIP_OPTIONS.find((o) => o.key === value)?.label ?? "All";
+  return (
+    <FilterSheet
+      title="My library"
+      triggerLabel={`My Library: ${label}`}
+      triggerIcon={<User className={ICON_CLS} aria-hidden />}
+      ariaLabel={`Filter by my library membership (current: ${label})`}
+      options={CALLER_MEMBERSHIP_OPTIONS}
       value={value}
       onChange={onChange}
       active={value !== "all"}
