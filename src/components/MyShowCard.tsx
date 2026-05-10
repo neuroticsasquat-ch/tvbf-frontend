@@ -10,6 +10,13 @@ function year(dateStr: string | null): string {
 }
 
 export function MyShowCard({ entry }: { entry: MyShowEntry }) {
+  // Same predicate as the list view (NEU-101 decision 2): show is over AND
+  // the user is fully caught up.
+  const isFinished =
+    entry.aired_episode_count > 0 &&
+    entry.watched_episode_count >= entry.aired_episode_count &&
+    (entry.show.status ?? "") === "Ended";
+
   return (
     <Link
       to={`/shows/${entry.show.id}`}
@@ -28,12 +35,32 @@ export function MyShowCard({ entry }: { entry: MyShowEntry }) {
         <p className="text-[10px] text-muted-foreground leading-tight">
           {year(entry.show.premiered)}
         </p>
-        <WatchProgressBar
-          watched={entry.watched_episode_count}
-          aired={entry.aired_episode_count}
-          upcoming={entry.upcoming_episode_count}
-          stack
-        />
+        {isFinished ? (
+          <span className="mt-1 inline-block text-[10px] px-1 py-0.5 rounded border border-emerald-600 text-emerald-700">
+            Finished
+          </span>
+        ) : (
+          <>
+            {entry.aired_episode_count > 0 && (
+              <WatchProgressBar
+                watched={entry.watched_episode_count}
+                aired={entry.aired_episode_count}
+                upcoming={entry.upcoming_episode_count}
+                barOnly
+              />
+            )}
+            {entry.aired_episode_count > 0 && (
+              <p className="text-[10px] text-muted-foreground mt-0.5 leading-tight">
+                Progress: {entry.watched_episode_count}/{entry.aired_episode_count}
+              </p>
+            )}
+            {entry.upcoming_episode_count > 0 && (
+              <p className="text-[10px] text-muted-foreground leading-tight">
+                {entry.upcoming_episode_count} upcoming
+              </p>
+            )}
+          </>
+        )}
       </div>
     </Link>
   );
