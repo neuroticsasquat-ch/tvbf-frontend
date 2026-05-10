@@ -12,7 +12,7 @@ import { NotFoundPage } from "./NotFoundPage";
 import { FilterSheet } from "@/components/home/FilterSheet";
 import { EpisodeWatchCheckbox } from "@/components/EpisodeWatchCheckbox";
 import { SeasonWatchToggle } from "@/components/SeasonWatchToggle";
-import { SafeHtml } from "@/components/SafeHtml";
+import { CollapsibleSummary } from "@/components/CollapsibleSummary";
 
 const DATE_FMT = new Intl.DateTimeFormat("en-US", {
   weekday: "short",
@@ -115,7 +115,10 @@ export function EpisodesPage() {
             />
           </h1>
           {currentSeasonData?.summary && (
-            <SafeHtml html={currentSeasonData.summary} className="prose prose-sm max-w-none pt-2" />
+            <CollapsibleSummary
+              html={currentSeasonData.summary}
+              className="prose prose-sm max-w-none pt-2"
+            />
           )}
           <div className="flex flex-wrap items-center justify-between gap-2">
             <SeasonWatchToggle showId={showId} season={currentSeason} />
