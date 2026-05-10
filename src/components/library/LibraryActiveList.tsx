@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router";
-import { ArrowDown, ArrowUp, Check } from "lucide-react";
-import { useRemoveShow } from "@/api/me";
+import { ArrowDown, ArrowUp, Check, Plus } from "lucide-react";
+import { useAddShow, useRemoveShow } from "@/api/me";
 import type { MyShowEntry } from "@/api/types";
 import { usePersistedSort } from "@/hooks/usePersistedSort";
 import { usePersistedString } from "@/hooks/usePersistedString";
@@ -36,50 +36,62 @@ import {
   compareLibraryEntries,
   type LibrarySort,
 } from "@/components/home/librarySort";
+import { cn } from "@/lib/cn";
+import type { CallerLibrary } from "./callerLibrary";
 
 // Disabled options on Active per NEU-121:
-// - In My Shows: "Not in My Shows" — every entry in this list IS in My Shows.
+// - In My Shows: "Not in My Shows" — every entry in this list IS in My Shows
+//   for the *user being viewed*. (For self that's the caller; for friend that's
+//   the friend.) The caller-relative version of this filter lands in NEU-129.
 const DISABLED_IN_MY_SHOWS: Partial<Record<InMyShowsFilter, string>> = {
   not_in: "All Active shows are in My Shows.",
 };
 
 export type ViewerContext = "self" | "friend";
 
-/** Reserved for NEU-120c/d: caller's relationship to each row's show. Unused
- * in this PR; props are threaded so consumers can start passing the value
- * once the indicator/filter work lands. */
-export type CallerLibrary = unknown;
-
 interface Props {
   data: MyShowEntry[] | undefined;
   isLoading: boolean;
-  /** Whose library this is. Drives action-button shape and indicator visibility.
-   * Only "self" is wired in this PR; "friend" wiring lands in NEU-127. */
+  /** Whose library this is. Drives action-button shape and indicator visibility. */
   viewerContext?: ViewerContext;
-  /** Caller's own library, used to compute my-relationship indicators/filter
-   * when viewerContext === "friend". Reserved for NEU-120c/d. */
+  /** Caller's own library, used by friend mode to drive the action button (NEU-127)
+   * and downstream by my-relationship indicators (NEU-128) and filter (NEU-129). */
   callerLibrary?: CallerLibrary;
+  /** localStorage key namespace for sort/filter/view persistence. Defaults to
+   * `"my-shows"` so existing self-library prefs keep working. Friend variants
+   * pass e.g. `"friend-active"` so they don't collide. */
+  storagePrefix?: string;
 }
 
-export function LibraryActiveList({ data, isLoading }: Props) {
-  const [sort, setSort] = usePersistedSort<LibrarySort>("my-shows", LIBRARY_SORT_KEYS, "name_asc");
+export function LibraryActiveList({
+  data,
+  isLoading,
+  viewerContext = "self",
+  callerLibrary,
+  storagePrefix = "my-shows",
+}: Props) {
+  const [sort, setSort] = usePersistedSort<LibrarySort>(
+    storagePrefix,
+    LIBRARY_SORT_KEYS,
+    "name_asc",
+  );
   const [watchState, setWatchState] = usePersistedSort<WatchState>(
-    "my-shows-watch-state",
+    `${storagePrefix}-watch-state`,
     WATCH_STATE_KEYS,
     "all",
   );
   const [status, setStatus] = usePersistedSort<ShowStatusFilter>(
-    "my-shows-status",
+    `${storagePrefix}-status`,
     SHOW_STATUS_KEYS,
     "all",
   );
   const [inMyShows, setInMyShows] = usePersistedSort<InMyShowsFilter>(
-    "my-shows-in-my-shows",
+    `${storagePrefix}-in-my-shows`,
     IN_MY_SHOWS_KEYS,
     "all",
   );
-  const [genre, setGenre] = usePersistedString("my-shows-genre", "all");
-  const [view, setView] = usePersistedView("my-shows", "list");
+  const [genre, setGenre] = usePersistedString(`${storagePrefix}-genre`, "all");
+  const [view, setView] = usePersistedView(storagePrefix, "list");
 
   const filteredAndSorted = useMemo(() => {
     if (!data) return data;
@@ -147,7 +159,12 @@ export function LibraryActiveList({ data, isLoading }: Props) {
       {!isLoading && filteredAndSorted && filteredAndSorted.length > 0 && view === "list" && (
         <ul className="space-y-3">
           {filteredAndSorted.map((entry) => (
-            <ActiveRow key={entry.show.id} entry={entry} />
+            <ActiveRow
+              key={entry.show.id}
+              entry={entry}
+              viewerContext={viewerContext}
+              callerLibrary={callerLibrary}
+            />
           ))}
         </ul>
       )}
@@ -168,21 +185,19 @@ function formatDate(iso: string | null): string {
   });
 }
 
-function ActiveRow({ entry }: { entry: MyShowEntry }) {
-  const remove = useRemoveShow();
-  // Local override so the row visually reflects "removed" the moment the user
-  // clicks, even before the server round trip lands.
-  const [removed, setRemoved] = useState(false);
-  if (removed) return null;
-
+function ActiveRow({
+  entry,
+  viewerContext,
+  callerLibrary,
+}: {
+  entry: MyShowEntry;
+  viewerContext: ViewerContext;
+  callerLibrary?: CallerLibrary;
+}) {
   const status = libraryStatusFor(entry);
-
-  function onRemove() {
-    setRemoved(true);
-    remove.mutate(entry.show.id, {
-      onError: () => setRemoved(false),
-    });
-  }
+  const action = (
+    <ActionButton entry={entry} viewerContext={viewerContext} callerLibrary={callerLibrary} />
+  );
 
   return (
     <li className="border border-border rounded p-3 flex items-start gap-3 sm:gap-4">
@@ -261,21 +276,102 @@ function ActiveRow({ entry }: { entry: MyShowEntry }) {
             )}
           </>
         )}
-        <div className="flex flex-wrap items-center justify-end gap-2 pt-1">
-          <Button
-            type="button"
-            size="sm"
-            variant="outline"
-            onClick={onRemove}
-            disabled={remove.isPending}
-            aria-label="Remove from My Shows"
-            className="h-7 px-2 gap-1 text-xs border-emerald-600 text-emerald-700 hover:bg-emerald-50 dark:text-emerald-400 dark:hover:bg-emerald-950/40"
-          >
-            <Check className="h-3.5 w-3.5" aria-hidden />
-            My Shows
-          </Button>
-        </div>
+        <div className="flex flex-wrap items-center justify-end gap-2 pt-1">{action}</div>
       </div>
     </li>
+  );
+}
+
+/** Add/Remove My Shows button. Behaves differently for self vs friend:
+ * - self: row represents one of the caller's own My Shows, so the button is
+ *   always Remove and clicking it optimistically hides the row.
+ * - friend: row represents the friend's library; the button reflects the
+ *   *caller's* relationship via `callerLibrary`. Clicking add/removes from
+ *   the caller's library; the row stays visible (it's still on the friend's). */
+function ActionButton({
+  entry,
+  viewerContext,
+  callerLibrary,
+}: {
+  entry: MyShowEntry;
+  viewerContext: ViewerContext;
+  callerLibrary?: CallerLibrary;
+}) {
+  const add = useAddShow();
+  const remove = useRemoveShow();
+
+  // self mode: optimistic row removal on click.
+  const [removed, setRemoved] = useState(false);
+
+  // friend mode: optimistic toggle of the caller's relationship.
+  const upstream = callerLibrary?.get(entry.show.id)?.in_my_shows ?? false;
+  const [override, setOverride] = useState<boolean | null>(null);
+  const [lastUpstream, setLastUpstream] = useState(upstream);
+  if (lastUpstream !== upstream) {
+    setLastUpstream(upstream);
+    setOverride(null);
+  }
+
+  if (viewerContext === "self") {
+    if (removed) return null;
+    function onRemoveSelf() {
+      setRemoved(true);
+      remove.mutate(entry.show.id, { onError: () => setRemoved(false) });
+    }
+    return (
+      <Button
+        type="button"
+        size="sm"
+        variant="outline"
+        onClick={onRemoveSelf}
+        disabled={remove.isPending}
+        aria-label="Remove from My Shows"
+        className="h-7 px-2 gap-1 text-xs border-emerald-600 text-emerald-700 hover:bg-emerald-50 dark:text-emerald-400 dark:hover:bg-emerald-950/40"
+      >
+        <Check className="h-3.5 w-3.5" aria-hidden />
+        My Shows
+      </Button>
+    );
+  }
+
+  // friend mode
+  const inMyShows = override ?? upstream;
+  function onAdd() {
+    setOverride(true);
+    add.mutate(entry.show.id, { onError: () => setOverride(false) });
+  }
+  function onRemove() {
+    setOverride(false);
+    remove.mutate(entry.show.id, { onError: () => setOverride(true) });
+  }
+  return inMyShows ? (
+    <Button
+      type="button"
+      size="sm"
+      variant="outline"
+      onClick={onRemove}
+      disabled={remove.isPending}
+      aria-label="Remove from My Shows"
+      className={cn(
+        "h-7 px-2 gap-1 text-xs",
+        "border-emerald-600 text-emerald-700 hover:bg-emerald-50",
+        "dark:text-emerald-400 dark:hover:bg-emerald-950/40",
+      )}
+    >
+      <Check className="h-3.5 w-3.5" aria-hidden />
+      My Shows
+    </Button>
+  ) : (
+    <Button
+      type="button"
+      size="sm"
+      onClick={onAdd}
+      disabled={add.isPending}
+      aria-label="Add to My Shows"
+      className="h-7 px-2 gap-1 text-xs"
+    >
+      <Plus className="h-3.5 w-3.5" aria-hidden />
+      My Shows
+    </Button>
   );
 }

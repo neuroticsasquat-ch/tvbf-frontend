@@ -1,39 +1,18 @@
-import { useState } from "react";
-import { Link, useParams } from "react-router";
+import { useMemo, useState } from "react";
+import { useParams } from "react-router";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowDown, ArrowUp } from "lucide-react";
 import { ApiError } from "@/api/client";
 import { listConnections } from "@/api/connections";
 import { getFriendShows, getFriendWatched } from "@/api/friends";
-import type {
-  ConnectionOut,
-  MyShowEntry,
-  WatchedEntry,
-  WatchedSort,
-  WatchedStatusFilter,
-} from "@/api/types";
+import { useMyShows } from "@/api/me";
+import type { ConnectionOut, MyShowEntry, WatchedEntry } from "@/api/types";
 import { localToday } from "@/api/today";
-import { Button } from "@/components/ui/button";
-import { FilterSheet } from "@/components/home/FilterSheet";
+import { LibraryActiveList } from "@/components/library/LibraryActiveList";
+import { LibraryWatchedList } from "@/components/library/LibraryWatchedList";
+import { buildCallerLibrary } from "@/components/library/callerLibrary";
 import { cn } from "@/lib/cn";
 
 type Tab = "active" | "watched";
-
-const STATUS_FILTERS: { key: WatchedStatusFilter; label: string }[] = [
-  { key: "all", label: "All" },
-  { key: "finished", label: "Finished" },
-  { key: "in_progress", label: "In progress" },
-];
-
-// Mirror the same six options as the user's own Watched view.
-const WATCHED_SORTS: { key: WatchedSort; label: string }[] = [
-  { key: "name_asc", label: "Show Title" },
-  { key: "last_watched_desc", label: "Last Watched" },
-  { key: "last_aired_desc", label: "Last Aired" },
-  { key: "premiered_asc", label: "Premiered First" },
-  { key: "premiered_desc", label: "Premiered Last" },
-  { key: "first_watched_desc", label: "Recently Added" },
-];
 
 export function FriendProfilePage() {
   const { userId = "" } = useParams<{ userId: string }>();
@@ -109,122 +88,57 @@ function TabButton({
 function ActiveTab({ userId }: { userId: string }) {
   const today = localToday();
   const { data, isLoading, error } = useQuery<MyShowEntry[]>({
-    queryKey: ["friend-shows", userId, "recent_activity", today],
-    queryFn: () => getFriendShows(userId, { sort: "recent_activity", today }),
+    queryKey: ["friend-shows", userId, today],
+    queryFn: () => getFriendShows(userId, { today }),
     retry: false,
   });
+  // Caller's own My Shows drives the action button (NEU-127). Indicators and
+  // filter (NEU-128/129) will additionally consume my-watched here.
+  const callerShowsQuery = useMyShows();
+  const callerLibrary = useMemo(
+    () => buildCallerLibrary(callerShowsQuery.data),
+    [callerShowsQuery.data],
+  );
 
   if (error instanceof ApiError && error.status === 404) {
     return <UserNotFound />;
   }
-  if (isLoading) {
-    return <p className="text-sm text-muted-foreground">Loading…</p>;
-  }
-  if (!data || data.length === 0) {
-    return <p className="text-sm text-muted-foreground">Nothing tracked here yet.</p>;
-  }
-
   return (
-    <ul className="flex flex-col divide-y divide-border rounded border border-border">
-      {data.map((entry) => (
-        <li key={entry.show.id} className="px-3 py-2">
-          <Link to={`/shows/${entry.show.id}`} className="text-sm hover:underline">
-            {entry.show.name}
-          </Link>
-          {entry.total_episode_count > 0 && (
-            <span className="ml-2 text-xs text-muted-foreground">
-              {entry.watched_episode_count}/{entry.total_episode_count}
-            </span>
-          )}
-        </li>
-      ))}
-    </ul>
+    <LibraryActiveList
+      data={data}
+      isLoading={isLoading}
+      viewerContext="friend"
+      callerLibrary={callerLibrary}
+      storagePrefix="friend-active"
+    />
   );
 }
 
 function WatchedTab({ userId }: { userId: string }) {
-  const [status, setStatus] = useState<WatchedStatusFilter>("all");
-  const [sort, setSort] = useState<WatchedSort>("last_watched_desc");
-
-  const { data, isLoading, error } = useQuery<WatchedEntry[]>({
-    queryKey: ["friend-watched", userId, status, sort],
-    queryFn: () => getFriendWatched(userId, { status, sort }),
+  const today = localToday();
+  const { data, isLoading, isError, error } = useQuery<WatchedEntry[]>({
+    queryKey: ["friend-watched", userId, today],
+    queryFn: () => getFriendWatched(userId, { today }),
     retry: false,
   });
+  const callerShowsQuery = useMyShows();
+  const callerLibrary = useMemo(
+    () => buildCallerLibrary(callerShowsQuery.data),
+    [callerShowsQuery.data],
+  );
 
   if (error instanceof ApiError && error.status === 404) {
     return <UserNotFound />;
   }
-
-  const sortLabel = WATCHED_SORTS.find((s) => s.key === sort)?.label ?? "";
-
   return (
-    <div className="flex flex-col gap-3">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <div className="flex flex-wrap gap-2">
-          {STATUS_FILTERS.map((f) => (
-            <Button
-              key={f.key}
-              type="button"
-              size="sm"
-              variant={status === f.key ? "default" : "outline"}
-              onClick={() => setStatus(f.key)}
-            >
-              {f.label}
-            </Button>
-          ))}
-        </div>
-        <FilterSheet
-          title="Sort Watched"
-          triggerLabel={sortLabel}
-          triggerIcon={
-            <>
-              <ArrowDown className="h-4 w-4" aria-hidden />
-              <ArrowUp className="h-4 w-4 -ml-2" aria-hidden />
-            </>
-          }
-          ariaLabel={`Sort Watched (current: ${sortLabel})`}
-          options={WATCHED_SORTS}
-          value={sort}
-          onChange={setSort}
-        />
-      </div>
-
-      {isLoading && <p className="text-sm text-muted-foreground">Loading…</p>}
-      {!isLoading && data && data.length === 0 && (
-        <p className="text-sm text-muted-foreground">
-          {status === "finished"
-            ? "Nothing finished yet."
-            : status === "in_progress"
-              ? "Nothing in progress."
-              : "No watch history."}
-        </p>
-      )}
-      {!isLoading && data && data.length > 0 && (
-        <ul className="flex flex-col divide-y divide-border rounded border border-border">
-          {data.map((entry) => (
-            <li key={entry.show.id} className="flex items-center gap-3 px-3 py-2">
-              <Link to={`/shows/${entry.show.id}`} className="text-sm hover:underline">
-                {entry.show.name}
-              </Link>
-              <span className="text-xs text-muted-foreground">
-                {entry.watched_episode_count}/{entry.aired_episode_count}
-              </span>
-              <span
-                className={cn(
-                  "text-xs px-1.5 py-0.5 rounded border",
-                  entry.status === "finished"
-                    ? "border-emerald-600 text-emerald-700"
-                    : "border-border text-muted-foreground",
-                )}
-              >
-                {entry.status === "finished" ? "Finished" : "In progress"}
-              </span>
-            </li>
-          ))}
-        </ul>
-      )}
-    </div>
+    <LibraryWatchedList
+      data={data}
+      isLoading={isLoading}
+      isError={isError}
+      viewerContext="friend"
+      callerLibrary={callerLibrary}
+      storagePrefix="friend-watched"
+    />
   );
 }
 

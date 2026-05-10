@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
-import { fireEvent, screen, waitFor } from "@testing-library/react";
+import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { Route, Routes } from "react-router";
 import { renderWithProviders } from "@/test/renderWithProviders";
 import { FriendProfilePage } from "./FriendProfilePage";
@@ -47,7 +47,11 @@ function makeMyShow(showId: number, name: string): MyShowEntry {
   };
 }
 
-function makeWatched(showId: number, name: string): WatchedEntry {
+function makeWatched(
+  showId: number,
+  name: string,
+  overrides: Partial<WatchedEntry> = {},
+): WatchedEntry {
   return {
     show: {
       id: showId,
@@ -72,11 +76,13 @@ function makeWatched(showId: number, name: string): WatchedEntry {
     first_watched_at: "2026-03-01T00:00:00Z",
     in_my_shows: false,
     status: "finished",
+    ...overrides,
   };
 }
 
 describe("FriendProfilePage", () => {
   beforeEach(() => {
+    window.localStorage.clear();
     vi.spyOn(connectionsApi, "listConnections").mockResolvedValue([
       { user: { id: FRIEND_ID, display_name: "Friendly Person" }, since: "2026-04-01T00:00:00Z" },
     ]);
@@ -99,7 +105,7 @@ describe("FriendProfilePage", () => {
     expect(screen.getByRole("tab", { name: /active/i })).toHaveAttribute("aria-selected", "true");
   });
 
-  it("Active tab fetches getFriendShows and renders rows read-only", async () => {
+  it("Active tab fetches getFriendShows and renders rows with caller-relative action button", async () => {
     const get = vi
       .spyOn(friendsApi, "getFriendShows")
       .mockResolvedValue([makeMyShow(11, "Severance")]);
@@ -108,9 +114,27 @@ describe("FriendProfilePage", () => {
 
     await waitFor(() => expect(get).toHaveBeenCalledWith(FRIEND_ID, expect.any(Object)));
     await waitFor(() => expect(screen.getByText("Severance")).toBeInTheDocument());
-    // Read-only: no Add/Remove buttons.
-    expect(screen.queryByRole("button", { name: /add/i })).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /remove/i })).not.toBeInTheDocument();
+    // Caller's My Shows is empty (default MSW handler) → Add button shown.
+    expect(screen.getByRole("button", { name: /add to my shows/i })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /remove from my shows/i })).not.toBeInTheDocument();
+  });
+
+  it("Active tab renders the shared toolbar (sort + filters + view toggle)", async () => {
+    vi.spyOn(friendsApi, "getFriendShows").mockResolvedValue([makeMyShow(12, "Lost")]);
+
+    renderWithProviders(routed(), { route: `/users/${FRIEND_ID}` });
+
+    await waitFor(() => expect(screen.getByText("Lost")).toBeInTheDocument());
+    // Sort trigger.
+    expect(screen.getByRole("button", { name: /sort my shows/i })).toBeInTheDocument();
+    // Filter triggers (each FilterSheet exposes its trigger via aria-label).
+    expect(screen.getByRole("button", { name: /filter by watch state/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /filter by show status/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /filter by my shows membership/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /filter by genre/i })).toBeInTheDocument();
+    // View toggle.
+    expect(screen.getByRole("button", { name: /list view/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /grid view/i })).toBeInTheDocument();
   });
 
   it("Watched tab is lazy (not fetched until clicked)", async () => {
@@ -144,26 +168,44 @@ describe("FriendProfilePage", () => {
   });
 
   it("renders 'user not found' when friend API returns 404", async () => {
-    // Friend appears in the connection list but the friend endpoint 404s
-    // (e.g., they unblocked us between renders, or stale cache).
     vi.spyOn(friendsApi, "getFriendShows").mockRejectedValue(new ApiError(404, "not_found", null));
     renderWithProviders(routed(), { route: `/users/${FRIEND_ID}` });
 
     await waitFor(() => expect(screen.getByText(/user not found/i)).toBeInTheDocument());
   });
 
-  it("Watched tab status filter changes the query param", async () => {
+  it("Watched tab Finished filter narrows rows client-side without refetching", async () => {
     vi.spyOn(friendsApi, "getFriendShows").mockResolvedValue([]);
-    const watched = vi.spyOn(friendsApi, "getFriendWatched").mockResolvedValue([]);
+    const watched = vi.spyOn(friendsApi, "getFriendWatched").mockResolvedValue([
+      makeWatched(31, "Six Feet Under", {
+        status: "finished",
+        watched_episode_count: 12,
+        aired_episode_count: 12,
+        total_episode_count: 12,
+      }),
+      makeWatched(32, "Severance", {
+        status: "in_progress",
+        watched_episode_count: 4,
+        aired_episode_count: 9,
+        total_episode_count: 9,
+      }),
+    ]);
 
     renderWithProviders(routed(), { route: `/users/${FRIEND_ID}` });
     fireEvent.click(await screen.findByRole("tab", { name: /watched/i }));
-    await waitFor(() => expect(watched).toHaveBeenCalled());
 
-    fireEvent.click(screen.getByRole("button", { name: /^finished$/i }));
-    await waitFor(() => {
-      const lastCall = watched.mock.calls.at(-1);
-      expect(lastCall?.[1]).toMatchObject({ status: "finished" });
-    });
+    await waitFor(() => expect(screen.getByText("Six Feet Under")).toBeInTheDocument());
+    expect(screen.getByText("Severance")).toBeInTheDocument();
+    const callsAfterLoad = watched.mock.calls.length;
+
+    // Open the WatchState FilterSheet then pick "Finished".
+    fireEvent.click(screen.getByRole("button", { name: /filter by watch state/i }));
+    const dialog = await screen.findByRole("dialog");
+    fireEvent.click(within(dialog).getByRole("button", { name: /^finished$/i }));
+
+    await waitFor(() => expect(screen.queryByText("Severance")).not.toBeInTheDocument());
+    expect(screen.getByText("Six Feet Under")).toBeInTheDocument();
+    // No new server fetch — filtering happens client-side.
+    expect(watched.mock.calls.length).toBe(callsAfterLoad);
   });
 });
