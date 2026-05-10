@@ -40,6 +40,7 @@ import { usePersistedView } from "@/hooks/usePersistedView";
 import { cn } from "@/lib/cn";
 import type { CallerLibrary } from "./callerLibrary";
 import type { ViewerContext } from "./LibraryActiveList";
+import { CallerPosterBadge, CallerProgressNote } from "./LibraryRowIndicators";
 
 // Disabled options on All Watched per NEU-121:
 // - Watch State: "Not Started" — every entry has at least one watched episode.
@@ -286,7 +287,11 @@ function WatchedRow({
 
   return (
     <li className="border border-border rounded p-3 flex items-start gap-3 sm:gap-4">
-      <Link to={`/shows/${entry.show.id}`} className="shrink-0" aria-label={entry.show.name}>
+      <Link
+        to={`/shows/${entry.show.id}`}
+        className="shrink-0 relative"
+        aria-label={entry.show.name}
+      >
         {entry.show.image_medium ? (
           <img
             src={entry.show.image_medium}
@@ -296,6 +301,11 @@ function WatchedRow({
         ) : (
           <div className="w-16 aspect-[210/295] rounded bg-muted" />
         )}
+        <CallerPosterBadge
+          showId={entry.show.id}
+          viewerContext={viewerContext}
+          callerLibrary={callerLibrary}
+        />
       </Link>
       <div className="flex-1 min-w-0 flex flex-col gap-2">
         <div className="flex items-baseline gap-2 flex-wrap">
@@ -348,6 +358,11 @@ function WatchedRow({
           <p className="text-xs text-muted-foreground">{upcoming} upcoming</p>
         )}
         <div className="flex flex-wrap items-center justify-end gap-2 pt-1">
+          <CallerProgressNote
+            showId={entry.show.id}
+            viewerContext={viewerContext}
+            callerLibrary={callerLibrary}
+          />
           {inMyShows ? (
             <Button
               type="button"

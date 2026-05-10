@@ -40,3 +40,25 @@ export function buildCallerLibrary(
   }
   return map;
 }
+
+/** Whether the caller has this show in their own My Shows. False when no
+ * relationship is known. */
+export function callerHasShow(library: CallerLibrary | undefined, showId: number): boolean {
+  return library?.get(showId)?.in_my_shows ?? false;
+}
+
+/** The caller's "You: x/y" affordance for a friend row: rendered whenever the
+ * caller has watched at least one episode of this show, regardless of whether
+ * they also have it in their own My Shows. Showing it alongside the green ✓
+ * gives a direct vs-the-friend progress comparison ("they're 10/10, I'm 3/10
+ * — spoiler risk"). Returns null when the caller has no progress to report. */
+export function callerProgress(
+  library: CallerLibrary | undefined,
+  showId: number,
+): { watched: number; aired: number } | null {
+  const state = library?.get(showId);
+  if (!state) return null;
+  const watched = state.watched_episode_count ?? 0;
+  if (watched <= 0) return null;
+  return { watched, aired: state.aired_episode_count ?? 0 };
+}

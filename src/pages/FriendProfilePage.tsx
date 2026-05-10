@@ -4,7 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { ApiError } from "@/api/client";
 import { listConnections } from "@/api/connections";
 import { getFriendShows, getFriendWatched } from "@/api/friends";
-import { useMyShows } from "@/api/me";
+import { useMyShows, useMyWatched } from "@/api/me";
 import type { ConnectionOut, MyShowEntry, WatchedEntry } from "@/api/types";
 import { localToday } from "@/api/today";
 import { LibraryActiveList } from "@/components/library/LibraryActiveList";
@@ -95,9 +95,10 @@ function ActiveTab({ userId }: { userId: string }) {
   // Caller's own My Shows drives the action button (NEU-127). Indicators and
   // filter (NEU-128/129) will additionally consume my-watched here.
   const callerShowsQuery = useMyShows();
+  const callerWatchedQuery = useMyWatched();
   const callerLibrary = useMemo(
-    () => buildCallerLibrary(callerShowsQuery.data),
-    [callerShowsQuery.data],
+    () => buildCallerLibrary(callerShowsQuery.data, callerWatchedQuery.data),
+    [callerShowsQuery.data, callerWatchedQuery.data],
   );
 
   if (error instanceof ApiError && error.status === 404) {
@@ -122,9 +123,10 @@ function WatchedTab({ userId }: { userId: string }) {
     retry: false,
   });
   const callerShowsQuery = useMyShows();
+  const callerWatchedQuery = useMyWatched();
   const callerLibrary = useMemo(
-    () => buildCallerLibrary(callerShowsQuery.data),
-    [callerShowsQuery.data],
+    () => buildCallerLibrary(callerShowsQuery.data, callerWatchedQuery.data),
+    [callerShowsQuery.data, callerWatchedQuery.data],
   );
 
   if (error instanceof ApiError && error.status === 404) {
