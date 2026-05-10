@@ -79,7 +79,8 @@ function TabBar({ active, onSelect }: { active: Tab; onSelect: (next: Tab) => vo
             id={`connections-tab-${t.key}`}
             onClick={() => onSelect(t.key)}
             className={cn(
-              "px-3 py-2 text-sm border-b-2 -mb-px",
+              "px-3 py-2 text-sm border-b-2 -mb-px rounded-sm",
+              "focus:outline-none focus-visible:ring-2 focus-visible:ring-ring",
               selected
                 ? "border-foreground font-medium text-foreground"
                 : "border-transparent text-muted-foreground hover:text-foreground",

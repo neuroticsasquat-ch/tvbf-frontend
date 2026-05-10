@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 import { apiFetch } from "./client";
 import { localToday } from "./today";
 import type {
@@ -291,6 +292,38 @@ export function useMarkShow() {
     mutationFn: (showId: number) =>
       apiFetch<{ marked: number }>(`/me/shows/${showId}/watched`, { method: "POST" }),
     onSettled: () => invalidateAll(qc),
+  });
+}
+
+/** Bulk-clear the user's watch history for a show (deletes every
+ * `user_episode_watch` row). Optimistically removes the row from any cached
+ * `["my-watched"]` queries and invalidates dependent caches on success. */
+export function useRemoveFromHistory() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (vars: { showId: number }) =>
+      apiFetch<void>(`/me/shows/${vars.showId}/watched`, { method: "DELETE" }),
+    onMutate: async (vars) => {
+      await qc.cancelQueries({ queryKey: ["my-watched"] });
+      const snapshots = qc.getQueriesData<WatchedEntry[]>({
+        queryKey: ["my-watched"],
+      });
+      qc.setQueriesData<WatchedEntry[]>({ queryKey: ["my-watched"] }, (cur) =>
+        cur ? cur.filter((e) => e.show.id !== vars.showId) : cur,
+      );
+      return { snapshots };
+    },
+    onError: (_err, _vars, ctx) => {
+      ctx?.snapshots.forEach(([key, data]) => qc.setQueryData(key, data));
+      toast.error("Could not remove watch history.");
+    },
+    onSuccess: (_data, vars) => {
+      qc.invalidateQueries({ queryKey: ["my-shows"] });
+      qc.invalidateQueries({ queryKey: ["watch-next"] });
+      qc.invalidateQueries({ queryKey: ["upcoming"] });
+      qc.invalidateQueries({ queryKey: ["watched-episodes", vars.showId] });
+      qc.invalidateQueries({ queryKey: ["season-progress", vars.showId] });
+    },
   });
 }
 

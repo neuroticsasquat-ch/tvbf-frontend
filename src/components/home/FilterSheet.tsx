@@ -35,6 +35,7 @@ export function FilterSheet<T extends string>({
         aria-label={ariaLabel}
         className={cn(
           "rounded px-2 py-1 inline-flex gap-1 text-left hover:bg-accent",
+          "focus:outline-none focus-visible:ring-2 focus-visible:ring-ring",
           triggerAlign === "start" ? "items-start" : "items-center",
           !triggerClassName && "text-sm",
           active

@@ -1,16 +1,18 @@
 import { useState } from "react";
 import { Link } from "react-router";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { ArrowDown, ArrowUp, Check, Plus, Trash2 } from "lucide-react";
-import { toast } from "sonner";
-import { apiFetch } from "@/api/client";
-import { useAddShow, useMyWatched, useRemoveShow } from "@/api/me";
+import {
+  useAddShow,
+  useMyWatched,
+  useRemoveFromHistory,
+  useRemoveShow,
+} from "@/api/me";
 import type { WatchedEntry, WatchedSort, WatchedStatusFilter } from "@/api/types";
 import { ConfirmDialog } from "@/components/connections/ConfirmDialog";
 import { Button } from "@/components/ui/button";
+import { WatchProgressBar } from "@/components/WatchProgressBar";
 import { FilterSheet } from "@/components/home/FilterSheet";
 import { usePersistedSort } from "@/hooks/usePersistedSort";
-import { cn } from "@/lib/cn";
 
 const STATUS_FILTERS: { key: WatchedStatusFilter; label: string }[] = [
   { key: "all", label: "All" },
@@ -35,10 +37,14 @@ function formatDate(iso: string | null): string {
   if (!iso) return "";
   const d = new Date(iso);
   if (Number.isNaN(d.valueOf())) return "";
+  // Include the year when the date is more than ~6 months old, so "Last
+  // Watched" stays unambiguous regardless of calendar-year boundary.
+  const ageDays = (Date.now() - d.getTime()) / 86_400_000;
+  const includeYear = ageDays > 180;
   return d.toLocaleDateString(undefined, {
     month: "short",
     day: "numeric",
-    year: "numeric",
+    ...(includeYear ? { year: "numeric" } : {}),
   });
 }
 
@@ -142,7 +148,7 @@ function WatchedRow({ entry }: { entry: WatchedEntry }) {
   }
 
   return (
-    <li className="border border-border rounded p-3 flex items-start gap-4">
+    <li className="border border-border rounded p-3 flex items-start gap-3 sm:gap-4">
       <Link to={`/shows/${entry.show.id}`} className="shrink-0" aria-label={entry.show.name}>
         {entry.show.image_medium ? (
           <img
@@ -154,9 +160,12 @@ function WatchedRow({ entry }: { entry: WatchedEntry }) {
           <div className="w-16 aspect-[210/295] rounded bg-muted" />
         )}
       </Link>
-      <div className="flex-1 min-w-0 flex flex-col gap-1">
+      <div className="flex-1 min-w-0 flex flex-col gap-2">
         <div className="flex items-baseline gap-2 flex-wrap">
-          <Link to={`/shows/${entry.show.id}`} className="font-semibold hover:underline truncate">
+          <Link
+            to={`/shows/${entry.show.id}`}
+            className="font-semibold hover:underline min-w-0 break-words"
+          >
             {entry.show.name}
           </Link>
           {entry.show.premiered && (
@@ -165,53 +174,81 @@ function WatchedRow({ entry }: { entry: WatchedEntry }) {
             </span>
           )}
         </div>
-        <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-          <span
-            className={cn(
-              "px-1.5 py-0.5 rounded border",
-              entry.status === "finished" ? "border-emerald-600 text-emerald-700" : "border-border",
-            )}
-          >
-            {entry.status === "finished" ? "Finished" : "In progress"}
-          </span>
-          <span>
-            {entry.watched_episode_count}/{entry.aired_episode_count}
-          </span>
-          {entry.last_watched_at && <span>Last watched {formatDate(entry.last_watched_at)}</span>}
-          {inMyShows && (
-            <span className="px-1.5 py-0.5 rounded border border-border">In My Shows</span>
+        {entry.status !== "finished" && entry.aired_episode_count > 0 && (
+          <WatchProgressBar
+            watched={entry.watched_episode_count}
+            aired={entry.aired_episode_count}
+            upcoming={entry.total_episode_count - entry.aired_episode_count}
+            barOnly
+          />
+        )}
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
+          {entry.status === "finished" ? (
+            <span className="px-1.5 py-0.5 rounded border border-emerald-600 text-emerald-700">
+              Finished
+            </span>
+          ) : (
+            <span>
+              Progress: {entry.watched_episode_count}/{entry.aired_episode_count}
+            </span>
+          )}
+          {entry.last_watched_at && (
+            <span aria-hidden className="text-muted-foreground/50">
+              ·
+            </span>
+          )}
+          {entry.last_watched_at && (
+            <span className="whitespace-nowrap">
+              Last Watched: {formatDate(entry.last_watched_at)}
+            </span>
           )}
         </div>
-      </div>
-      <div className="shrink-0 flex flex-col items-end gap-2">
-        {inMyShows ? (
+        {entry.status !== "finished" &&
+          entry.total_episode_count - entry.aired_episode_count > 0 && (
+            <p className="text-xs text-muted-foreground">
+              {entry.total_episode_count - entry.aired_episode_count} upcoming
+            </p>
+          )}
+        {/* Action row: icon-only on mobile, full labels at sm+. */}
+        <div className="flex flex-wrap items-center justify-end gap-2 pt-1">
+          {inMyShows ? (
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              onClick={onRemove}
+              disabled={remove.isPending}
+              aria-label="Remove from My Shows"
+              className="h-7 px-2 gap-1 text-xs border-emerald-600 text-emerald-700 hover:bg-emerald-50 dark:text-emerald-400 dark:hover:bg-emerald-950/40"
+            >
+              <Check className="h-3.5 w-3.5" aria-hidden />
+              My Shows
+            </Button>
+          ) : (
+            <Button
+              type="button"
+              size="sm"
+              onClick={onAdd}
+              disabled={add.isPending}
+              aria-label="Add to My Shows"
+              className="h-7 px-2 gap-1 text-xs"
+            >
+              <Plus className="h-3.5 w-3.5" aria-hidden />
+              My Shows
+            </Button>
+          )}
           <Button
             type="button"
             size="sm"
-            variant="outline"
-            onClick={onRemove}
-            disabled={remove.isPending}
+            variant="ghost"
+            onClick={() => setConfirmingRemoveHistory(true)}
+            aria-label={`Remove ${entry.show.name} watch history`}
+            className="h-7 px-2 gap-1 text-xs text-muted-foreground hover:text-destructive"
           >
-            <Check className="h-4 w-4" aria-hidden />
-            Remove from My Shows
+            <Trash2 className="h-3.5 w-3.5" aria-hidden />
+            Watch History
           </Button>
-        ) : (
-          <Button type="button" size="sm" onClick={onAdd} disabled={add.isPending}>
-            <Plus className="h-4 w-4" aria-hidden />
-            Add to My Shows
-          </Button>
-        )}
-        <Button
-          type="button"
-          size="sm"
-          variant="ghost"
-          onClick={() => setConfirmingRemoveHistory(true)}
-          aria-label={`Remove ${entry.show.name} from history`}
-          className="text-muted-foreground hover:text-destructive"
-        >
-          <Trash2 className="h-4 w-4" aria-hidden />
-          Remove from history
-        </Button>
+        </div>
       </div>
       {confirmingRemoveHistory && (
         <ConfirmDialog
@@ -231,33 +268,3 @@ function WatchedRow({ entry }: { entry: WatchedEntry }) {
   );
 }
 
-/** Bulk-clear the user's watch history for a show. Optimistically removes the
- * row from `["my-watched"]` and invalidates dependent caches. */
-function useRemoveFromHistory() {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: (vars: { showId: number }) =>
-      apiFetch<void>(`/me/shows/${vars.showId}/watched`, { method: "DELETE" }),
-    onMutate: async (vars) => {
-      await qc.cancelQueries({ queryKey: ["my-watched"] });
-      const snapshots = qc.getQueriesData<WatchedEntry[]>({
-        queryKey: ["my-watched"],
-      });
-      qc.setQueriesData<WatchedEntry[]>({ queryKey: ["my-watched"] }, (cur) =>
-        cur ? cur.filter((e) => e.show.id !== vars.showId) : cur,
-      );
-      return { snapshots };
-    },
-    onError: (_err, _vars, ctx) => {
-      ctx?.snapshots.forEach(([key, data]) => qc.setQueryData(key, data));
-      toast.error("Could not remove watch history.");
-    },
-    onSuccess: (_data, vars) => {
-      qc.invalidateQueries({ queryKey: ["my-shows"] });
-      qc.invalidateQueries({ queryKey: ["watch-next"] });
-      qc.invalidateQueries({ queryKey: ["upcoming"] });
-      qc.invalidateQueries({ queryKey: ["watched-episodes", vars.showId] });
-      qc.invalidateQueries({ queryKey: ["season-progress", vars.showId] });
-    },
-  });
-}

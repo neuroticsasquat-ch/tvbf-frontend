@@ -7,7 +7,7 @@ type Tab = "active" | "watched";
 
 const TABS: { key: Tab; label: string }[] = [
   { key: "active", label: "Active" },
-  { key: "watched", label: "Watched" },
+  { key: "watched", label: "All Watched" },
 ];
 
 function isTab(value: string | null): value is Tab {
@@ -47,7 +47,8 @@ export function MyShowsPage() {
               aria-selected={selected}
               onClick={() => selectTab(t.key)}
               className={cn(
-                "px-3 py-2 text-sm border-b-2 -mb-px",
+                "px-3 py-2 text-sm border-b-2 -mb-px rounded-sm",
+                "focus:outline-none focus-visible:ring-2 focus-visible:ring-ring",
                 selected
                   ? "border-foreground font-medium text-foreground"
                   : "border-transparent text-muted-foreground hover:text-foreground",
