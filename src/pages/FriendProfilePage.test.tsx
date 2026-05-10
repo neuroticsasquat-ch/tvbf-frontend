@@ -316,6 +316,61 @@ describe("FriendProfilePage", () => {
     expect(screen.getByText("Fringe")).toBeInTheDocument();
   });
 
+  it("My Watch State filter only renders on friend tabs", async () => {
+    vi.spyOn(friendsApi, "getFriendShows").mockResolvedValue([makeMyShow(101, "Severance")]);
+
+    renderWithProviders(routed(), { route: `/users/${FRIEND_ID}` });
+
+    await waitFor(() => expect(screen.getByText("Severance")).toBeInTheDocument());
+    expect(
+      screen.getByRole("button", { name: /filter by my watch state/i }),
+    ).toBeInTheDocument();
+  });
+
+  it("My Watch State 'Not Started' surfaces friend rows the caller hasn't touched", async () => {
+    vi.spyOn(friendsApi, "getFriendShows").mockResolvedValue([
+      makeMyShow(111, "Severance"),
+      makeMyShow(112, "Lost"),
+      makeMyShow(113, "Fringe"),
+    ]);
+    server.use(
+      // Caller actively watches Severance (3/10) and has no relationship to
+      // Lost or Fringe.
+      http.get(`${env.apiBaseUrl}/me/shows`, () =>
+        HttpResponse.json([
+          {
+            ...makeMyShow(111, "Severance"),
+            watched_episode_count: 3,
+            aired_episode_count: 10,
+            total_episode_count: 10,
+          },
+        ]),
+      ),
+    );
+
+    renderWithProviders(routed(), { route: `/users/${FRIEND_ID}` });
+
+    await waitFor(() => expect(screen.getByText("Severance")).toBeInTheDocument());
+
+    // Pick "Not Started" → only Lost and Fringe (no caller relationship → 0/0).
+    fireEvent.click(screen.getByRole("button", { name: /filter by my watch state/i }));
+    let dialog = await screen.findByRole("dialog");
+    fireEvent.click(within(dialog).getByRole("button", { name: /^not started$/i }));
+
+    await waitFor(() => expect(screen.queryByText("Severance")).not.toBeInTheDocument());
+    expect(screen.getByText("Lost")).toBeInTheDocument();
+    expect(screen.getByText("Fringe")).toBeInTheDocument();
+
+    // Switch to "Watching" → only Severance.
+    fireEvent.click(screen.getByRole("button", { name: /filter by my watch state/i }));
+    dialog = await screen.findByRole("dialog");
+    fireEvent.click(within(dialog).getByRole("button", { name: /^watching$/i }));
+
+    await waitFor(() => expect(screen.queryByText("Lost")).not.toBeInTheDocument());
+    expect(screen.queryByText("Fringe")).not.toBeInTheDocument();
+    expect(screen.getByText("Severance")).toBeInTheDocument();
+  });
+
   it("Watched tab Finished filter narrows rows client-side without refetching", async () => {
     vi.spyOn(friendsApi, "getFriendShows").mockResolvedValue([]);
     const watched = vi.spyOn(friendsApi, "getFriendWatched").mockResolvedValue([

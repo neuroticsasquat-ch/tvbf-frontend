@@ -86,6 +86,31 @@ export function InMyShowsFilterPicker({
   );
 }
 
+/** Caller-relative watch-state filter for friend library tabs (NEU-130).
+ * Same five buckets as `WatchStateFilter` but the trigger label/aria targets
+ * the caller's progress, not the row's. */
+export function CallerWatchStateFilterPicker({
+  value,
+  onChange,
+}: {
+  value: WatchState;
+  onChange: (next: WatchState) => void;
+}) {
+  const label = WATCH_STATES.find((s) => s.key === value)?.label ?? "";
+  return (
+    <FilterSheet
+      title="My watch state"
+      triggerLabel={`My Watch State: ${label}`}
+      triggerIcon={<Eye className={ICON_CLS} aria-hidden />}
+      ariaLabel={`Filter by my watch state (current: ${label})`}
+      options={WATCH_STATES}
+      value={value}
+      onChange={onChange}
+      active={value !== "all"}
+    />
+  );
+}
+
 /** Caller-relative membership filter for friend library tabs (NEU-129).
  * Reuses the InMyShowsFilter shape but its semantics target the caller's own
  * library, not the row's. Different label/icon avoids visual collision with

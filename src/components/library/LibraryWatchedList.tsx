@@ -11,6 +11,7 @@ import { WatchProgressBar } from "@/components/WatchProgressBar";
 import { FilterSheet } from "@/components/home/FilterSheet";
 import {
   CallerMembershipFilterPicker,
+  CallerWatchStateFilterPicker,
   ClearFiltersButton,
   GenreFilter,
   InMyShowsFilterPicker,
@@ -40,7 +41,7 @@ import { usePersistedString } from "@/hooks/usePersistedString";
 import { usePersistedView } from "@/hooks/usePersistedView";
 import { cn } from "@/lib/cn";
 import type { CallerLibrary } from "./callerLibrary";
-import { matchesCallerMembership } from "./callerFilters";
+import { matchesCallerMembership, matchesCallerWatchState } from "./callerFilters";
 import type { ViewerContext } from "./LibraryActiveList";
 import { CallerPosterBadge, CallerProgressNote } from "./LibraryRowIndicators";
 
@@ -115,6 +116,11 @@ export function LibraryWatchedList({
     IN_MY_SHOWS_KEYS,
     "all",
   );
+  const [callerWatchState, setCallerWatchState] = usePersistedSort<WatchState>(
+    `${storagePrefix}-caller-watch-state`,
+    WATCH_STATE_KEYS,
+    "all",
+  );
   const [genre, setGenre] = usePersistedString(`${storagePrefix}-genre`, "all");
   const [view, setView] = usePersistedView(storagePrefix, "list");
 
@@ -130,8 +136,19 @@ export function LibraryWatchedList({
         return !e.in_my_shows;
       })
       .filter((e) => matchesCallerMembership(e.show.id, callerMembership, callerLibrary))
+      .filter((e) => matchesCallerWatchState(callerWatchState, e, callerLibrary))
       .sort((a, b) => compareLibraryEntries(a, b, sort));
-  }, [data, sort, watchState, showStatus, genre, inMyShows, callerMembership, callerLibrary]);
+  }, [
+    data,
+    sort,
+    watchState,
+    showStatus,
+    genre,
+    inMyShows,
+    callerMembership,
+    callerWatchState,
+    callerLibrary,
+  ]);
 
   const sortLabel = LIBRARY_SORTS.find((s) => s.key === sort)?.label ?? "";
   const filtersActive =
@@ -139,7 +156,8 @@ export function LibraryWatchedList({
     showStatus !== "all" ||
     genre !== "all" ||
     inMyShows !== "all" ||
-    callerMembership !== "all";
+    callerMembership !== "all" ||
+    callerWatchState !== "all";
 
   return (
     <div>
@@ -172,10 +190,16 @@ export function LibraryWatchedList({
         <ShowStatusFilterPicker value={showStatus} onChange={setShowStatus} />
         <InMyShowsFilterPicker value={inMyShows} onChange={setInMyShows} />
         {viewerContext === "friend" && (
-          <CallerMembershipFilterPicker
-            value={callerMembership}
-            onChange={setCallerMembership}
-          />
+          <>
+            <CallerMembershipFilterPicker
+              value={callerMembership}
+              onChange={setCallerMembership}
+            />
+            <CallerWatchStateFilterPicker
+              value={callerWatchState}
+              onChange={setCallerWatchState}
+            />
+          </>
         )}
         <GenreFilter value={genre} onChange={setGenre} />
         {filtersActive && (
@@ -185,6 +209,7 @@ export function LibraryWatchedList({
               setShowStatus("all");
               setInMyShows("all");
               setCallerMembership("all");
+              setCallerWatchState("all");
               setGenre("all");
             }}
           />
