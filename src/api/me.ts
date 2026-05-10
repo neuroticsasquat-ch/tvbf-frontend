@@ -8,6 +8,8 @@ import type {
   MyShowEntry,
   MyShowsSort,
   UpcomingEntry,
+  UpcomingSeasonEntry,
+  UpcomingShowEntry,
   UpcomingSort,
   WatchedEntry,
   WatchNextEntry,
@@ -52,6 +54,40 @@ export function useUpcoming(sort: UpcomingSort = "airdate_asc") {
   return useQuery<UpcomingEntry[]>({
     queryKey: ["upcoming", sort, today],
     queryFn: () => fetchUpcoming({ sort, today }),
+  });
+}
+
+export function fetchUpcomingSeasons(opts: {
+  sort: UpcomingSort;
+  today: string;
+}): Promise<UpcomingSeasonEntry[]> {
+  return apiFetch<UpcomingSeasonEntry[]>(
+    `/me/upcoming/seasons?sort=${opts.sort}&today=${opts.today}`,
+  );
+}
+
+export function useUpcomingSeasons(sort: UpcomingSort = "airdate_asc", enabled = true) {
+  const today = localToday();
+  return useQuery<UpcomingSeasonEntry[]>({
+    queryKey: ["upcoming-seasons", sort, today],
+    queryFn: () => fetchUpcomingSeasons({ sort, today }),
+    enabled,
+  });
+}
+
+export function fetchUpcomingShows(opts: {
+  sort: UpcomingSort;
+  today: string;
+}): Promise<UpcomingShowEntry[]> {
+  return apiFetch<UpcomingShowEntry[]>(`/me/upcoming/shows?sort=${opts.sort}&today=${opts.today}`);
+}
+
+export function useUpcomingShows(sort: UpcomingSort = "airdate_asc", enabled = true) {
+  const today = localToday();
+  return useQuery<UpcomingShowEntry[]>({
+    queryKey: ["upcoming-shows", sort, today],
+    queryFn: () => fetchUpcomingShows({ sort, today }),
+    enabled,
   });
 }
 

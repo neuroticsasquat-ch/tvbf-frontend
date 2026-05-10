@@ -114,7 +114,7 @@ describe("CollapsibleSummary", () => {
   it("sanitizes HTML before rendering", () => {
     restore = stubHeights({ scroll: 80, client: 80 });
     const { container } = render(
-      <CollapsibleSummary html='<p>OK</p><script>window.__pwn=1</script>' />,
+      <CollapsibleSummary html="<p>OK</p><script>window.__pwn=1</script>" />,
     );
     expect(container.querySelector("script")).toBeNull();
     expect(screen.getByText("OK")).toBeInTheDocument();

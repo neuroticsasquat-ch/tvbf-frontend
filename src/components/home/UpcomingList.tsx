@@ -72,7 +72,6 @@ export function UpcomingList() {
   return (
     <div>
       <div className="flex items-baseline justify-between mb-4">
-        <h1 className="text-2xl font-semibold">Upcoming</h1>
         <FilterSheet
           title="Sort Upcoming"
           triggerLabel={sortLabel}
