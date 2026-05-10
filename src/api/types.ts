@@ -195,6 +195,20 @@ export interface UpcomingEntry {
   added_at: string | null;
 }
 
+export interface UpcomingSeasonEntry {
+  show: ShowSummary;
+  season_number: number;
+  season_name: string | null;
+  premiere_date: string | null;
+  added_at: string | null;
+}
+
+export interface UpcomingShowEntry {
+  show: ShowSummary;
+  premiere_date: string | null;
+  added_at: string | null;
+}
+
 export interface EpisodeWatchOut {
   episode_id: number;
   watched_at: string;
