@@ -43,13 +43,10 @@ import { callerHasShow, type CallerLibrary } from "./callerLibrary";
 import { matchesCallerMembership, matchesCallerWatchState } from "./callerFilters";
 import { CallerPosterBadge, CallerProgressNote } from "./LibraryRowIndicators";
 
-// Disabled options on Active per NEU-121:
-// - In My Shows: "Not in My Shows" — every entry in this list IS in My Shows
-//   for the *user being viewed*. (For self that's the caller; for friend that's
-//   the friend.) The caller-relative version of this filter lands in NEU-129.
-const DISABLED_IN_MY_SHOWS: Partial<Record<InMyShowsFilter, string>> = {
-  not_in: "All Active shows are in My Shows.",
-};
+// On Active tabs the In My Shows filter is inert end-to-end: `In My Shows` is
+// a no-op (every Active row is in My Shows by definition) and `Not in My
+// Shows` would always be empty. Disable the whole picker (NEU-131).
+const IN_MY_SHOWS_DISABLED_REASON = "All Active shows are in My Shows.";
 
 export type ViewerContext = "self" | "friend";
 
@@ -152,18 +149,12 @@ export function LibraryActiveList({
         <InMyShowsFilterPicker
           value={inMyShows}
           onChange={setInMyShows}
-          disabledOptions={DISABLED_IN_MY_SHOWS}
+          disabledReason={IN_MY_SHOWS_DISABLED_REASON}
         />
         {viewerContext === "friend" && (
           <>
-            <CallerMembershipFilterPicker
-              value={callerMembership}
-              onChange={setCallerMembership}
-            />
-            <CallerWatchStateFilterPicker
-              value={callerWatchState}
-              onChange={setCallerWatchState}
-            />
+            <CallerMembershipFilterPicker value={callerMembership} onChange={setCallerMembership} />
+            <CallerWatchStateFilterPicker value={callerWatchState} onChange={setCallerWatchState} />
           </>
         )}
         <GenreFilter value={genre} onChange={setGenre} />

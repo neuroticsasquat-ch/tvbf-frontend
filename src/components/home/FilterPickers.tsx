@@ -62,10 +62,14 @@ export function InMyShowsFilterPicker({
   value,
   onChange,
   disabledOptions,
+  disabledReason,
 }: {
   value: InMyShowsFilter;
   onChange: (next: InMyShowsFilter) => void;
   disabledOptions?: Partial<Record<InMyShowsFilter, string>>;
+  /** When set, the entire picker is disabled with this tooltip — used on
+   * Active tabs where every row is in My Shows by definition. */
+  disabledReason?: string;
 }) {
   const label = IN_MY_SHOWS_FILTERS.find((o) => o.key === value)?.label ?? "All";
   const options = IN_MY_SHOWS_FILTERS.map((o) => ({
@@ -82,6 +86,7 @@ export function InMyShowsFilterPicker({
       value={value}
       onChange={onChange}
       active={value !== "all"}
+      disabledReason={disabledReason}
     />
   );
 }

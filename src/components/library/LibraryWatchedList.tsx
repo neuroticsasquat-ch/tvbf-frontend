@@ -191,14 +191,8 @@ export function LibraryWatchedList({
         <InMyShowsFilterPicker value={inMyShows} onChange={setInMyShows} />
         {viewerContext === "friend" && (
           <>
-            <CallerMembershipFilterPicker
-              value={callerMembership}
-              onChange={setCallerMembership}
-            />
-            <CallerWatchStateFilterPicker
-              value={callerWatchState}
-              onChange={setCallerWatchState}
-            />
+            <CallerMembershipFilterPicker value={callerMembership} onChange={setCallerMembership} />
+            <CallerWatchStateFilterPicker value={callerWatchState} onChange={setCallerWatchState} />
           </>
         )}
         <GenreFilter value={genre} onChange={setGenre} />
