@@ -6,7 +6,7 @@ import { ApiError } from "@/api/client";
 import { LoadingState } from "@/components/LoadingState";
 import { ErrorState } from "@/components/ErrorState";
 import { NotFoundPage } from "./NotFoundPage";
-import { SafeHtml } from "@/components/SafeHtml";
+import { CollapsibleSummary } from "@/components/CollapsibleSummary";
 import { Badge } from "@/components/ui/badge";
 import { MyShowsToggle } from "@/components/MyShowsToggle";
 import { ShowWatchCheckbox } from "@/components/ShowWatchCheckbox";
@@ -65,7 +65,7 @@ export function ShowDetailPage() {
               </Badge>
             ))}
           </div>
-          <SafeHtml html={show.summary} className="prose prose-sm max-w-none pt-2" />
+          <CollapsibleSummary html={show.summary} className="prose prose-sm max-w-none pt-2" />
           {myEntry && myEntry.aired_episode_count > 0 ? (
             <div className="pt-2">
               <WatchProgressBar

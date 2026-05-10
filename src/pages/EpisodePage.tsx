@@ -5,7 +5,7 @@ import { ApiError } from "@/api/client";
 import { LoadingState } from "@/components/LoadingState";
 import { ErrorState } from "@/components/ErrorState";
 import { NotFoundPage } from "./NotFoundPage";
-import { SafeHtml } from "@/components/SafeHtml";
+import { CollapsibleSummary } from "@/components/CollapsibleSummary";
 import { EpisodeWatchCheckbox } from "@/components/EpisodeWatchCheckbox";
 import { EpisodeFriendsWatched } from "@/components/friends/FriendActivity";
 import { FilterSheet } from "@/components/home/FilterSheet";
@@ -180,7 +180,7 @@ export function EpisodePage() {
         ) : null}
         <div className="min-w-0 flex-1 space-y-3">
           {ep.summary ? (
-            <SafeHtml html={ep.summary} className="prose prose-sm max-w-none" />
+            <CollapsibleSummary html={ep.summary} className="prose prose-sm max-w-none" />
           ) : (
             <p className="text-sm text-muted-foreground">No summary available.</p>
           )}
