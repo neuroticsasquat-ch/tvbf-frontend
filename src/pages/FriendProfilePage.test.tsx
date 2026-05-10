@@ -1,7 +1,10 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
 import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { Route, Routes } from "react-router";
+import { http, HttpResponse } from "msw";
 import { renderWithProviders } from "@/test/renderWithProviders";
+import { server } from "@/test/msw/server";
+import { env } from "@/env";
 import { FriendProfilePage } from "./FriendProfilePage";
 import * as connectionsApi from "@/api/connections";
 import * as friendsApi from "@/api/friends";
@@ -172,6 +175,96 @@ describe("FriendProfilePage", () => {
     renderWithProviders(routed(), { route: `/users/${FRIEND_ID}` });
 
     await waitFor(() => expect(screen.getByText(/user not found/i)).toBeInTheDocument());
+  });
+
+  it("friend Active row shows green ✓ poster badge when caller has the show in their My Shows", async () => {
+    vi.spyOn(friendsApi, "getFriendShows").mockResolvedValue([
+      makeMyShow(41, "Severance"),
+      makeMyShow(42, "Lost"),
+    ]);
+    server.use(
+      http.get(`${env.apiBaseUrl}/me/shows`, () =>
+        HttpResponse.json([makeMyShow(41, "Severance")]),
+      ),
+    );
+
+    renderWithProviders(routed(), { route: `/users/${FRIEND_ID}` });
+
+    await waitFor(() => expect(screen.getByText("Severance")).toBeInTheDocument());
+    await waitFor(() => {
+      const badges = screen.queryAllByLabelText(/^in my shows$/i);
+      expect(badges).toHaveLength(1);
+    });
+    // Badge is a sibling of the Severance link (same row), not the Lost link.
+    const severanceLink = screen.getByText("Severance").closest("a");
+    expect(severanceLink?.parentElement).toBeTruthy();
+  });
+
+  it("friend Active row shows 'You: x/y' when caller has watched but show is NOT in caller's My Shows", async () => {
+    vi.spyOn(friendsApi, "getFriendShows").mockResolvedValue([makeMyShow(51, "Severance")]);
+    server.use(
+      // Caller's My Shows is empty.
+      http.get(`${env.apiBaseUrl}/me/shows`, () => HttpResponse.json([])),
+      // Caller has watched 3 of 9 episodes of show 51, but it's NOT in My Shows.
+      http.get(`${env.apiBaseUrl}/me/watched`, () =>
+        HttpResponse.json([
+          {
+            show: makeMyShow(51, "Severance").show,
+            watched_episode_count: 3,
+            aired_episode_count: 9,
+            total_episode_count: 9,
+            last_watched_at: "2026-04-15T00:00:00Z",
+            last_aired: "2026-04-10",
+            first_watched_at: "2026-03-01T00:00:00Z",
+            in_my_shows: false,
+            status: "in_progress",
+          },
+        ]),
+      ),
+    );
+
+    renderWithProviders(routed(), { route: `/users/${FRIEND_ID}` });
+
+    await waitFor(() => expect(screen.getByText("Severance")).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText(/^you:\s*3\/9$/i)).toBeInTheDocument());
+    // No green ✓ badge for this show — caller watches it but doesn't track it.
+    expect(screen.queryByLabelText(/^in my shows$/i)).not.toBeInTheDocument();
+  });
+
+  it("friend Active row shows BOTH green ✓ and 'You: x/y' when caller tracks AND has watched", async () => {
+    vi.spyOn(friendsApi, "getFriendShows").mockResolvedValue([makeMyShow(71, "Severance")]);
+    server.use(
+      // Caller tracks Severance and has watched 5/10 episodes.
+      http.get(`${env.apiBaseUrl}/me/shows`, () =>
+        HttpResponse.json([
+          {
+            ...makeMyShow(71, "Severance"),
+            watched_episode_count: 5,
+            aired_episode_count: 10,
+            total_episode_count: 10,
+          },
+        ]),
+      ),
+    );
+
+    renderWithProviders(routed(), { route: `/users/${FRIEND_ID}` });
+
+    await waitFor(() => expect(screen.getByText("Severance")).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByLabelText(/^in my shows$/i)).toBeInTheDocument());
+    expect(screen.getByText(/^you:\s*5\/10$/i)).toBeInTheDocument();
+  });
+
+  it("friend Active row renders no caller indicators when caller has no relationship", async () => {
+    vi.spyOn(friendsApi, "getFriendShows").mockResolvedValue([makeMyShow(61, "Severance")]);
+    // Default MSW handlers: /me/shows = [], no /me/watched override needed (we
+    // add an empty handler to suppress the missing-handler warning).
+    server.use(http.get(`${env.apiBaseUrl}/me/watched`, () => HttpResponse.json([])));
+
+    renderWithProviders(routed(), { route: `/users/${FRIEND_ID}` });
+
+    await waitFor(() => expect(screen.getByText("Severance")).toBeInTheDocument());
+    expect(screen.queryByLabelText(/^in my shows$/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/^you:/i)).not.toBeInTheDocument();
   });
 
   it("Watched tab Finished filter narrows rows client-side without refetching", async () => {

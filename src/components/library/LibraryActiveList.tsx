@@ -37,7 +37,8 @@ import {
   type LibrarySort,
 } from "@/components/home/librarySort";
 import { cn } from "@/lib/cn";
-import type { CallerLibrary } from "./callerLibrary";
+import { callerHasShow, type CallerLibrary } from "./callerLibrary";
+import { CallerPosterBadge, CallerProgressNote } from "./LibraryRowIndicators";
 
 // Disabled options on Active per NEU-121:
 // - In My Shows: "Not in My Shows" — every entry in this list IS in My Shows
@@ -152,7 +153,13 @@ export function LibraryActiveList({
       {!isLoading && filteredAndSorted && filteredAndSorted.length > 0 && view === "grid" && (
         <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-8">
           {filteredAndSorted.map((entry) => (
-            <MyShowCard key={entry.show.id} entry={entry} />
+            <MyShowCard
+              key={entry.show.id}
+              entry={entry}
+              inMyShows={
+                viewerContext === "friend" ? callerHasShow(callerLibrary, entry.show.id) : true
+              }
+            />
           ))}
         </div>
       )}
@@ -201,7 +208,11 @@ function ActiveRow({
 
   return (
     <li className="border border-border rounded p-3 flex items-start gap-3 sm:gap-4">
-      <Link to={`/shows/${entry.show.id}`} className="shrink-0" aria-label={entry.show.name}>
+      <Link
+        to={`/shows/${entry.show.id}`}
+        className="shrink-0 relative"
+        aria-label={entry.show.name}
+      >
         {entry.show.image_medium ? (
           <img
             src={entry.show.image_medium}
@@ -211,6 +222,11 @@ function ActiveRow({
         ) : (
           <div className="w-16 aspect-[210/295] rounded bg-muted" />
         )}
+        <CallerPosterBadge
+          showId={entry.show.id}
+          viewerContext={viewerContext}
+          callerLibrary={callerLibrary}
+        />
       </Link>
       <div className="flex-1 min-w-0 flex flex-col gap-2">
         <div className="flex items-baseline gap-2 flex-wrap">
@@ -276,7 +292,14 @@ function ActiveRow({
             )}
           </>
         )}
-        <div className="flex flex-wrap items-center justify-end gap-2 pt-1">{action}</div>
+        <div className="flex flex-wrap items-center justify-end gap-2 pt-1">
+          <CallerProgressNote
+            showId={entry.show.id}
+            viewerContext={viewerContext}
+            callerLibrary={callerLibrary}
+          />
+          {action}
+        </div>
       </div>
     </li>
   );
