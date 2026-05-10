@@ -1,9 +1,11 @@
-import { Eye, Tv, Tag, X } from "lucide-react";
+import { BookmarkCheck, Eye, Tv, Tag, X } from "lucide-react";
 import { useGenres } from "@/api/shows";
 import { FilterSheet } from "@/components/home/FilterSheet";
 import {
+  IN_MY_SHOWS_FILTERS,
   SHOW_STATUSES,
   WATCH_STATES,
+  type InMyShowsFilter,
   type ShowStatusFilter,
   type WatchState,
   genreOptions,
@@ -28,18 +30,54 @@ export function WatchStateFilter({
   value,
   onChange,
   options = WATCH_STATES,
+  disabledOptions,
 }: {
   value: WatchState;
   onChange: (next: WatchState) => void;
   options?: readonly { key: WatchState; label: string }[];
+  /** Map of option keys to disabled-reason tooltips. Disabled options render
+   * greyed out and unclickable. */
+  disabledOptions?: Partial<Record<WatchState, string>>;
 }) {
   const label = options.find((s) => s.key === value)?.label ?? "";
+  const optionsWithDisabled = options.map((o) => ({
+    ...o,
+    disabledReason: disabledOptions?.[o.key],
+  }));
   return (
     <FilterSheet
       title="Watch state"
       triggerLabel={`Watching: ${label}`}
       triggerIcon={<Eye className={ICON_CLS} aria-hidden />}
       ariaLabel={`Filter by watch state (current: ${label})`}
+      options={optionsWithDisabled}
+      value={value}
+      onChange={onChange}
+      active={value !== "all"}
+    />
+  );
+}
+
+export function InMyShowsFilterPicker({
+  value,
+  onChange,
+  disabledOptions,
+}: {
+  value: InMyShowsFilter;
+  onChange: (next: InMyShowsFilter) => void;
+  disabledOptions?: Partial<Record<InMyShowsFilter, string>>;
+}) {
+  const label = IN_MY_SHOWS_FILTERS.find((o) => o.key === value)?.label ?? "All";
+  const options = IN_MY_SHOWS_FILTERS.map((o) => ({
+    ...o,
+    disabledReason: disabledOptions?.[o.key],
+  }));
+  return (
+    <FilterSheet
+      title="My Shows membership"
+      triggerLabel={`My Shows: ${label}`}
+      triggerIcon={<BookmarkCheck className={ICON_CLS} aria-hidden />}
+      ariaLabel={`Filter by My Shows membership (current: ${label})`}
       options={options}
       value={value}
       onChange={onChange}

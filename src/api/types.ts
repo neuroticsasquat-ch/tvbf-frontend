@@ -170,6 +170,7 @@ export interface MyShowEntry {
   upcoming_episode_count: number;
   last_aired: string | null;
   last_watched_at: string | null;
+  first_watched_at: string | null;
   next_episode: EpisodeOut | null;
   added_at: string;
 }

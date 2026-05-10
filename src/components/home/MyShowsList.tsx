@@ -14,31 +14,37 @@ import { FilterSheet } from "@/components/home/FilterSheet";
 import {
   ClearFiltersButton,
   GenreFilter,
+  InMyShowsFilterPicker,
   ShowStatusFilterPicker,
   WatchStateFilter,
 } from "@/components/home/FilterPickers";
 import {
+  IN_MY_SHOWS_KEYS,
   SHOW_STATUS_KEYS,
   WATCH_STATE_KEYS,
+  libraryStatusFor,
   matchesGenre,
   matchesStatus,
   watchStateOf,
+  type InMyShowsFilter,
   type ShowStatusFilter,
   type WatchState,
 } from "@/components/home/filterTypes";
 import {
-  MY_SHOWS_SORTS,
-  MY_SHOWS_SORT_KEYS,
-  compareMyShowEntries,
-  type MyShowsTabSort,
-} from "@/components/home/myShowsSort";
+  LIBRARY_SORTS,
+  LIBRARY_SORT_KEYS,
+  compareLibraryEntries,
+  type LibrarySort,
+} from "@/components/home/librarySort";
+
+// Disabled options on Active per NEU-121:
+// - In My Shows: "Not in My Shows" — every entry in this list IS in My Shows.
+const DISABLED_IN_MY_SHOWS: Partial<Record<InMyShowsFilter, string>> = {
+  not_in: "All Active shows are in My Shows.",
+};
 
 export function MyShowsList() {
-  const [sort, setSort] = usePersistedSort<MyShowsTabSort>(
-    "my-shows",
-    MY_SHOWS_SORT_KEYS,
-    "name_asc",
-  );
+  const [sort, setSort] = usePersistedSort<LibrarySort>("my-shows", LIBRARY_SORT_KEYS, "name_asc");
   const [watchState, setWatchState] = usePersistedSort<WatchState>(
     "my-shows-watch-state",
     WATCH_STATE_KEYS,
@@ -47,6 +53,11 @@ export function MyShowsList() {
   const [status, setStatus] = usePersistedSort<ShowStatusFilter>(
     "my-shows-status",
     SHOW_STATUS_KEYS,
+    "all",
+  );
+  const [inMyShows, setInMyShows] = usePersistedSort<InMyShowsFilter>(
+    "my-shows-in-my-shows",
+    IN_MY_SHOWS_KEYS,
     "all",
   );
   const [genre, setGenre] = usePersistedString("my-shows-genre", "all");
@@ -59,10 +70,12 @@ export function MyShowsList() {
       .filter((e) => watchState === "all" || watchStateOf(e) === watchState)
       .filter((e) => matchesStatus(e.show, status))
       .filter((e) => matchesGenre(e.show, genre))
-      .sort((a, b) => compareMyShowEntries(a, b, sort));
+      .sort((a, b) => compareLibraryEntries(a, b, sort));
   }, [data, sort, watchState, status, genre]);
 
-  const sortLabel = MY_SHOWS_SORTS.find((s) => s.key === sort)?.label ?? "";
+  const sortLabel = LIBRARY_SORTS.find((s) => s.key === sort)?.label ?? "";
+  const filtersActive =
+    watchState !== "all" || status !== "all" || genre !== "all" || inMyShows !== "all";
 
   return (
     <div>
@@ -78,7 +91,7 @@ export function MyShowsList() {
             </>
           }
           ariaLabel={`Sort My Shows (current: ${sortLabel})`}
-          options={MY_SHOWS_SORTS}
+          options={LIBRARY_SORTS}
           value={sort}
           onChange={setSort}
         />
@@ -86,12 +99,18 @@ export function MyShowsList() {
       <div className="mb-4 flex flex-wrap items-center gap-2">
         <WatchStateFilter value={watchState} onChange={setWatchState} />
         <ShowStatusFilterPicker value={status} onChange={setStatus} />
+        <InMyShowsFilterPicker
+          value={inMyShows}
+          onChange={setInMyShows}
+          disabledOptions={DISABLED_IN_MY_SHOWS}
+        />
         <GenreFilter value={genre} onChange={setGenre} />
-        {(watchState !== "all" || status !== "all" || genre !== "all") && (
+        {filtersActive && (
           <ClearFiltersButton
             onClear={() => {
               setWatchState("all");
               setStatus("all");
+              setInMyShows("all");
               setGenre("all");
             }}
           />
@@ -139,12 +158,8 @@ function MyShowsRow({ entry }: { entry: MyShowEntry }) {
   const [removed, setRemoved] = useState(false);
   if (removed) return null;
 
-  // Mirrors the Watched view's "finished" predicate (NEU-101 decision 2):
-  // show is over AND user is fully caught up.
-  const isFinished =
-    entry.aired_episode_count > 0 &&
-    entry.watched_episode_count >= entry.aired_episode_count &&
-    (entry.show.status ?? "") === "Ended";
+  // Shared status helper: returns "finished", "caught_up", or null.
+  const status = libraryStatusFor(entry);
 
   function onRemove() {
     setRemoved(true);
@@ -155,11 +170,7 @@ function MyShowsRow({ entry }: { entry: MyShowEntry }) {
 
   return (
     <li className="border border-border rounded p-3 flex items-start gap-3 sm:gap-4">
-      <Link
-        to={`/shows/${entry.show.id}`}
-        className="shrink-0"
-        aria-label={entry.show.name}
-      >
+      <Link to={`/shows/${entry.show.id}`} className="shrink-0" aria-label={entry.show.name}>
         {entry.show.image_medium ? (
           <img
             src={entry.show.image_medium}
@@ -184,7 +195,7 @@ function MyShowsRow({ entry }: { entry: MyShowEntry }) {
             </span>
           )}
         </div>
-        {isFinished ? (
+        {status === "finished" ? (
           <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
             <span className="px-1.5 py-0.5 rounded border border-emerald-600 text-emerald-700">
               Finished
@@ -206,16 +217,21 @@ function MyShowsRow({ entry }: { entry: MyShowEntry }) {
               />
             )}
             <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
-              {entry.aired_episode_count > 0 && (
+              {status === "caught_up" ? (
+                <span className="px-1.5 py-0.5 rounded border border-emerald-600 text-emerald-700">
+                  Caught Up
+                </span>
+              ) : entry.aired_episode_count > 0 ? (
                 <span>
                   Progress: {entry.watched_episode_count}/{entry.aired_episode_count}
                 </span>
-              )}
-              {entry.aired_episode_count > 0 && entry.last_watched_at && (
-                <span aria-hidden className="text-muted-foreground/50">
-                  ·
-                </span>
-              )}
+              ) : null}
+              {(status === "caught_up" || entry.aired_episode_count > 0) &&
+                entry.last_watched_at && (
+                  <span aria-hidden className="text-muted-foreground/50">
+                    ·
+                  </span>
+                )}
               {entry.last_watched_at && (
                 <span className="whitespace-nowrap">
                   Last Watched: {formatDate(entry.last_watched_at)}
