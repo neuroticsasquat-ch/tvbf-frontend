@@ -43,6 +43,16 @@ describe("matchesStatus", () => {
     expect(matchesStatus(showWith("To Be Determined"), "upcoming")).toBe(false);
   });
 
+  it("'tbd' matches To Be Determined", () => {
+    expect(matchesStatus(showWith("To Be Determined"), "tbd")).toBe(true);
+  });
+
+  it("'tbd' does NOT match In Development, Running, or Ended", () => {
+    expect(matchesStatus(showWith("In Development"), "tbd")).toBe(false);
+    expect(matchesStatus(showWith("Running"), "tbd")).toBe(false);
+    expect(matchesStatus(showWith("Ended"), "tbd")).toBe(false);
+  });
+
   it("'upcoming' does NOT match Running or Ended", () => {
     expect(matchesStatus(showWith("Running"), "upcoming")).toBe(false);
     expect(matchesStatus(showWith("Ended"), "upcoming")).toBe(false);

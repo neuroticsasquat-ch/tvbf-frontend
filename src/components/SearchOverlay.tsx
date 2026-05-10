@@ -33,6 +33,7 @@ const STATUS_API_VALUE: Record<ShowStatusFilter, string | undefined> = {
   running: "Running",
   ended: "Ended",
   upcoming: "In Development",
+  tbd: "To Be Determined",
 };
 
 const PER_PAGE = 50;
