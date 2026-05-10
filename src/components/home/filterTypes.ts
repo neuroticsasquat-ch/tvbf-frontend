@@ -1,7 +1,7 @@
 import type { ShowSummary } from "@/api/types";
 
 export type WatchState = "all" | "watching" | "not_started" | "watched";
-export type ShowStatusFilter = "all" | "running" | "ended";
+export type ShowStatusFilter = "all" | "running" | "ended" | "upcoming";
 
 export const WATCH_STATES: { key: WatchState; label: string }[] = [
   { key: "all", label: "All" },
@@ -18,6 +18,7 @@ export const SHOW_STATUSES: { key: ShowStatusFilter; label: string }[] = [
   { key: "all", label: "All" },
   { key: "running", label: "Running" },
   { key: "ended", label: "Ended" },
+  { key: "upcoming", label: "Upcoming" },
 ];
 export const SHOW_STATUS_KEYS = SHOW_STATUSES.map((s) => s.key);
 
@@ -41,7 +42,12 @@ export function watchStateOf(entry: WatchStateInput): Exclude<WatchState, "all">
 
 export function matchesStatus(show: ShowSummary, filter: ShowStatusFilter): boolean {
   if (filter === "all") return true;
-  return (show.status?.toLowerCase() ?? "") === filter;
+  const showStatus = (show.status ?? "").toLowerCase();
+  // "Upcoming" maps to TVMaze's "In Development" status (not yet airing).
+  // "To Be Determined" is intentionally excluded — it covers shows already
+  // airing whose renewal/cancellation is unsettled, not pre-air shows.
+  if (filter === "upcoming") return showStatus === "in development";
+  return showStatus === filter;
 }
 
 export function matchesGenre(show: ShowSummary, genre: string): boolean {
