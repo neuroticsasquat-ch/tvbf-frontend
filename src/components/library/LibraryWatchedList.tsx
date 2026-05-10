@@ -38,7 +38,8 @@ import { usePersistedSort } from "@/hooks/usePersistedSort";
 import { usePersistedString } from "@/hooks/usePersistedString";
 import { usePersistedView } from "@/hooks/usePersistedView";
 import { cn } from "@/lib/cn";
-import type { CallerLibrary, ViewerContext } from "./LibraryActiveList";
+import type { CallerLibrary } from "./callerLibrary";
+import type { ViewerContext } from "./LibraryActiveList";
 
 // Disabled options on All Watched per NEU-121:
 // - Watch State: "Not Started" — every entry has at least one watched episode.
@@ -68,37 +69,46 @@ interface Props {
   isLoading: boolean;
   isError?: boolean;
   /** Whose library this is. Drives action-button shape, indicator visibility,
-   * and whether the Watch History trash button is shown. Only "self" is wired
-   * in this PR; "friend" wiring lands in NEU-127. */
+   * and whether the Watch History trash button is shown. */
   viewerContext?: ViewerContext;
-  /** Caller's own library, used to compute my-relationship indicators/filter
-   * when viewerContext === "friend". Reserved for NEU-120c/d. */
+  /** Caller's own library, used by friend mode to drive the action button (NEU-127)
+   * and downstream by my-relationship indicators (NEU-128) and filter (NEU-129). */
   callerLibrary?: CallerLibrary;
+  /** localStorage key namespace. Defaults to `"watched"` so existing self-library
+   * prefs keep working. Friend variants pass e.g. `"friend-watched"`. */
+  storagePrefix?: string;
 }
 
-export function LibraryWatchedList({ data, isLoading, isError, viewerContext = "self" }: Props) {
+export function LibraryWatchedList({
+  data,
+  isLoading,
+  isError,
+  viewerContext = "self",
+  callerLibrary,
+  storagePrefix = "watched",
+}: Props) {
   const [sort, setSort] = usePersistedSort<LibrarySort>(
-    "watched-sort",
+    `${storagePrefix}-sort`,
     LIBRARY_SORT_KEYS,
     "last_watched_desc",
   );
   const [watchState, setWatchState] = usePersistedSort<WatchState>(
-    "watched-watch-state",
+    `${storagePrefix}-watch-state`,
     WATCH_STATE_KEYS,
     "all",
   );
   const [showStatus, setShowStatus] = usePersistedSort<ShowStatusFilter>(
-    "watched-show-status",
+    `${storagePrefix}-show-status`,
     SHOW_STATUS_KEYS,
     "all",
   );
   const [inMyShows, setInMyShows] = usePersistedSort<InMyShowsFilter>(
-    "watched-in-my-shows",
+    `${storagePrefix}-in-my-shows`,
     IN_MY_SHOWS_KEYS,
     "all",
   );
-  const [genre, setGenre] = usePersistedString("watched-genre", "all");
-  const [view, setView] = usePersistedView("watched", "list");
+  const [genre, setGenre] = usePersistedString(`${storagePrefix}-genre`, "all");
+  const [view, setView] = usePersistedView(storagePrefix, "list");
 
   const filteredAndSorted = useMemo(() => {
     if (!data) return data;
@@ -180,7 +190,11 @@ export function LibraryWatchedList({ data, isLoading, isError, viewerContext = "
               <MyShowCard
                 key={entry.show.id}
                 entry={watchedToMyShowEntry(entry)}
-                inMyShows={entry.in_my_shows}
+                inMyShows={
+                  viewerContext === "friend"
+                    ? (callerLibrary?.get(entry.show.id)?.in_my_shows ?? false)
+                    : entry.in_my_shows
+                }
               />
             ))}
           </div>
@@ -192,7 +206,12 @@ export function LibraryWatchedList({ data, isLoading, isError, viewerContext = "
         view === "list" && (
           <ul className="space-y-3">
             {filteredAndSorted.map((entry) => (
-              <WatchedRow key={entry.show.id} entry={entry} viewerContext={viewerContext} />
+              <WatchedRow
+                key={entry.show.id}
+                entry={entry}
+                viewerContext={viewerContext}
+                callerLibrary={callerLibrary}
+              />
             ))}
           </ul>
         )}
@@ -222,17 +241,27 @@ function watchedToMyShowEntry(e: WatchedEntry): MyShowEntry {
 function WatchedRow({
   entry,
   viewerContext,
+  callerLibrary,
 }: {
   entry: WatchedEntry;
   viewerContext: ViewerContext;
+  callerLibrary?: CallerLibrary;
 }) {
+  // For self, `entry.in_my_shows` is the caller's relationship. For friend, the
+  // friend endpoint reports the friend's relationship there — drive the button
+  // off `callerLibrary` instead.
+  const upstream =
+    viewerContext === "friend"
+      ? (callerLibrary?.get(entry.show.id)?.in_my_shows ?? false)
+      : entry.in_my_shows;
+
   const [override, setOverride] = useState<boolean | null>(null);
-  const [lastUpstream, setLastUpstream] = useState(entry.in_my_shows);
-  if (lastUpstream !== entry.in_my_shows) {
-    setLastUpstream(entry.in_my_shows);
+  const [lastUpstream, setLastUpstream] = useState(upstream);
+  if (lastUpstream !== upstream) {
+    setLastUpstream(upstream);
     setOverride(null);
   }
-  const inMyShows = override ?? entry.in_my_shows;
+  const inMyShows = override ?? upstream;
 
   const add = useAddShow();
   const remove = useRemoveShow();
