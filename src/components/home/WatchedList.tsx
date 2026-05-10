@@ -1,44 +1,58 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Link } from "react-router";
 import { ArrowDown, ArrowUp, Check, Plus, Trash2 } from "lucide-react";
-import {
-  useAddShow,
-  useMyWatched,
-  useRemoveFromHistory,
-  useRemoveShow,
-} from "@/api/me";
-import type { WatchedEntry, WatchedSort, WatchedStatusFilter } from "@/api/types";
+import { useAddShow, useMyWatched, useRemoveFromHistory, useRemoveShow } from "@/api/me";
+import type { MyShowEntry, WatchedEntry } from "@/api/types";
 import { ConfirmDialog } from "@/components/connections/ConfirmDialog";
 import { Button } from "@/components/ui/button";
+import { ViewToggle } from "@/components/ViewToggle";
+import { MyShowCard } from "@/components/MyShowCard";
 import { WatchProgressBar } from "@/components/WatchProgressBar";
 import { FilterSheet } from "@/components/home/FilterSheet";
+import {
+  ClearFiltersButton,
+  GenreFilter,
+  InMyShowsFilterPicker,
+  ShowStatusFilterPicker,
+  WatchStateFilter,
+} from "@/components/home/FilterPickers";
+import {
+  IN_MY_SHOWS_KEYS,
+  SHOW_STATUS_KEYS,
+  WATCH_STATE_KEYS,
+  libraryStatusFor,
+  matchesGenre,
+  matchesStatus,
+  watchStateOf,
+  type InMyShowsFilter,
+  type ShowStatusFilter,
+  type WatchState,
+} from "@/components/home/filterTypes";
+import {
+  LIBRARY_SORTS,
+  LIBRARY_SORT_KEYS,
+  compareLibraryEntries,
+  type LibrarySort,
+} from "@/components/home/librarySort";
 import { usePersistedSort } from "@/hooks/usePersistedSort";
+import { usePersistedString } from "@/hooks/usePersistedString";
+import { usePersistedView } from "@/hooks/usePersistedView";
+import { cn } from "@/lib/cn";
 
-const STATUS_FILTERS: { key: WatchedStatusFilter; label: string }[] = [
-  { key: "all", label: "All" },
-  { key: "finished", label: "Finished" },
-  { key: "in_progress", label: "In progress" },
-];
-const STATUS_KEYS = STATUS_FILTERS.map((f) => f.key);
-
-// Mirrors MY_SHOWS_SORTS so Active and Watched offer the same options.
-// "Recently Added" on Watched maps to first-watched-date (NEU-114 decision).
-const SORTS: { key: WatchedSort; label: string }[] = [
-  { key: "name_asc", label: "Show Title" },
-  { key: "last_watched_desc", label: "Last Watched" },
-  { key: "last_aired_desc", label: "Last Aired" },
-  { key: "premiered_asc", label: "Premiered First" },
-  { key: "premiered_desc", label: "Premiered Last" },
-  { key: "first_watched_desc", label: "Recently Added" },
-];
-const SORT_KEYS = SORTS.map((s) => s.key);
+// Disabled options on All Watched per NEU-121:
+// - Watch State: "Not Started" — every entry has at least one watched episode.
+// - Sort: "Recently Added" — added_at not exposed on WatchedEntry.
+const DISABLED_WATCH_STATES: Partial<Record<WatchState, string>> = {
+  not_started: "All shows in watch history have at least one watched episode.",
+};
+const DISABLED_SORTS: Partial<Record<LibrarySort, string>> = {
+  added_desc: "Available on the Active tab.",
+};
 
 function formatDate(iso: string | null): string {
   if (!iso) return "";
   const d = new Date(iso);
   if (Number.isNaN(d.valueOf())) return "";
-  // Include the year when the date is more than ~6 months old, so "Last
-  // Watched" stays unambiguous regardless of calendar-year boundary.
   const ageDays = (Date.now() - d.getTime()) / 86_400_000;
   const includeYear = ageDays > 180;
   return d.toLocaleDateString(undefined, {
@@ -49,36 +63,53 @@ function formatDate(iso: string | null): string {
 }
 
 export function WatchedList({ enabled = true }: { enabled?: boolean }) {
-  const [status, setStatus] = usePersistedSort<WatchedStatusFilter>(
-    "watched-status",
-    STATUS_KEYS,
-    "all",
-  );
-  const [sort, setSort] = usePersistedSort<WatchedSort>(
+  const [sort, setSort] = usePersistedSort<LibrarySort>(
     "watched-sort",
-    SORT_KEYS,
+    LIBRARY_SORT_KEYS,
     "last_watched_desc",
   );
+  const [watchState, setWatchState] = usePersistedSort<WatchState>(
+    "watched-watch-state",
+    WATCH_STATE_KEYS,
+    "all",
+  );
+  const [showStatus, setShowStatus] = usePersistedSort<ShowStatusFilter>(
+    "watched-show-status",
+    SHOW_STATUS_KEYS,
+    "all",
+  );
+  const [inMyShows, setInMyShows] = usePersistedSort<InMyShowsFilter>(
+    "watched-in-my-shows",
+    IN_MY_SHOWS_KEYS,
+    "all",
+  );
+  const [genre, setGenre] = usePersistedString("watched-genre", "all");
+  const [view, setView] = usePersistedView("watched", "list");
 
-  const { data, isLoading, isError } = useMyWatched(status, sort, enabled);
-  const sortLabel = SORTS.find((s) => s.key === sort)?.label ?? "";
+  const { data, isLoading, isError } = useMyWatched(enabled);
+
+  const filteredAndSorted = useMemo(() => {
+    if (!data) return data;
+    return data
+      .filter((e) => watchState === "all" || watchStateOf(e) === watchState)
+      .filter((e) => matchesStatus(e.show, showStatus))
+      .filter((e) => matchesGenre(e.show, genre))
+      .filter((e) => {
+        if (inMyShows === "all") return true;
+        if (inMyShows === "in") return e.in_my_shows;
+        return !e.in_my_shows;
+      })
+      .sort((a, b) => compareLibraryEntries(a, b, sort));
+  }, [data, sort, watchState, showStatus, genre, inMyShows]);
+
+  const sortLabel = LIBRARY_SORTS.find((s) => s.key === sort)?.label ?? "";
+  const filtersActive =
+    watchState !== "all" || showStatus !== "all" || genre !== "all" || inMyShows !== "all";
 
   return (
-    <div className="flex flex-col gap-3">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <div className="flex flex-wrap gap-2">
-          {STATUS_FILTERS.map((f) => (
-            <Button
-              key={f.key}
-              type="button"
-              size="sm"
-              variant={status === f.key ? "default" : "outline"}
-              onClick={() => setStatus(f.key)}
-            >
-              {f.label}
-            </Button>
-          ))}
-        </div>
+    <div>
+      <div className="flex flex-wrap items-center gap-2 mb-4">
+        <ViewToggle value={view} onChange={setView} ariaLabel="Watched display" />
         <FilterSheet
           title="Sort Watched"
           triggerLabel={sortLabel}
@@ -89,38 +120,94 @@ export function WatchedList({ enabled = true }: { enabled?: boolean }) {
             </>
           }
           ariaLabel={`Sort Watched (current: ${sortLabel})`}
-          options={SORTS}
+          options={LIBRARY_SORTS.map((o) => ({
+            ...o,
+            disabledReason: DISABLED_SORTS[o.key],
+          }))}
           value={sort}
           onChange={setSort}
         />
       </div>
+      <div className="mb-4 flex flex-wrap items-center gap-2">
+        <WatchStateFilter
+          value={watchState}
+          onChange={setWatchState}
+          disabledOptions={DISABLED_WATCH_STATES}
+        />
+        <ShowStatusFilterPicker value={showStatus} onChange={setShowStatus} />
+        <InMyShowsFilterPicker value={inMyShows} onChange={setInMyShows} />
+        <GenreFilter value={genre} onChange={setGenre} />
+        {filtersActive && (
+          <ClearFiltersButton
+            onClear={() => {
+              setWatchState("all");
+              setShowStatus("all");
+              setInMyShows("all");
+              setGenre("all");
+            }}
+          />
+        )}
+      </div>
 
       {isLoading && <p className="text-sm text-muted-foreground">Loading…</p>}
       {isError && <p className="text-sm text-destructive">Failed to load watch history.</p>}
-      {!isLoading && !isError && data && data.length === 0 && (
+      {!isLoading && !isError && filteredAndSorted && filteredAndSorted.length === 0 && (
         <p className="text-sm text-muted-foreground">
-          {status === "finished"
-            ? "Nothing finished yet."
-            : status === "in_progress"
-              ? "Nothing in progress."
-              : "No watch history."}
+          {data && data.length === 0
+            ? "No watch history yet."
+            : "No matches in your watch history."}
         </p>
       )}
-      {!isLoading && !isError && data && data.length > 0 && (
-        <ul className="space-y-3">
-          {data.map((entry) => (
-            <WatchedRow key={entry.show.id} entry={entry} />
-          ))}
-        </ul>
-      )}
+      {!isLoading &&
+        !isError &&
+        filteredAndSorted &&
+        filteredAndSorted.length > 0 &&
+        view === "grid" && (
+          <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-8">
+            {filteredAndSorted.map((entry) => (
+              <MyShowCard
+                key={entry.show.id}
+                entry={watchedToMyShowEntry(entry)}
+                inMyShows={entry.in_my_shows}
+              />
+            ))}
+          </div>
+        )}
+      {!isLoading &&
+        !isError &&
+        filteredAndSorted &&
+        filteredAndSorted.length > 0 &&
+        view === "list" && (
+          <ul className="space-y-3">
+            {filteredAndSorted.map((entry) => (
+              <WatchedRow key={entry.show.id} entry={entry} />
+            ))}
+          </ul>
+        )}
     </div>
   );
 }
 
+/** Adapter so the existing `MyShowCard` (built for MyShowEntry) can render
+ * WatchedEntry rows in grid view. The card only reads `show`, the watched/aired
+ * counts, and `upcoming_episode_count` — which we derive. */
+function watchedToMyShowEntry(e: WatchedEntry): MyShowEntry {
+  const upcoming = Math.max(0, e.total_episode_count - e.aired_episode_count);
+  return {
+    show: e.show,
+    watched_episode_count: e.watched_episode_count,
+    total_episode_count: e.total_episode_count,
+    aired_episode_count: e.aired_episode_count,
+    upcoming_episode_count: upcoming,
+    last_aired: e.last_aired,
+    last_watched_at: e.last_watched_at,
+    first_watched_at: e.first_watched_at,
+    next_episode: null,
+    added_at: e.first_watched_at ?? new Date(0).toISOString(),
+  };
+}
+
 function WatchedRow({ entry }: { entry: WatchedEntry }) {
-  // Local override for optimistic toggle. Reset during render when the
-  // upstream value changes (refetch lands) so the badge re-syncs with server
-  // truth — the derived-state-reset pattern from React docs.
   const [override, setOverride] = useState<boolean | null>(null);
   const [lastUpstream, setLastUpstream] = useState(entry.in_my_shows);
   if (lastUpstream !== entry.in_my_shows) {
@@ -133,6 +220,9 @@ function WatchedRow({ entry }: { entry: WatchedEntry }) {
   const remove = useRemoveShow();
   const removeHistory = useRemoveFromHistory();
   const [confirmingRemoveHistory, setConfirmingRemoveHistory] = useState(false);
+
+  const status = libraryStatusFor(entry);
+  const upcoming = Math.max(0, entry.total_episode_count - entry.aired_episode_count);
 
   function onAdd() {
     setOverride(true);
@@ -174,18 +264,22 @@ function WatchedRow({ entry }: { entry: WatchedEntry }) {
             </span>
           )}
         </div>
-        {entry.status !== "finished" && entry.aired_episode_count > 0 && (
+        {status !== "finished" && entry.aired_episode_count > 0 && (
           <WatchProgressBar
             watched={entry.watched_episode_count}
             aired={entry.aired_episode_count}
-            upcoming={entry.total_episode_count - entry.aired_episode_count}
+            upcoming={upcoming}
             barOnly
           />
         )}
         <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
-          {entry.status === "finished" ? (
+          {status === "finished" ? (
             <span className="px-1.5 py-0.5 rounded border border-emerald-600 text-emerald-700">
               Finished
+            </span>
+          ) : status === "caught_up" ? (
+            <span className="px-1.5 py-0.5 rounded border border-emerald-600 text-emerald-700">
+              Caught Up
             </span>
           ) : (
             <span>
@@ -203,13 +297,9 @@ function WatchedRow({ entry }: { entry: WatchedEntry }) {
             </span>
           )}
         </div>
-        {entry.status !== "finished" &&
-          entry.total_episode_count - entry.aired_episode_count > 0 && (
-            <p className="text-xs text-muted-foreground">
-              {entry.total_episode_count - entry.aired_episode_count} upcoming
-            </p>
-          )}
-        {/* Action row: icon-only on mobile, full labels at sm+. */}
+        {status !== "finished" && upcoming > 0 && (
+          <p className="text-xs text-muted-foreground">{upcoming} upcoming</p>
+        )}
         <div className="flex flex-wrap items-center justify-end gap-2 pt-1">
           {inMyShows ? (
             <Button
@@ -219,7 +309,11 @@ function WatchedRow({ entry }: { entry: WatchedEntry }) {
               onClick={onRemove}
               disabled={remove.isPending}
               aria-label="Remove from My Shows"
-              className="h-7 px-2 gap-1 text-xs border-emerald-600 text-emerald-700 hover:bg-emerald-50 dark:text-emerald-400 dark:hover:bg-emerald-950/40"
+              className={cn(
+                "h-7 px-2 gap-1 text-xs",
+                "border-emerald-600 text-emerald-700 hover:bg-emerald-50",
+                "dark:text-emerald-400 dark:hover:bg-emerald-950/40",
+              )}
             >
               <Check className="h-3.5 w-3.5" aria-hidden />
               My Shows
@@ -267,4 +361,3 @@ function WatchedRow({ entry }: { entry: WatchedEntry }) {
     </li>
   );
 }
-

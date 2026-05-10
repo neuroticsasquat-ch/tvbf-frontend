@@ -30,6 +30,7 @@ function makeMyShow(showId: number, name: string): MyShowEntry {
     upcoming_episode_count: 0,
     last_aired: null,
     last_watched_at: null,
+    first_watched_at: null,
     next_episode: null,
     added_at: "2026-04-01T00:00:00Z",
   };
@@ -106,16 +107,16 @@ describe("MyShowsPage", () => {
     await waitFor(() => expect(screen.getByText("The Wire")).toBeInTheDocument());
   });
 
-  it("Watched tab status filter re-fetches with the new status param", async () => {
+  it("Watched tab fetches /me/watched without status query param", async () => {
+    // Sorting and filtering moved client-side (NEU-123); the URL no longer
+    // carries a `status` param.
     renderWithProviders(<MyShowsPage />);
     fireEvent.click(await screen.findByRole("tab", { name: /watched/i }));
     await waitFor(() => expect(watchedCalls.length).toBeGreaterThan(0));
 
-    fireEvent.click(screen.getByRole("button", { name: /^finished$/i }));
-    await waitFor(() => {
-      const last = watchedCalls.at(-1);
-      expect(last?.searchParams.get("status")).toBe("finished");
-    });
+    const last = watchedCalls.at(-1);
+    expect(last?.searchParams.get("status")).toBeNull();
+    expect(last?.searchParams.get("sort")).toBeNull();
   });
 
   it("renders the Watched empty-state when no rows", async () => {
@@ -123,35 +124,6 @@ describe("MyShowsPage", () => {
     fireEvent.click(await screen.findByRole("tab", { name: /watched/i }));
 
     await waitFor(() => expect(screen.getByText(/no watch history/i)).toBeInTheDocument());
-  });
-
-  it("Watched sort 'Last Aired' issues ?sort=last_aired_desc", async () => {
-    renderWithProviders(<MyShowsPage />);
-    fireEvent.click(await screen.findByRole("tab", { name: /watched/i }));
-    await waitFor(() => expect(watchedCalls.length).toBeGreaterThan(0));
-
-    // The sort picker is a FilterSheet trigger labeled with the current sort.
-    fireEvent.click(screen.getByRole("button", { name: /sort watched/i }));
-    fireEvent.click(await screen.findByRole("button", { name: /^last aired$/i }));
-
-    await waitFor(() => {
-      const last = watchedCalls.at(-1);
-      expect(last?.searchParams.get("sort")).toBe("last_aired_desc");
-    });
-  });
-
-  it("Watched sort 'Recently Added' issues ?sort=first_watched_desc", async () => {
-    renderWithProviders(<MyShowsPage />);
-    fireEvent.click(await screen.findByRole("tab", { name: /watched/i }));
-    await waitFor(() => expect(watchedCalls.length).toBeGreaterThan(0));
-
-    fireEvent.click(screen.getByRole("button", { name: /sort watched/i }));
-    fireEvent.click(await screen.findByRole("button", { name: /^recently added$/i }));
-
-    await waitFor(() => {
-      const last = watchedCalls.at(-1);
-      expect(last?.searchParams.get("sort")).toBe("first_watched_desc");
-    });
   });
 
   it("Active tab still renders existing My Shows list", async () => {

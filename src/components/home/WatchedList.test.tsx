@@ -76,7 +76,9 @@ describe("WatchedList row UI", () => {
     // The "In progress" filter button still exists in the toolbar but the row
     // itself no longer renders that label as a pill.
     expect(
-      screen.queryByText((_text, el) => el?.tagName === "SPAN" && el?.textContent === "In progress"),
+      screen.queryByText(
+        (_text, el) => el?.tagName === "SPAN" && el?.textContent === "In progress",
+      ),
     ).not.toBeInTheDocument();
     // Last-watched relative date — locale-formatted, contains "Apr".
     expect(screen.getByText(/last watched:.*apr/i)).toBeInTheDocument();
@@ -107,25 +109,17 @@ describe("WatchedList row UI", () => {
     renderWithProviders(<WatchedList />);
 
     await waitFor(() => expect(screen.getByText("Severance")).toBeInTheDocument());
-    expect(
-      screen.getByRole("button", { name: /add to my shows/i }),
-    ).toBeInTheDocument();
-    expect(
-      screen.queryByRole("button", { name: /remove from my shows/i }),
-    ).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /add to my shows/i })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /remove from my shows/i })).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: /add to my shows/i }));
 
     await waitFor(() => expect(addCalls).toEqual([103]));
     // Optimistic toggle: the button is the membership indicator now.
     await waitFor(() =>
-      expect(
-        screen.getByRole("button", { name: /remove from my shows/i }),
-      ).toBeInTheDocument(),
+      expect(screen.getByRole("button", { name: /remove from my shows/i })).toBeInTheDocument(),
     );
-    expect(
-      screen.queryByRole("button", { name: /add to my shows/i }),
-    ).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /add to my shows/i })).not.toBeInTheDocument();
   });
 
   it("renders Remove button when in My Shows; clicking flips it to Add", async () => {
@@ -133,21 +127,15 @@ describe("WatchedList row UI", () => {
     renderWithProviders(<WatchedList />);
 
     await waitFor(() => expect(screen.getByText("The Sopranos")).toBeInTheDocument());
-    expect(
-      screen.getByRole("button", { name: /remove from my shows/i }),
-    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /remove from my shows/i })).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: /remove from my shows/i }));
 
     await waitFor(() => expect(removeCalls).toEqual([104]));
     await waitFor(() =>
-      expect(
-        screen.getByRole("button", { name: /add to my shows/i }),
-      ).toBeInTheDocument(),
+      expect(screen.getByRole("button", { name: /add to my shows/i })).toBeInTheDocument(),
     );
-    expect(
-      screen.queryByRole("button", { name: /remove from my shows/i }),
-    ).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /remove from my shows/i })).not.toBeInTheDocument();
   });
 
   it("Remove from history opens a confirm dialog and calls the API on confirm", async () => {

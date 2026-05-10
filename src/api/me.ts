@@ -10,8 +10,6 @@ import type {
   UpcomingEntry,
   UpcomingSort,
   WatchedEntry,
-  WatchedSort,
-  WatchedStatusFilter,
   WatchNextEntry,
 } from "./types";
 
@@ -57,22 +55,17 @@ export function useUpcoming(sort: UpcomingSort = "airdate_asc") {
   });
 }
 
-export function fetchMyWatched(opts: {
-  status: WatchedStatusFilter;
-  sort: WatchedSort;
-}): Promise<WatchedEntry[]> {
-  const params = new URLSearchParams({ status: opts.status, sort: opts.sort });
-  return apiFetch<WatchedEntry[]>(`/me/watched?${params.toString()}`);
+/** Fetch the full watched-history list for the caller. Filtering and sorting
+ * happen client-side (matches the Active tab pattern). The backend's `status`
+ * and `sort` params still exist for API consumers but the UI ignores them. */
+export function fetchMyWatched(): Promise<WatchedEntry[]> {
+  return apiFetch<WatchedEntry[]>(`/me/watched`);
 }
 
-export function useMyWatched(
-  status: WatchedStatusFilter = "all",
-  sort: WatchedSort = "last_watched_desc",
-  enabled = true,
-) {
+export function useMyWatched(enabled = true) {
   return useQuery<WatchedEntry[]>({
-    queryKey: ["my-watched", status, sort],
-    queryFn: () => fetchMyWatched({ status, sort }),
+    queryKey: ["my-watched"],
+    queryFn: fetchMyWatched,
     enabled,
   });
 }
@@ -135,6 +128,7 @@ function placeholderMyShowEntry(showId: number): MyShowEntry {
     upcoming_episode_count: 0,
     last_aired: null,
     last_watched_at: null,
+    first_watched_at: null,
     next_episode: null,
     added_at: new Date().toISOString(),
   };

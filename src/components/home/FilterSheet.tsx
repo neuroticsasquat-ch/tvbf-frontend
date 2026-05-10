@@ -3,7 +3,13 @@ import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { Check } from "lucide-react";
 import { cn } from "@/lib/cn";
 
-type Option<T extends string> = { key: T; label: string };
+type Option<T extends string> = {
+  key: T;
+  label: string;
+  /** When set, the option is rendered greyed out and unclickable. The value is
+   * shown as a tooltip via `title=` so users can read why. */
+  disabledReason?: string;
+};
 
 export function FilterSheet<T extends string>({
   title,
@@ -58,24 +64,32 @@ export function FilterSheet<T extends string>({
           </DialogPrimitive.Title>
           <ul className="flex flex-col flex-1 overflow-y-auto">
             {options.map((opt) => {
-              const active = opt.key === value;
+              const isActive = opt.key === value;
+              const disabled = !!opt.disabledReason;
               return (
                 <li key={opt.key}>
                   <button
                     type="button"
+                    disabled={disabled}
+                    title={opt.disabledReason}
                     onClick={() => {
+                      if (disabled) return;
                       onChange(opt.key);
                       setOpen(false);
                     }}
                     className={cn(
-                      "w-full flex items-center gap-2 text-left rounded px-3 py-3 text-sm hover:bg-accent",
-                      active && "font-semibold",
+                      "w-full flex items-center gap-2 text-left rounded px-3 py-3 text-sm",
+                      disabled ? "text-muted-foreground/60 cursor-not-allowed" : "hover:bg-accent",
+                      isActive && "font-semibold",
                     )}
                   >
                     <span className="w-4 inline-flex justify-center">
-                      {active && <Check className="h-4 w-4" aria-hidden />}
+                      {isActive && <Check className="h-4 w-4" aria-hidden />}
                     </span>
                     <span>{opt.label}</span>
+                    {disabled && (
+                      <span className="ml-auto text-xs text-muted-foreground/60">n/a</span>
+                    )}
                   </button>
                 </li>
               );
