@@ -103,10 +103,7 @@ export function UpcomingShowsList() {
       {!isLoading && filtered && filtered.length > 0 && (
         <ul className="space-y-3">
           {filtered.map((entry) => (
-            <li
-              key={entry.show.id}
-              className="border border-border rounded p-3 hover:bg-accent"
-            >
+            <li key={entry.show.id} className="border border-border rounded p-3 hover:bg-accent">
               <Link
                 to={`/shows/${entry.show.id}`}
                 className="flex min-w-0 flex-1 items-center gap-4"

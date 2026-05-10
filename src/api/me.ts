@@ -79,9 +79,7 @@ export function fetchUpcomingShows(opts: {
   sort: UpcomingSort;
   today: string;
 }): Promise<UpcomingShowEntry[]> {
-  return apiFetch<UpcomingShowEntry[]>(
-    `/me/upcoming/shows?sort=${opts.sort}&today=${opts.today}`,
-  );
+  return apiFetch<UpcomingShowEntry[]>(`/me/upcoming/shows?sort=${opts.sort}&today=${opts.today}`);
 }
 
 export function useUpcomingShows(sort: UpcomingSort = "airdate_asc", enabled = true) {

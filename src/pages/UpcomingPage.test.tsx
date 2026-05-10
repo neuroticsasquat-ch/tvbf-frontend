@@ -102,10 +102,7 @@ describe("UpcomingPage", () => {
       "aria-selected",
       "false",
     );
-    expect(screen.getByRole("tab", { name: /^shows$/i })).toHaveAttribute(
-      "aria-selected",
-      "false",
-    );
+    expect(screen.getByRole("tab", { name: /^shows$/i })).toHaveAttribute("aria-selected", "false");
   });
 
   it("does not fetch seasons or shows until their tabs are clicked", async () => {
