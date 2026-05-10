@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router";
 import { ArrowDown, ArrowUp, Check, Plus, Trash2 } from "lucide-react";
-import { useAddShow, useMyWatched, useRemoveFromHistory, useRemoveShow } from "@/api/me";
+import { useAddShow, useRemoveFromHistory, useRemoveShow } from "@/api/me";
 import type { MyShowEntry, WatchedEntry } from "@/api/types";
 import { ConfirmDialog } from "@/components/connections/ConfirmDialog";
 import { Button } from "@/components/ui/button";
@@ -38,6 +38,7 @@ import { usePersistedSort } from "@/hooks/usePersistedSort";
 import { usePersistedString } from "@/hooks/usePersistedString";
 import { usePersistedView } from "@/hooks/usePersistedView";
 import { cn } from "@/lib/cn";
+import type { CallerLibrary, ViewerContext } from "./LibraryActiveList";
 
 // Disabled options on All Watched per NEU-121:
 // - Watch State: "Not Started" — every entry has at least one watched episode.
@@ -62,7 +63,20 @@ function formatDate(iso: string | null): string {
   });
 }
 
-export function WatchedList({ enabled = true }: { enabled?: boolean }) {
+interface Props {
+  data: WatchedEntry[] | undefined;
+  isLoading: boolean;
+  isError?: boolean;
+  /** Whose library this is. Drives action-button shape, indicator visibility,
+   * and whether the Watch History trash button is shown. Only "self" is wired
+   * in this PR; "friend" wiring lands in NEU-127. */
+  viewerContext?: ViewerContext;
+  /** Caller's own library, used to compute my-relationship indicators/filter
+   * when viewerContext === "friend". Reserved for NEU-120c/d. */
+  callerLibrary?: CallerLibrary;
+}
+
+export function LibraryWatchedList({ data, isLoading, isError, viewerContext = "self" }: Props) {
   const [sort, setSort] = usePersistedSort<LibrarySort>(
     "watched-sort",
     LIBRARY_SORT_KEYS,
@@ -85,8 +99,6 @@ export function WatchedList({ enabled = true }: { enabled?: boolean }) {
   );
   const [genre, setGenre] = usePersistedString("watched-genre", "all");
   const [view, setView] = usePersistedView("watched", "list");
-
-  const { data, isLoading, isError } = useMyWatched(enabled);
 
   const filteredAndSorted = useMemo(() => {
     if (!data) return data;
@@ -180,7 +192,7 @@ export function WatchedList({ enabled = true }: { enabled?: boolean }) {
         view === "list" && (
           <ul className="space-y-3">
             {filteredAndSorted.map((entry) => (
-              <WatchedRow key={entry.show.id} entry={entry} />
+              <WatchedRow key={entry.show.id} entry={entry} viewerContext={viewerContext} />
             ))}
           </ul>
         )}
@@ -207,7 +219,13 @@ function watchedToMyShowEntry(e: WatchedEntry): MyShowEntry {
   };
 }
 
-function WatchedRow({ entry }: { entry: WatchedEntry }) {
+function WatchedRow({
+  entry,
+  viewerContext,
+}: {
+  entry: WatchedEntry;
+  viewerContext: ViewerContext;
+}) {
   const [override, setOverride] = useState<boolean | null>(null);
   const [lastUpstream, setLastUpstream] = useState(entry.in_my_shows);
   if (lastUpstream !== entry.in_my_shows) {
@@ -331,17 +349,19 @@ function WatchedRow({ entry }: { entry: WatchedEntry }) {
               My Shows
             </Button>
           )}
-          <Button
-            type="button"
-            size="sm"
-            variant="ghost"
-            onClick={() => setConfirmingRemoveHistory(true)}
-            aria-label={`Remove ${entry.show.name} watch history`}
-            className="h-7 px-2 gap-1 text-xs text-muted-foreground hover:text-destructive"
-          >
-            <Trash2 className="h-3.5 w-3.5" aria-hidden />
-            Watch History
-          </Button>
+          {viewerContext === "self" && (
+            <Button
+              type="button"
+              size="sm"
+              variant="ghost"
+              onClick={() => setConfirmingRemoveHistory(true)}
+              aria-label={`Remove ${entry.show.name} watch history`}
+              className="h-7 px-2 gap-1 text-xs text-muted-foreground hover:text-destructive"
+            >
+              <Trash2 className="h-3.5 w-3.5" aria-hidden />
+              Watch History
+            </Button>
+          )}
         </div>
       </div>
       {confirmingRemoveHistory && (

@@ -1,6 +1,7 @@
 import { useSearchParams } from "react-router";
-import { MyShowsList } from "@/components/home/MyShowsList";
-import { WatchedList } from "@/components/home/WatchedList";
+import { useMyShows, useMyWatched } from "@/api/me";
+import { LibraryActiveList } from "@/components/library/LibraryActiveList";
+import { LibraryWatchedList } from "@/components/library/LibraryWatchedList";
 import { cn } from "@/lib/cn";
 
 type Tab = "active" | "watched";
@@ -61,9 +62,19 @@ export function MyShowsPage() {
       </div>
 
       <div role="tabpanel">
-        {active === "active" && <MyShowsList />}
-        {active === "watched" && <WatchedList />}
+        {active === "active" && <ActiveTab />}
+        {active === "watched" && <WatchedTab />}
       </div>
     </section>
   );
+}
+
+function ActiveTab() {
+  const { data, isLoading } = useMyShows();
+  return <LibraryActiveList data={data} isLoading={isLoading} />;
+}
+
+function WatchedTab() {
+  const { data, isLoading, isError } = useMyWatched();
+  return <LibraryWatchedList data={data} isLoading={isLoading} isError={isError} />;
 }
