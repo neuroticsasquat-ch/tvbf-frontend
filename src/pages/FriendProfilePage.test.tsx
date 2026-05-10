@@ -133,7 +133,9 @@ describe("FriendProfilePage", () => {
     // Filter triggers (each FilterSheet exposes its trigger via aria-label).
     expect(screen.getByRole("button", { name: /filter by watch state/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /filter by show status/i })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /filter by my shows membership/i })).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /filter by my shows membership/i }),
+    ).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /filter by genre/i })).toBeInTheDocument();
     // View toggle.
     expect(screen.getByRole("button", { name: /list view/i })).toBeInTheDocument();
@@ -322,9 +324,7 @@ describe("FriendProfilePage", () => {
     renderWithProviders(routed(), { route: `/users/${FRIEND_ID}` });
 
     await waitFor(() => expect(screen.getByText("Severance")).toBeInTheDocument());
-    expect(
-      screen.getByRole("button", { name: /filter by my watch state/i }),
-    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /filter by my watch state/i })).toBeInTheDocument();
   });
 
   it("My Watch State 'Not Started' surfaces friend rows the caller hasn't touched", async () => {

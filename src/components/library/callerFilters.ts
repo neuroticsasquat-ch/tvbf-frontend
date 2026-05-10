@@ -1,8 +1,4 @@
-import {
-  watchStateOf,
-  type InMyShowsFilter,
-  type WatchState,
-} from "@/components/home/filterTypes";
+import { watchStateOf, type InMyShowsFilter, type WatchState } from "@/components/home/filterTypes";
 import { callerHasShow, type CallerLibrary } from "./callerLibrary";
 
 /** Predicate for the caller-relative "My Library" filter (NEU-129). When the

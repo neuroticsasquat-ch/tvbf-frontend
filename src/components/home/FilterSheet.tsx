@@ -22,6 +22,7 @@ export function FilterSheet<T extends string>({
   active = false,
   triggerClassName,
   triggerAlign = "center",
+  disabledReason,
 }: {
   title: string;
   triggerLabel: ReactNode;
@@ -33,20 +34,31 @@ export function FilterSheet<T extends string>({
   active?: boolean;
   triggerClassName?: string;
   triggerAlign?: "center" | "start";
+  /** When set, the entire picker is disabled. The trigger renders greyed-out
+   * and unclickable; the value is shown as a tooltip via `title=`. */
+  disabledReason?: string;
 }) {
   const [open, setOpen] = useState(false);
+  const disabled = !!disabledReason;
   return (
     <DialogPrimitive.Root open={open} onOpenChange={setOpen}>
       <DialogPrimitive.Trigger
         aria-label={ariaLabel}
+        disabled={disabled}
+        title={disabledReason}
         className={cn(
-          "rounded px-2 py-1 inline-flex gap-1 text-left hover:bg-accent",
+          "rounded px-2 py-1 inline-flex gap-1 text-left",
           "focus:outline-none focus-visible:ring-2 focus-visible:ring-ring",
           triggerAlign === "start" ? "items-start" : "items-center",
           !triggerClassName && "text-sm",
-          active
-            ? "border border-foreground bg-accent font-medium text-foreground"
-            : "border border-border bg-background",
+          disabled
+            ? "border border-border bg-background text-muted-foreground/60 cursor-not-allowed"
+            : cn(
+                "hover:bg-accent",
+                active
+                  ? "border border-foreground bg-accent font-medium text-foreground"
+                  : "border border-border bg-background",
+              ),
           triggerClassName,
         )}
       >
