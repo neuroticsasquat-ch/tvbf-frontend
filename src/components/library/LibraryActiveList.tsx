@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { FilterSheet } from "@/components/home/FilterSheet";
 import {
   CallerMembershipFilterPicker,
+  CallerWatchStateFilterPicker,
   ClearFiltersButton,
   GenreFilter,
   InMyShowsFilterPicker,
@@ -39,7 +40,7 @@ import {
 } from "@/components/home/librarySort";
 import { cn } from "@/lib/cn";
 import { callerHasShow, type CallerLibrary } from "./callerLibrary";
-import { matchesCallerMembership } from "./callerFilters";
+import { matchesCallerMembership, matchesCallerWatchState } from "./callerFilters";
 import { CallerPosterBadge, CallerProgressNote } from "./LibraryRowIndicators";
 
 // Disabled options on Active per NEU-121:
@@ -98,6 +99,11 @@ export function LibraryActiveList({
     IN_MY_SHOWS_KEYS,
     "all",
   );
+  const [callerWatchState, setCallerWatchState] = usePersistedSort<WatchState>(
+    `${storagePrefix}-caller-watch-state`,
+    WATCH_STATE_KEYS,
+    "all",
+  );
   const [genre, setGenre] = usePersistedString(`${storagePrefix}-genre`, "all");
   const [view, setView] = usePersistedView(storagePrefix, "list");
 
@@ -108,8 +114,9 @@ export function LibraryActiveList({
       .filter((e) => matchesStatus(e.show, status))
       .filter((e) => matchesGenre(e.show, genre))
       .filter((e) => matchesCallerMembership(e.show.id, callerMembership, callerLibrary))
+      .filter((e) => matchesCallerWatchState(callerWatchState, e, callerLibrary))
       .sort((a, b) => compareLibraryEntries(a, b, sort));
-  }, [data, sort, watchState, status, genre, callerMembership, callerLibrary]);
+  }, [data, sort, watchState, status, genre, callerMembership, callerWatchState, callerLibrary]);
 
   const sortLabel = LIBRARY_SORTS.find((s) => s.key === sort)?.label ?? "";
   const filtersActive =
@@ -117,7 +124,8 @@ export function LibraryActiveList({
     status !== "all" ||
     genre !== "all" ||
     inMyShows !== "all" ||
-    callerMembership !== "all";
+    callerMembership !== "all" ||
+    callerWatchState !== "all";
 
   return (
     <div>
@@ -147,10 +155,16 @@ export function LibraryActiveList({
           disabledOptions={DISABLED_IN_MY_SHOWS}
         />
         {viewerContext === "friend" && (
-          <CallerMembershipFilterPicker
-            value={callerMembership}
-            onChange={setCallerMembership}
-          />
+          <>
+            <CallerMembershipFilterPicker
+              value={callerMembership}
+              onChange={setCallerMembership}
+            />
+            <CallerWatchStateFilterPicker
+              value={callerWatchState}
+              onChange={setCallerWatchState}
+            />
+          </>
         )}
         <GenreFilter value={genre} onChange={setGenre} />
         {filtersActive && (
@@ -160,6 +174,7 @@ export function LibraryActiveList({
               setStatus("all");
               setInMyShows("all");
               setCallerMembership("all");
+              setCallerWatchState("all");
               setGenre("all");
             }}
           />
