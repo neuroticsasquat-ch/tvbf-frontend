@@ -69,6 +69,10 @@ export function FindPeople() {
           value={input}
           onChange={(e) => setInput(e.target.value)}
           placeholder="Search by display name or email"
+          spellCheck={false}
+          autoCorrect="off"
+          autoCapitalize="off"
+          autoComplete="off"
           className="w-full rounded border border-border bg-background py-1.5 pl-7 pr-2 text-base sm:text-sm focus:outline-none focus:ring-1 focus:ring-foreground"
         />
       </div>
