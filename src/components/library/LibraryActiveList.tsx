@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router";
 import { ArrowDown, ArrowUp, Check } from "lucide-react";
-import { useMyShows, useRemoveShow } from "@/api/me";
+import { useRemoveShow } from "@/api/me";
 import type { MyShowEntry } from "@/api/types";
 import { usePersistedSort } from "@/hooks/usePersistedSort";
 import { usePersistedString } from "@/hooks/usePersistedString";
@@ -43,7 +43,25 @@ const DISABLED_IN_MY_SHOWS: Partial<Record<InMyShowsFilter, string>> = {
   not_in: "All Active shows are in My Shows.",
 };
 
-export function MyShowsList() {
+export type ViewerContext = "self" | "friend";
+
+/** Reserved for NEU-120c/d: caller's relationship to each row's show. Unused
+ * in this PR; props are threaded so consumers can start passing the value
+ * once the indicator/filter work lands. */
+export type CallerLibrary = unknown;
+
+interface Props {
+  data: MyShowEntry[] | undefined;
+  isLoading: boolean;
+  /** Whose library this is. Drives action-button shape and indicator visibility.
+   * Only "self" is wired in this PR; "friend" wiring lands in NEU-127. */
+  viewerContext?: ViewerContext;
+  /** Caller's own library, used to compute my-relationship indicators/filter
+   * when viewerContext === "friend". Reserved for NEU-120c/d. */
+  callerLibrary?: CallerLibrary;
+}
+
+export function LibraryActiveList({ data, isLoading }: Props) {
   const [sort, setSort] = usePersistedSort<LibrarySort>("my-shows", LIBRARY_SORT_KEYS, "name_asc");
   const [watchState, setWatchState] = usePersistedSort<WatchState>(
     "my-shows-watch-state",
@@ -63,7 +81,6 @@ export function MyShowsList() {
   const [genre, setGenre] = usePersistedString("my-shows-genre", "all");
   const [view, setView] = usePersistedView("my-shows", "list");
 
-  const { data, isLoading } = useMyShows();
   const filteredAndSorted = useMemo(() => {
     if (!data) return data;
     return data
@@ -130,7 +147,7 @@ export function MyShowsList() {
       {!isLoading && filteredAndSorted && filteredAndSorted.length > 0 && view === "list" && (
         <ul className="space-y-3">
           {filteredAndSorted.map((entry) => (
-            <MyShowsRow key={entry.show.id} entry={entry} />
+            <ActiveRow key={entry.show.id} entry={entry} />
           ))}
         </ul>
       )}
@@ -151,14 +168,13 @@ function formatDate(iso: string | null): string {
   });
 }
 
-function MyShowsRow({ entry }: { entry: MyShowEntry }) {
+function ActiveRow({ entry }: { entry: MyShowEntry }) {
   const remove = useRemoveShow();
   // Local override so the row visually reflects "removed" the moment the user
   // clicks, even before the server round trip lands.
   const [removed, setRemoved] = useState(false);
   if (removed) return null;
 
-  // Shared status helper: returns "finished", "caught_up", or null.
   const status = libraryStatusFor(entry);
 
   function onRemove() {

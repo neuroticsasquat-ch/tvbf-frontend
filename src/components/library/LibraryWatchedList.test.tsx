@@ -4,8 +4,16 @@ import { http, HttpResponse } from "msw";
 import { renderWithProviders } from "@/test/renderWithProviders";
 import { server } from "@/test/msw/server";
 import { env } from "@/env";
-import { WatchedList } from "./WatchedList";
+import { useMyWatched } from "@/api/me";
+import { LibraryWatchedList } from "./LibraryWatchedList";
 import type { WatchedEntry } from "@/api/types";
+
+// The component is data-driven; this harness mirrors how MyShowsPage wires the
+// hook so the existing MSW-based assertions still exercise the fetch path.
+function Harness() {
+  const { data, isLoading, isError } = useMyWatched();
+  return <LibraryWatchedList data={data} isLoading={isLoading} isError={isError} />;
+}
 
 function makeWatched(
   showId: number,
@@ -40,7 +48,7 @@ function makeWatched(
   };
 }
 
-describe("WatchedList row UI", () => {
+describe("LibraryWatchedList row UI", () => {
   let watchedResponse: WatchedEntry[];
   let addCalls: number[];
   let removeCalls: number[];
@@ -66,21 +74,16 @@ describe("WatchedList row UI", () => {
   it("renders poster, name, counts, last-watched, status pill", async () => {
     watchedResponse = [makeWatched(101, "The Wire")];
 
-    const { container } = renderWithProviders(<WatchedList />);
+    const { container } = renderWithProviders(<Harness />);
 
     await waitFor(() => expect(screen.getByText("The Wire")).toBeInTheDocument());
-    // Poster (decorative img with empty alt — query by tag).
     expect(container.querySelector("img")).toHaveAttribute("src", "https://example.com/poster.jpg");
-    // In-progress rows show "Progress: watched/aired" (no separate status pill).
     expect(screen.getByText(/^progress:\s*8\/10$/i)).toBeInTheDocument();
-    // The "In progress" filter button still exists in the toolbar but the row
-    // itself no longer renders that label as a pill.
     expect(
       screen.queryByText(
         (_text, el) => el?.tagName === "SPAN" && el?.textContent === "In progress",
       ),
     ).not.toBeInTheDocument();
-    // Last-watched relative date — locale-formatted, contains "Apr".
     expect(screen.getByText(/last watched:.*apr/i)).toBeInTheDocument();
   });
 
@@ -92,21 +95,18 @@ describe("WatchedList row UI", () => {
         aired_episode_count: 12,
       }),
     ];
-    renderWithProviders(<WatchedList />);
+    renderWithProviders(<Harness />);
 
     await waitFor(() => expect(screen.getByText("Six Feet Under")).toBeInTheDocument());
-    // Two "Finished" elements exist: the filter button and the row pill.
-    // The pill is a <span>; the filter is a <button>. Find the non-button one.
     const matches = screen.getAllByText("Finished");
     expect(matches.some((el) => el.tagName === "SPAN")).toBe(true);
-    // Finished rows omit the watched/aired count.
     expect(screen.queryByText(/^progress:/i)).not.toBeInTheDocument();
     expect(screen.queryByText("12/12")).not.toBeInTheDocument();
   });
 
   it("renders Add button when not in My Shows; clicking flips it to Remove", async () => {
     watchedResponse = [makeWatched(103, "Severance", { in_my_shows: false })];
-    renderWithProviders(<WatchedList />);
+    renderWithProviders(<Harness />);
 
     await waitFor(() => expect(screen.getByText("Severance")).toBeInTheDocument());
     expect(screen.getByRole("button", { name: /add to my shows/i })).toBeInTheDocument();
@@ -115,7 +115,6 @@ describe("WatchedList row UI", () => {
     fireEvent.click(screen.getByRole("button", { name: /add to my shows/i }));
 
     await waitFor(() => expect(addCalls).toEqual([103]));
-    // Optimistic toggle: the button is the membership indicator now.
     await waitFor(() =>
       expect(screen.getByRole("button", { name: /remove from my shows/i })).toBeInTheDocument(),
     );
@@ -124,7 +123,7 @@ describe("WatchedList row UI", () => {
 
   it("renders Remove button when in My Shows; clicking flips it to Add", async () => {
     watchedResponse = [makeWatched(104, "The Sopranos", { in_my_shows: true })];
-    renderWithProviders(<WatchedList />);
+    renderWithProviders(<Harness />);
 
     await waitFor(() => expect(screen.getByText("The Sopranos")).toBeInTheDocument());
     expect(screen.getByRole("button", { name: /remove from my shows/i })).toBeInTheDocument();
@@ -147,7 +146,7 @@ describe("WatchedList row UI", () => {
       }),
     );
     watchedResponse = [makeWatched(106, "Lost")];
-    renderWithProviders(<WatchedList />);
+    renderWithProviders(<Harness />);
 
     await waitFor(() => expect(screen.getByText("Lost")).toBeInTheDocument());
 
@@ -156,7 +155,6 @@ describe("WatchedList row UI", () => {
     fireEvent.click(screen.getByRole("button", { name: /^confirm$/i }));
 
     await waitFor(() => expect(unmarkCalls).toEqual([106]));
-    // Optimistic remove: row vanishes from the list.
     await waitFor(() => expect(screen.queryByText("Lost")).not.toBeInTheDocument());
   });
 
@@ -169,7 +167,7 @@ describe("WatchedList row UI", () => {
       }),
     );
     watchedResponse = [makeWatched(107, "Fringe")];
-    renderWithProviders(<WatchedList />);
+    renderWithProviders(<Harness />);
 
     await waitFor(() => expect(screen.getByText("Fringe")).toBeInTheDocument());
 
@@ -182,7 +180,7 @@ describe("WatchedList row UI", () => {
 
   it("row name links to the show detail page", async () => {
     watchedResponse = [makeWatched(105, "Deadwood")];
-    renderWithProviders(<WatchedList />);
+    renderWithProviders(<Harness />);
 
     await waitFor(() => expect(screen.getByText("Deadwood")).toBeInTheDocument());
     const link = screen.getByText("Deadwood").closest("a");
