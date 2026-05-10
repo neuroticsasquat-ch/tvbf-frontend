@@ -99,9 +99,6 @@ export function FilterSheet<T extends string>({
                       {isActive && <Check className="h-4 w-4" aria-hidden />}
                     </span>
                     <span>{opt.label}</span>
-                    {disabled && (
-                      <span className="ml-auto text-xs text-muted-foreground/60">n/a</span>
-                    )}
                   </button>
                 </li>
               );
