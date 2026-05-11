@@ -72,7 +72,6 @@ export function UpcomingList() {
   return (
     <div>
       <div className="flex items-baseline justify-between mb-4">
-        <h1 className="text-2xl font-semibold">Upcoming</h1>
         <FilterSheet
           title="Sort Upcoming"
           triggerLabel={sortLabel}
@@ -143,7 +142,8 @@ export function UpcomingList() {
                       {entry.show.name}
                       {entry.show.premiered && (
                         <span className="font-normal text-muted-foreground">
-                          {" "}({entry.show.premiered.slice(0, 4)})
+                          {" "}
+                          ({entry.show.premiered.slice(0, 4)})
                         </span>
                       )}
                     </p>

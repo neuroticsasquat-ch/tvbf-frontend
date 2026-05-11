@@ -5,8 +5,9 @@ import { ApiError } from "@/api/client";
 import { LoadingState } from "@/components/LoadingState";
 import { ErrorState } from "@/components/ErrorState";
 import { NotFoundPage } from "./NotFoundPage";
-import { SafeHtml } from "@/components/SafeHtml";
+import { CollapsibleSummary } from "@/components/CollapsibleSummary";
 import { EpisodeWatchCheckbox } from "@/components/EpisodeWatchCheckbox";
+import { EpisodeFriendsWatched } from "@/components/friends/FriendActivity";
 import { FilterSheet } from "@/components/home/FilterSheet";
 import { Button } from "@/components/ui/button";
 
@@ -42,7 +43,10 @@ export function EpisodePage() {
   const prevSeasonNumber =
     idx === 0 && seasonIdx > 0 ? seasonsList[seasonIdx - 1].number : undefined;
   const nextSeasonNumber =
-    idx >= 0 && idx === seasonEpisodes.length - 1 && seasonIdx >= 0 && seasonIdx < seasonsList.length - 1
+    idx >= 0 &&
+    idx === seasonEpisodes.length - 1 &&
+    seasonIdx >= 0 &&
+    seasonIdx < seasonsList.length - 1
       ? seasonsList[seasonIdx + 1].number
       : undefined;
   const prevSeasonEpisodesQuery = useShowEpisodes(ep?.show_id ?? -1, prevSeasonNumber, {
@@ -62,10 +66,7 @@ export function EpisodePage() {
   if (episodeQuery.isPending) return <LoadingState rows={1} />;
   if (episodeQuery.isError) {
     return (
-      <ErrorState
-        message={episodeQuery.error.message}
-        onRetry={() => episodeQuery.refetch()}
-      />
+      <ErrorState message={episodeQuery.error.message} onRetry={() => episodeQuery.refetch()} />
     );
   }
   if (!ep) return <LoadingState rows={1} />;
@@ -76,8 +77,7 @@ export function EpisodePage() {
   const prevEps = prevSeasonEpisodesQuery.data;
   const nextEps = nextSeasonEpisodesQuery.data;
   const prev =
-    prevInSeason ??
-    (prevEps && prevEps.length > 0 ? prevEps[prevEps.length - 1] : undefined);
+    prevInSeason ?? (prevEps && prevEps.length > 0 ? prevEps[prevEps.length - 1] : undefined);
   const next = nextInSeason ?? (nextEps && nextEps.length > 0 ? nextEps[0] : undefined);
   const isFirstEverEpisode = seasonIdx === 0 && idx === 0;
   const isLastEverEpisode =
@@ -115,10 +115,7 @@ export function EpisodePage() {
                   Episode {ep.number ?? "—"}
                 </span>
                 <span className="flex items-start gap-1">
-                  <Film
-                    className="mt-1.5 h-5 w-5 shrink-0 text-muted-foreground"
-                    aria-hidden
-                  />
+                  <Film className="mt-1.5 h-5 w-5 shrink-0 text-muted-foreground" aria-hidden />
                   <span>{ep.name ?? `Episode ${ep.number ?? ""}`}</span>
                 </span>
               </span>
@@ -141,6 +138,7 @@ export function EpisodePage() {
             {ep.runtime ? `${ep.runtime} min` : ""}
           </p>
         )}
+        <EpisodeFriendsWatched episodeId={ep.id} />
         <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
           <EpisodeWatchCheckbox showId={ep.show_id} episodeId={ep.id} withLabel />
           <div className="inline-flex">
@@ -182,7 +180,7 @@ export function EpisodePage() {
         ) : null}
         <div className="min-w-0 flex-1 space-y-3">
           {ep.summary ? (
-            <SafeHtml html={ep.summary} className="prose prose-sm max-w-none" />
+            <CollapsibleSummary html={ep.summary} className="prose prose-sm max-w-none" />
           ) : (
             <p className="text-sm text-muted-foreground">No summary available.</p>
           )}

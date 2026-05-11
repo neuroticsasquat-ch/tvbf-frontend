@@ -1,4 +1,11 @@
-import type { GenreOut, NetworkOut, ShowDetail, ShowListPage, SeasonOut, EpisodeOut } from "@/api/types";
+import type {
+  GenreOut,
+  NetworkOut,
+  ShowDetail,
+  ShowListPage,
+  SeasonOut,
+  EpisodeOut,
+} from "@/api/types";
 
 export const fixtureGenres: GenreOut[] = [
   { id: 1, name: "Drama" },
@@ -7,8 +14,20 @@ export const fixtureGenres: GenreOut[] = [
 ];
 
 export const fixtureNetworks: NetworkOut[] = [
-  { id: 10, name: "HBO", country_code: "US", country_name: "United States", timezone: "America/New_York" },
-  { id: 11, name: "BBC One", country_code: "GB", country_name: "United Kingdom", timezone: "Europe/London" },
+  {
+    id: 10,
+    name: "HBO",
+    country_code: "US",
+    country_name: "United States",
+    timezone: "America/New_York",
+  },
+  {
+    id: 11,
+    name: "BBC One",
+    country_code: "GB",
+    country_name: "United Kingdom",
+    timezone: "Europe/London",
+  },
 ];
 
 export const fixtureShow: ShowDetail = {
@@ -113,6 +132,7 @@ export const fixtureEpisodes: EpisodeOut[] = [
     summary: "<p>Opening episode.</p>",
     image_medium: null,
     image_original: null,
+    watched: false,
   },
   {
     id: 5001,
@@ -127,6 +147,7 @@ export const fixtureEpisodes: EpisodeOut[] = [
     summary: null,
     image_medium: null,
     image_original: null,
+    watched: false,
   },
 ];
 
@@ -144,6 +165,7 @@ export const fixtureSeason2Episodes: EpisodeOut[] = [
     summary: null,
     image_medium: null,
     image_original: null,
+    watched: false,
   },
 ];
 

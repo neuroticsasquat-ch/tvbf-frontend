@@ -36,7 +36,9 @@ export function SeasonWatchCheckbox({ showId, season, aired, watched }: Props) {
       disabled={disabled}
       aria-pressed={fullyWatched}
       aria-label={fullyWatched ? "Mark season unwatched" : "Mark season watched"}
-      title={fullyWatched ? "Season fully watched — click to unmark" : "Click to mark season watched"}
+      title={
+        fullyWatched ? "Season fully watched — click to unmark" : "Click to mark season watched"
+      }
       className={
         fullyWatched
           ? "text-emerald-600 hover:text-emerald-700"

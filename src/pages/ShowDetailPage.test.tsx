@@ -15,7 +15,9 @@ function routed() {
 describe("ShowDetailPage", () => {
   it("renders show details", async () => {
     renderWithProviders(routed(), { route: "/shows/100" });
-    await waitFor(() => expect(screen.getByRole("heading", { name: "Fixture Show" })).toBeInTheDocument());
+    await waitFor(() =>
+      expect(screen.getByRole("heading", { name: "Fixture Show" })).toBeInTheDocument(),
+    );
     expect(screen.getByText(/Running/i)).toBeInTheDocument();
     expect(screen.getByText(/Drama/i)).toBeInTheDocument();
     expect(screen.getAllByRole("link", { name: /Season \d/i }).length).toBeGreaterThan(0);

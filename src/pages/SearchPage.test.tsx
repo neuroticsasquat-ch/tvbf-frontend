@@ -7,9 +7,7 @@ import { SearchPage } from "./SearchPage";
 describe("SearchPage", () => {
   it("shows a hint and no results when no search query is set", () => {
     renderWithProviders(<SearchPage />, { route: "/search" });
-    expect(
-      screen.getByText(/type a show name in the search box above/i),
-    ).toBeInTheDocument();
+    expect(screen.getByText(/type a show name in the search box above/i)).toBeInTheDocument();
     expect(screen.queryByRole("link", { name: /Fixture Show/i })).not.toBeInTheDocument();
     expect(screen.queryByTestId("loading")).not.toBeInTheDocument();
   });

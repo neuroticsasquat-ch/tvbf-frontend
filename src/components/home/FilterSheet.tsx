@@ -3,7 +3,13 @@ import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { Check } from "lucide-react";
 import { cn } from "@/lib/cn";
 
-type Option<T extends string> = { key: T; label: string };
+type Option<T extends string> = {
+  key: T;
+  label: string;
+  /** When set, the option is rendered greyed out and unclickable. The value is
+   * shown as a tooltip via `title=` so users can read why. */
+  disabledReason?: string;
+};
 
 export function FilterSheet<T extends string>({
   title,
@@ -16,6 +22,7 @@ export function FilterSheet<T extends string>({
   active = false,
   triggerClassName,
   triggerAlign = "center",
+  disabledReason,
 }: {
   title: string;
   triggerLabel: ReactNode;
@@ -27,19 +34,31 @@ export function FilterSheet<T extends string>({
   active?: boolean;
   triggerClassName?: string;
   triggerAlign?: "center" | "start";
+  /** When set, the entire picker is disabled. The trigger renders greyed-out
+   * and unclickable; the value is shown as a tooltip via `title=`. */
+  disabledReason?: string;
 }) {
   const [open, setOpen] = useState(false);
+  const disabled = !!disabledReason;
   return (
     <DialogPrimitive.Root open={open} onOpenChange={setOpen}>
       <DialogPrimitive.Trigger
         aria-label={ariaLabel}
+        disabled={disabled}
+        title={disabledReason}
         className={cn(
-          "rounded px-2 py-1 inline-flex gap-1 text-left hover:bg-accent",
+          "rounded px-2 py-1 inline-flex gap-1 text-left",
+          "focus:outline-none focus-visible:ring-2 focus-visible:ring-ring",
           triggerAlign === "start" ? "items-start" : "items-center",
           !triggerClassName && "text-sm",
-          active
-            ? "border border-foreground bg-accent font-medium text-foreground"
-            : "border border-border bg-background",
+          disabled
+            ? "border border-border bg-background text-muted-foreground/60 cursor-not-allowed"
+            : cn(
+                "hover:bg-accent",
+                active
+                  ? "border border-foreground bg-accent font-medium text-foreground"
+                  : "border border-border bg-background",
+              ),
           triggerClassName,
         )}
       >
@@ -57,22 +76,27 @@ export function FilterSheet<T extends string>({
           </DialogPrimitive.Title>
           <ul className="flex flex-col flex-1 overflow-y-auto">
             {options.map((opt) => {
-              const active = opt.key === value;
+              const isActive = opt.key === value;
+              const disabled = !!opt.disabledReason;
               return (
                 <li key={opt.key}>
                   <button
                     type="button"
+                    disabled={disabled}
+                    title={opt.disabledReason}
                     onClick={() => {
+                      if (disabled) return;
                       onChange(opt.key);
                       setOpen(false);
                     }}
                     className={cn(
-                      "w-full flex items-center gap-2 text-left rounded px-3 py-3 text-sm hover:bg-accent",
-                      active && "font-semibold",
+                      "w-full flex items-center gap-2 text-left rounded px-3 py-3 text-sm",
+                      disabled ? "text-muted-foreground/60 cursor-not-allowed" : "hover:bg-accent",
+                      isActive && "font-semibold",
                     )}
                   >
                     <span className="w-4 inline-flex justify-center">
-                      {active && <Check className="h-4 w-4" aria-hidden />}
+                      {isActive && <Check className="h-4 w-4" aria-hidden />}
                     </span>
                     <span>{opt.label}</span>
                   </button>

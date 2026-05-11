@@ -70,6 +70,9 @@ export interface EpisodeOut {
   summary: string | null;
   image_medium: string | null;
   image_original: string | null;
+  // Per-user watched flag. Populated by `/me/*` list endpoints; null on
+  // catalog-browse endpoints that have no user context.
+  watched: boolean | null;
 }
 
 export interface ShowSummary {
@@ -125,17 +128,28 @@ export type WatchNextSort =
   | "newest_unwatched_desc"
   | "added_desc"
   | "name_asc";
-export type UpcomingSort =
-  | "airdate_asc"
-  | "airdate_desc"
-  | "added_desc"
-  | "name_asc"
-  | "name_desc";
+export type UpcomingSort = "airdate_asc" | "airdate_desc" | "added_desc" | "name_asc" | "name_desc";
 export type WatchedSort =
-  | "last_watched_desc"
   | "name_asc"
-  | "name_desc"
-  | "added_desc";
+  | "last_watched_desc"
+  | "last_aired_desc"
+  | "premiered_asc"
+  | "premiered_desc"
+  | "first_watched_desc";
+export type WatchedStatusFilter = "all" | "finished" | "in_progress";
+export type WatchedStatus = "finished" | "in_progress";
+
+export interface WatchedEntry {
+  show: ShowSummary;
+  watched_episode_count: number;
+  aired_episode_count: number;
+  total_episode_count: number;
+  last_watched_at: string | null;
+  last_aired: string | null;
+  first_watched_at: string | null;
+  in_my_shows: boolean;
+  status: WatchedStatus;
+}
 
 export interface User {
   id: string;
@@ -156,6 +170,7 @@ export interface MyShowEntry {
   upcoming_episode_count: number;
   last_aired: string | null;
   last_watched_at: string | null;
+  first_watched_at: string | null;
   next_episode: EpisodeOut | null;
   added_at: string;
 }
@@ -180,7 +195,62 @@ export interface UpcomingEntry {
   added_at: string | null;
 }
 
+export interface UpcomingSeasonEntry {
+  show: ShowSummary;
+  season_number: number;
+  season_name: string | null;
+  premiere_date: string | null;
+  added_at: string | null;
+}
+
+export interface UpcomingShowEntry {
+  show: ShowSummary;
+  premiere_date: string | null;
+  added_at: string | null;
+}
+
 export interface EpisodeWatchOut {
   episode_id: number;
   watched_at: string;
+}
+
+export interface UserBrief {
+  id: string;
+  display_name: string;
+}
+
+export interface UserSearchResult {
+  id: string;
+  display_name: string;
+}
+
+export type ConnectionState = "pending" | "accepted" | "blocked";
+
+export interface ConnectionRequestOut {
+  id: string;
+  requester: UserBrief;
+  addressee: UserBrief;
+  state: ConnectionState;
+  created_at: string;
+  responded_at: string | null;
+}
+
+export interface ConnectionRequestList {
+  incoming: ConnectionRequestOut[];
+  outgoing: ConnectionRequestOut[];
+}
+
+export interface ConnectionOut {
+  user: UserBrief;
+  since: string;
+}
+
+export interface BlockedUserOut {
+  user: UserBrief;
+  blocked_at: string;
+}
+
+export interface ShowFriendActivity {
+  in_my_shows: UserBrief[];
+  watched: UserBrief[];
 }

@@ -12,7 +12,7 @@ import { NotFoundPage } from "./NotFoundPage";
 import { FilterSheet } from "@/components/home/FilterSheet";
 import { EpisodeWatchCheckbox } from "@/components/EpisodeWatchCheckbox";
 import { SeasonWatchToggle } from "@/components/SeasonWatchToggle";
-import { SafeHtml } from "@/components/SafeHtml";
+import { CollapsibleSummary } from "@/components/CollapsibleSummary";
 
 const DATE_FMT = new Intl.DateTimeFormat("en-US", {
   weekday: "short",
@@ -52,10 +52,7 @@ export function EpisodesPage() {
   }
   if (episodesQuery.isError) {
     return (
-      <ErrorState
-        message={episodesQuery.error.message}
-        onRetry={() => episodesQuery.refetch()}
-      />
+      <ErrorState message={episodesQuery.error.message} onRetry={() => episodesQuery.refetch()} />
     );
   }
 
@@ -89,11 +86,7 @@ export function EpisodesPage() {
     <div className="space-y-4">
       <header className="flex flex-col gap-6 sm:flex-row">
         {seasonImage ? (
-          <img
-            src={seasonImage}
-            alt=""
-            className="w-40 self-start rounded border border-border"
-          />
+          <img src={seasonImage} alt="" className="w-40 self-start rounded border border-border" />
         ) : null}
         <div className="flex-1 space-y-2">
           <div className="flex flex-wrap items-center gap-2">
@@ -122,7 +115,7 @@ export function EpisodesPage() {
             />
           </h1>
           {currentSeasonData?.summary && (
-            <SafeHtml
+            <CollapsibleSummary
               html={currentSeasonData.summary}
               className="prose prose-sm max-w-none pt-2"
             />
@@ -163,12 +156,14 @@ export function EpisodesPage() {
         <div className="mb-3 flex items-center justify-between gap-2">
           <h2 className="text-lg font-semibold">
             Episodes{" "}
-            <span className="font-normal text-muted-foreground">
-              ({episodesQuery.data.length})
-            </span>
+            <span className="font-normal text-muted-foreground">({episodesQuery.data.length})</span>
           </h2>
           {user && (
-            <div role="radiogroup" aria-label="Filter episodes" className="inline-flex rounded border border-border text-sm">
+            <div
+              role="radiogroup"
+              aria-label="Filter episodes"
+              className="inline-flex rounded border border-border text-sm"
+            >
               {(["all", "unwatched"] as const).map((key) => (
                 <button
                   key={key}
@@ -198,10 +193,7 @@ export function EpisodesPage() {
             {filteredEpisodes.map((ep) => {
               const thumbnail = ep.image_medium ?? seasonImage;
               return (
-                <li
-                  key={ep.id}
-                  className="border border-border rounded p-3 hover:bg-accent"
-                >
+                <li key={ep.id} className="border border-border rounded p-3 hover:bg-accent">
                   <div className="flex items-center gap-4">
                     <Link
                       to={`/episodes/${ep.id}`}

@@ -1,10 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { WatchNextEntry } from "@/api/types";
-import {
-  WATCH_NEXT_SORTS,
-  WATCH_NEXT_SORT_KEYS,
-  compareWatchNextEntries,
-} from "./watchNextSort";
+import { WATCH_NEXT_SORTS, WATCH_NEXT_SORT_KEYS, compareWatchNextEntries } from "./watchNextSort";
 
 function makeEntry(overrides: {
   id: number;
@@ -43,6 +39,7 @@ function makeEntry(overrides: {
       summary: null,
       image_medium: null,
       image_original: null,
+      watched: false,
     },
     last_watched_at: overrides.last_watched_at ?? null,
     last_aired: overrides.last_aired ?? null,

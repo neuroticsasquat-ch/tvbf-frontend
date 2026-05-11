@@ -26,10 +26,7 @@ export function NextEpisodeCard({ showId }: { showId: number }) {
       <h2 className="mb-3 text-lg font-semibold">Watch Next</h2>
       <div className="border border-border rounded p-3 hover:bg-accent">
         <div className="flex items-center gap-4">
-          <Link
-            to={`/episodes/${ep.id}`}
-            className="flex flex-1 min-w-0 items-center gap-4"
-          >
+          <Link to={`/episodes/${ep.id}`} className="flex flex-1 min-w-0 items-center gap-4">
             {thumbnail ? (
               <img
                 src={thumbnail}
@@ -62,7 +59,7 @@ export function NextEpisodeCard({ showId }: { showId: number }) {
             </div>
           </Link>
           <div className="ml-auto shrink-0">
-            <EpisodeWatchCheckbox showId={showId} episodeId={ep.id} />
+            <EpisodeWatchCheckbox showId={showId} episodeId={ep.id} watched={ep.watched ?? false} />
           </div>
         </div>
       </div>

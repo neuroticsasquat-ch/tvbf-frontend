@@ -147,7 +147,8 @@ export function WatchNextList() {
                         {entry.show.name}
                         {entry.show.premiered && (
                           <span className="font-normal text-muted-foreground">
-                            {" "}({entry.show.premiered.slice(0, 4)})
+                            {" "}
+                            ({entry.show.premiered.slice(0, 4)})
                           </span>
                         )}
                       </p>
@@ -172,6 +173,7 @@ export function WatchNextList() {
                     <EpisodeWatchCheckbox
                       showId={entry.show.id}
                       episodeId={entry.episode.id}
+                      watched={entry.episode.watched ?? false}
                     />
                   </div>
                 </div>

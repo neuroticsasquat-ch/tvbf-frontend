@@ -8,9 +8,7 @@ export function SearchPage() {
 
   if (!search) {
     return (
-      <p className="text-sm text-muted-foreground">
-        Type a show name in the search box above.
-      </p>
+      <p className="text-sm text-muted-foreground">Type a show name in the search box above.</p>
     );
   }
   return <SearchOverlay search={search} />;

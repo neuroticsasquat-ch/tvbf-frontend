@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { Link } from "react-router";
 import { User as UserIcon } from "lucide-react";
 import { useAuth } from "./AuthContext";
 import { cn } from "@/lib/cn";
@@ -9,11 +10,7 @@ type UserMenuProps = {
   variant?: "icon" | "bottom-tab" | "icon-only";
 };
 
-export function UserMenu({
-  onChangePassword,
-  onDeleteAccount,
-  variant = "icon",
-}: UserMenuProps) {
+export function UserMenu({ onChangePassword, onDeleteAccount, variant = "icon" }: UserMenuProps) {
   const { user, logout } = useAuth();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement | null>(null);
@@ -67,13 +64,20 @@ export function UserMenu({
       {open && (
         <ul
           role="menu"
-          className={cn(
-            menuPositionCls,
-            "rounded border border-border bg-background shadow z-50",
-          )}
+          className={cn(menuPositionCls, "rounded border border-border bg-background shadow z-50")}
         >
           <li className="px-3 py-2 text-xs text-muted-foreground border-b border-border">
             Signed in as {user.display_name}
+          </li>
+          <li>
+            <Link
+              role="menuitem"
+              to="/connections"
+              onClick={() => setOpen(false)}
+              className="block w-full text-left px-3 py-2 hover:bg-muted"
+            >
+              Connections
+            </Link>
           </li>
           <li>
             <button
