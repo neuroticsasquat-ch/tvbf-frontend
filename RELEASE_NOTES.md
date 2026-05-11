@@ -13,10 +13,6 @@ All notable changes to this project will be documented in this file.
 - Hide mobile bottom nav while a text input is focused (#50)
 - Send local today on watch-next/upcoming/my-shows requests (#49)
 
-### Documentation
-
-- Add 2026-05-05 release notes for Watch Next sort changes (#46)
-
 ### Features
 
 - Add Seasons and Shows tabs to Upcoming page (NEU-136) (#81)
