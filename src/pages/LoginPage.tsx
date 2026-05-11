@@ -36,7 +36,9 @@ export function LoginPage() {
       <h1 className="text-2xl font-semibold mb-6">Log in</h1>
       <form onSubmit={onSubmit} className="space-y-4">
         <div>
-          <label htmlFor="email" className="block text-sm">Email</label>
+          <label htmlFor="email" className="block text-sm">
+            Email
+          </label>
           <input
             id="email"
             type="email"
@@ -47,7 +49,9 @@ export function LoginPage() {
           />
         </div>
         <div>
-          <label htmlFor="password" className="block text-sm">Password</label>
+          <label htmlFor="password" className="block text-sm">
+            Password
+          </label>
           <input
             id="password"
             type="password"
@@ -67,7 +71,10 @@ export function LoginPage() {
         </button>
       </form>
       <p className="mt-4 text-sm">
-        New here? <Link to="/signup" className="underline">Sign up</Link>
+        New here?{" "}
+        <Link to="/signup" className="underline">
+          Sign up
+        </Link>
       </p>
     </div>
   );

@@ -1,4 +1,4 @@
-import { Check, X } from "lucide-react";
+import { CheckCircle2, Circle } from "lucide-react";
 import { useAuth } from "./AuthContext";
 import { useMarkSeason, useUnmarkSeason, useWatchedEpisodes } from "@/api/me";
 import { useShowEpisodes } from "@/api/shows";
@@ -30,9 +30,14 @@ export function SeasonWatchToggle({ showId, season }: { showId: number; season: 
       size="sm"
       onClick={onClick}
       disabled={total === 0}
+      aria-pressed={fullyWatched}
+      title={
+        fullyWatched ? "Season fully watched — click to unmark" : "Click to mark season watched"
+      }
+      className={fullyWatched ? "text-emerald-700" : undefined}
     >
-      {fullyWatched ? <X aria-hidden /> : <Check aria-hidden />}
-      {fullyWatched ? "Unmark season" : "Mark season watched"}
+      {fullyWatched ? <CheckCircle2 aria-hidden /> : <Circle aria-hidden />}
+      {fullyWatched ? "Season watched" : "Mark season watched"}
     </Button>
   );
 }

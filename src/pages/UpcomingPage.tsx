@@ -1,76 +1,72 @@
-import { useState } from "react";
-import { Link } from "react-router";
-import { useUpcoming } from "@/api/me";
-import type { UpcomingSort } from "@/api/types";
+import { useSearchParams } from "react-router";
+import { UpcomingList } from "@/components/home/UpcomingList";
+import { UpcomingSeasonsList } from "@/components/home/UpcomingSeasonsList";
+import { UpcomingShowsList } from "@/components/home/UpcomingShowsList";
+import { cn } from "@/lib/cn";
 
-const SORTS: { key: UpcomingSort; label: string }[] = [
-  { key: "airdate_asc", label: "Soonest first" },
-  { key: "airdate_desc", label: "Furthest out first" },
-  { key: "name_asc", label: "Name A→Z" },
-  { key: "name_desc", label: "Name Z→A" },
+type Tab = "episodes" | "seasons" | "shows";
+
+const TABS: { key: Tab; label: string }[] = [
+  { key: "episodes", label: "Episodes" },
+  { key: "seasons", label: "Seasons" },
+  { key: "shows", label: "Shows" },
 ];
 
+function isTab(value: string | null): value is Tab {
+  return value === "episodes" || value === "seasons" || value === "shows";
+}
+
 export function UpcomingPage() {
-  const [sort, setSort] = useState<UpcomingSort>("airdate_asc");
-  const { data, isLoading } = useUpcoming(sort);
+  const [params, setParams] = useSearchParams();
+  const raw = params.get("tab");
+  const active: Tab = isTab(raw) ? raw : "episodes";
+
+  function selectTab(next: Tab) {
+    if (next === "episodes") {
+      params.delete("tab");
+    } else {
+      params.set("tab", next);
+    }
+    setParams(params, { replace: true });
+  }
 
   return (
-    <div>
-      <div className="flex items-baseline justify-between mb-6">
-        <h1 className="text-2xl font-semibold">Upcoming</h1>
-        <label className="text-sm">
-          Sort:{" "}
-          <select
-            value={sort}
-            onChange={(e) => setSort(e.target.value as UpcomingSort)}
-            className="rounded border border-border px-2 py-1 bg-background"
-            aria-label="Sort Upcoming"
-          >
-            {SORTS.map((s) => (
-              <option key={s.key} value={s.key}>
-                {s.label}
-              </option>
-            ))}
-          </select>
-        </label>
-      </div>
-      {isLoading && <p>Loading…</p>}
-      {!isLoading && data && data.length === 0 && (
-        <p className="text-muted-foreground">No upcoming episodes scheduled for your shows.</p>
-      )}
-      {!isLoading && data && data.length > 0 && (
-        <ul className="space-y-3">
-          {data.map((entry) => (
-            <li
-              key={entry.show.id}
-              className="border border-border rounded p-3 flex items-center gap-4"
-            >
-              {entry.show.image_medium && (
-                <img
-                  src={entry.show.image_medium}
-                  alt=""
-                  className="w-16 aspect-[2/3] object-cover rounded"
-                />
+    <section className="flex flex-col gap-4">
+      <h1 className="text-2xl font-semibold">Upcoming</h1>
+
+      <div
+        role="tablist"
+        aria-label="Upcoming sections"
+        className="flex gap-1 border-b border-border"
+      >
+        {TABS.map((t) => {
+          const selected = t.key === active;
+          return (
+            <button
+              key={t.key}
+              type="button"
+              role="tab"
+              aria-selected={selected}
+              onClick={() => selectTab(t.key)}
+              className={cn(
+                "px-3 py-2 text-sm border-b-2 -mb-px rounded-sm",
+                "focus:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                selected
+                  ? "border-foreground font-medium text-foreground"
+                  : "border-transparent text-muted-foreground hover:text-foreground",
               )}
-              <div className="flex-1 min-w-0">
-                <Link
-                  to={`/shows/${entry.show.id}`}
-                  className="font-semibold hover:underline"
-                >
-                  {entry.show.name}
-                </Link>
-                <p className="text-sm">
-                  S{entry.episode.season}E{entry.episode.number}
-                  {entry.episode.name ? ` — ${entry.episode.name}` : ""}
-                </p>
-                {entry.episode.airdate && (
-                  <p className="text-xs text-muted-foreground">Airs {entry.episode.airdate}</p>
-                )}
-              </div>
-            </li>
-          ))}
-        </ul>
-      )}
-    </div>
+            >
+              {t.label}
+            </button>
+          );
+        })}
+      </div>
+
+      <div role="tabpanel">
+        {active === "episodes" && <UpcomingList />}
+        {active === "seasons" && <UpcomingSeasonsList />}
+        {active === "shows" && <UpcomingShowsList />}
+      </div>
+    </section>
   );
 }

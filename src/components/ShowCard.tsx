@@ -18,13 +18,18 @@ export function ShowCard({ show }: { show: ShowSummary }) {
       <img
         src={show.image_medium ?? FALLBACK_POSTER}
         alt=""
-        className="aspect-[3/4] w-full object-cover"
+        className="aspect-[210/295] w-full object-cover"
         loading="lazy"
       />
       <div className="p-1.5">
         <h3 className="truncate text-xs font-medium leading-tight group-hover:underline">
           {show.name}
         </h3>
+        {show.matched_aka && (
+          <p className="truncate text-[10px] text-muted-foreground leading-tight italic">
+            {show.matched_aka}
+          </p>
+        )}
         <p className="text-[10px] text-muted-foreground leading-tight">{year(show.premiered)}</p>
       </div>
     </Link>

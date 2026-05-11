@@ -9,9 +9,7 @@ describe("apiFetch", () => {
   afterEach(() => server.resetHandlers());
 
   it("returns parsed JSON on 2xx", async () => {
-    server.use(
-      http.get(`${env.apiBaseUrl}/ping`, () => HttpResponse.json({ ok: true })),
-    );
+    server.use(http.get(`${env.apiBaseUrl}/ping`, () => HttpResponse.json({ ok: true })));
     const result = await apiFetch<{ ok: boolean }>("/ping");
     expect(result).toEqual({ ok: true });
   });
@@ -30,9 +28,7 @@ describe("apiFetch", () => {
   });
 
   it("throws ApiError with generic message when body has no detail", async () => {
-    server.use(
-      http.get(`${env.apiBaseUrl}/fail`, () => new HttpResponse(null, { status: 500 })),
-    );
+    server.use(http.get(`${env.apiBaseUrl}/fail`, () => new HttpResponse(null, { status: 500 })));
     await expect(apiFetch("/fail")).rejects.toBeInstanceOf(ApiError);
   });
 });

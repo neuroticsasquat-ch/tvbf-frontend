@@ -62,9 +62,7 @@ export function SignupPage() {
             className="mt-1 w-full rounded border px-3 py-2"
             autoComplete="off"
           />
-          <p className="text-xs text-gray-500 mt-1">
-            TV Binge Friend is invite-only during beta.
-          </p>
+          <p className="text-xs text-gray-500 mt-1">TV Binge Friend is invite-only during beta.</p>
         </div>
         <div>
           <label htmlFor="email" className="block text-sm">
