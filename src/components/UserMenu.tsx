@@ -80,6 +80,16 @@ export function UserMenu({ onChangePassword, onDeleteAccount, variant = "icon" }
             </Link>
           </li>
           <li>
+            <Link
+              role="menuitem"
+              to="/settings"
+              onClick={() => setOpen(false)}
+              className="block w-full text-left px-3 py-2 hover:bg-muted"
+            >
+              Settings
+            </Link>
+          </li>
+          <li>
             <button
               type="button"
               role="menuitem"

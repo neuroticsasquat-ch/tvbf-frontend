@@ -15,6 +15,9 @@ export const login = (body: { email: string; password: string }) =>
 
 export const logout = () => apiFetch<void>("/auth/logout", { method: "POST" });
 
+export const updateMe = (body: { display_name: string }) =>
+  apiFetch<AuthedUser>("/me", { method: "PATCH", body: JSON.stringify(body) });
+
 export const changePassword = (body: { current_password: string; new_password: string }) =>
   apiFetch<AuthedUser>("/auth/password", { method: "POST", body: JSON.stringify(body) });
 
