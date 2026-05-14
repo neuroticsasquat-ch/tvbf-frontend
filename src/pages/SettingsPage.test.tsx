@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { http, HttpResponse } from "msw";
@@ -224,6 +224,157 @@ describe("SettingsPage", () => {
     expect(
       await screen.findByText(/couldn't load your sessions/i),
     ).toBeInTheDocument();
+  });
+
+  // ---------------------------------------------------------------------
+  // Session revoke actions
+  // ---------------------------------------------------------------------
+
+  describe("session revocation", () => {
+    afterEach(() => {
+      vi.restoreAllMocks();
+    });
+
+    function twoSessions() {
+      return sessionsHandler([
+        {
+          id: "sess-current",
+          device_label: "Chrome on macOS",
+          ip: "10.0.0.1",
+          last_seen_at: new Date(Date.now() - 60 * 1000).toISOString(),
+          created_at: new Date(Date.now() - 60 * 60 * 1000).toISOString(),
+          is_current: true,
+        },
+        {
+          id: "sess-other",
+          device_label: "Firefox on Windows",
+          ip: "10.0.0.2",
+          last_seen_at: new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString(),
+          created_at: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
+          is_current: false,
+        },
+      ]);
+    }
+
+    it("renders Revoke only on non-current rows", async () => {
+      server.use(authedMeHandler());
+      server.use(twoSessions());
+      renderWithProviders(<SettingsPage />, { route: "/settings" });
+      await screen.findByText("Chrome on macOS");
+
+      const revokeButtons = screen.getAllByRole("button", { name: /^revoke /i });
+      expect(revokeButtons).toHaveLength(1);
+      expect(revokeButtons[0]).toHaveAccessibleName(/Firefox on Windows/i);
+    });
+
+    it("Revoke calls DELETE and removes the row on success", async () => {
+      vi.spyOn(window, "confirm").mockReturnValue(true);
+      // Stateful handler: GET /me/sessions reflects deletes so the refetch
+      // that follows the mutation doesn't resurrect the row.
+      const rows = [
+        {
+          id: "sess-current",
+          device_label: "Chrome on macOS",
+          ip: "10.0.0.1",
+          last_seen_at: new Date(Date.now() - 60 * 1000).toISOString(),
+          created_at: new Date(Date.now() - 60 * 60 * 1000).toISOString(),
+          is_current: true,
+        },
+        {
+          id: "sess-other",
+          device_label: "Firefox on Windows",
+          ip: "10.0.0.2",
+          last_seen_at: new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString(),
+          created_at: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
+          is_current: false,
+        },
+      ];
+      server.use(authedMeHandler());
+      server.use(http.get(`${env.apiBaseUrl}/me/sessions`, () => HttpResponse.json(rows)));
+      server.use(
+        http.delete(`${env.apiBaseUrl}/me/sessions/sess-other`, () => {
+          const idx = rows.findIndex((r) => r.id === "sess-other");
+          if (idx >= 0) rows.splice(idx, 1);
+          return new HttpResponse(null, { status: 204 });
+        }),
+      );
+
+      renderWithProviders(<SettingsPage />, { route: "/settings" });
+      await screen.findByText("Firefox on Windows");
+      await userEvent.click(
+        screen.getByRole("button", { name: /Revoke Firefox on Windows/i }),
+      );
+
+      await waitFor(() =>
+        expect(screen.queryByText("Firefox on Windows")).not.toBeInTheDocument(),
+      );
+    });
+
+    it("Revoke does nothing if the user cancels the confirm prompt", async () => {
+      vi.spyOn(window, "confirm").mockReturnValue(false);
+      let called = false;
+      server.use(authedMeHandler());
+      server.use(twoSessions());
+      server.use(
+        http.delete(`${env.apiBaseUrl}/me/sessions/sess-other`, () => {
+          called = true;
+          return new HttpResponse(null, { status: 204 });
+        }),
+      );
+
+      renderWithProviders(<SettingsPage />, { route: "/settings" });
+      await screen.findByText("Firefox on Windows");
+      await userEvent.click(
+        screen.getByRole("button", { name: /Revoke Firefox on Windows/i }),
+      );
+
+      expect(called).toBe(false);
+      expect(screen.getByText("Firefox on Windows")).toBeInTheDocument();
+    });
+
+    it("Log-out-everywhere-else only shows when there are other sessions", async () => {
+      server.use(authedMeHandler());
+      // Just the current session.
+      server.use(
+        sessionsHandler([
+          {
+            id: "sess-current",
+            device_label: "Chrome on macOS",
+            ip: "10.0.0.1",
+            last_seen_at: new Date().toISOString(),
+            created_at: new Date().toISOString(),
+            is_current: true,
+          },
+        ]),
+      );
+
+      renderWithProviders(<SettingsPage />, { route: "/settings" });
+      await screen.findByText("Chrome on macOS");
+      expect(
+        screen.queryByRole("button", { name: /log out everywhere else/i }),
+      ).not.toBeInTheDocument();
+    });
+
+    it("Log-out-everywhere-else calls revoke-others and refetches", async () => {
+      vi.spyOn(window, "confirm").mockReturnValue(true);
+      let callCount = 0;
+      server.use(authedMeHandler());
+      server.use(twoSessions());
+      server.use(
+        http.post(`${env.apiBaseUrl}/me/sessions/revoke-others`, () => {
+          callCount++;
+          return HttpResponse.json({ revoked: 1 });
+        }),
+      );
+
+      renderWithProviders(<SettingsPage />, { route: "/settings" });
+      await screen.findByRole("button", { name: /log out everywhere else/i });
+      await userEvent.click(
+        screen.getByRole("button", { name: /log out everywhere else/i }),
+      );
+
+      await waitFor(() => expect(callCount).toBe(1));
+    });
   });
 
   it("Cancel restores the original name and closes the editor", async () => {

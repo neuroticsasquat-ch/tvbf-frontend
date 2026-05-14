@@ -3,7 +3,12 @@ import { toast } from "sonner";
 import { useAuth } from "@/components/AuthContext";
 import * as authApi from "@/api/auth";
 import { ApiError } from "@/api/client";
-import { useMySessions, type SessionSummary } from "@/api/sessions";
+import {
+  useMySessions,
+  useRevokeOtherSessions,
+  useRevokeSession,
+  type SessionSummary,
+} from "@/api/sessions";
 import { formatRelativeTime } from "@/lib/relativeTime";
 
 /** Settings page shell. Today this only carries the Profile section
@@ -25,12 +30,50 @@ export function SettingsPage() {
 
 function SessionsSection() {
   const { data, isLoading, isError } = useMySessions();
+  const revokeOthers = useRevokeOtherSessions();
+
+  const otherCount = (data ?? []).filter((s) => !s.is_current).length;
+
+  async function logOutEverywhereElse() {
+    if (otherCount === 0) return;
+    if (
+      !window.confirm(
+        otherCount === 1
+          ? "Log out the other session?"
+          : `Log out the ${otherCount} other sessions?`,
+      )
+    ) {
+      return;
+    }
+    try {
+      const res = await revokeOthers.mutateAsync();
+      toast.success(
+        res.revoked === 1
+          ? "Logged out 1 other session."
+          : `Logged out ${res.revoked} other sessions.`,
+      );
+    } catch {
+      toast.error("Couldn't log out other sessions.");
+    }
+  }
 
   return (
     <section aria-labelledby="sessions-heading" className="space-y-4">
-      <h2 id="sessions-heading" className="text-lg font-semibold">
-        Sessions
-      </h2>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h2 id="sessions-heading" className="text-lg font-semibold">
+          Sessions
+        </h2>
+        {otherCount > 0 && (
+          <button
+            type="button"
+            onClick={logOutEverywhereElse}
+            disabled={revokeOthers.isPending}
+            className="rounded border border-border px-3 py-1 text-sm hover:bg-muted disabled:opacity-50"
+          >
+            {revokeOthers.isPending ? "Logging out…" : "Log out everywhere else"}
+          </button>
+        )}
+      </div>
 
       <div className="rounded border border-border">
         {isLoading ? (
@@ -58,6 +101,24 @@ function SessionsSection() {
 }
 
 function SessionRow({ session: s }: { session: SessionSummary }) {
+  const revoke = useRevokeSession();
+
+  async function onRevoke() {
+    if (
+      !window.confirm(
+        `Log out ${s.device_label} (${s.ip ?? "Unknown IP"})? This device will be signed out immediately.`,
+      )
+    ) {
+      return;
+    }
+    try {
+      await revoke.mutateAsync(s.id);
+      toast.success("Session revoked.");
+    } catch {
+      toast.error("Couldn't revoke that session.");
+    }
+  }
+
   return (
     <li className="flex flex-wrap items-center gap-x-4 gap-y-1 p-4 text-sm">
       <div className="flex flex-1 min-w-0 items-center gap-2">
@@ -78,6 +139,17 @@ function SessionRow({ session: s }: { session: SessionSummary }) {
           </span>
         </p>
       </div>
+      {!s.is_current && (
+        <button
+          type="button"
+          onClick={onRevoke}
+          disabled={revoke.isPending}
+          aria-label={`Revoke ${s.device_label}`}
+          className="rounded border border-border px-2 py-1 text-xs hover:bg-muted disabled:opacity-50"
+        >
+          {revoke.isPending ? "Revoking…" : "Revoke"}
+        </button>
+      )}
     </li>
   );
 }
