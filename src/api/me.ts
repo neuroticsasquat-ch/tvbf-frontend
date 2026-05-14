@@ -19,15 +19,25 @@ import type {
 
 const FIVE_MINUTES = 5 * 60 * 1000;
 
-export function fetchMyShows(opts: { sort: MyShowsSort; today: string }): Promise<MyShowEntry[]> {
-  return apiFetch<MyShowEntry[]>(`/me/shows?sort=${opts.sort}&today=${opts.today}`);
+export function fetchMyShows(opts: {
+  sort: MyShowsSort;
+  today: string;
+  ratedOnly?: boolean;
+}): Promise<MyShowEntry[]> {
+  const params = new URLSearchParams({ sort: opts.sort, today: opts.today });
+  if (opts.ratedOnly) params.set("rated_only", "true");
+  return apiFetch<MyShowEntry[]>(`/me/shows?${params.toString()}`);
 }
 
-export function useMyShows(sort: MyShowsSort = "recent_activity") {
+export function useMyShows(
+  sort: MyShowsSort = "recent_activity",
+  options: { ratedOnly?: boolean } = {},
+) {
   const today = localToday();
+  const ratedOnly = options.ratedOnly ?? false;
   return useQuery<MyShowEntry[]>({
-    queryKey: ["my-shows", sort, today],
-    queryFn: () => fetchMyShows({ sort, today }),
+    queryKey: ["my-shows", sort, today, ratedOnly],
+    queryFn: () => fetchMyShows({ sort, today, ratedOnly }),
     staleTime: FIVE_MINUTES,
   });
 }
@@ -171,6 +181,7 @@ function placeholderMyShowEntry(showId: number): MyShowEntry {
     first_watched_at: null,
     next_episode: null,
     added_at: new Date().toISOString(),
+    my_rating: null,
   };
 }
 

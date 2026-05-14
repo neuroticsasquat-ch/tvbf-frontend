@@ -274,6 +274,7 @@ function watchedToMyShowEntry(e: WatchedEntry): MyShowEntry {
     first_watched_at: e.first_watched_at,
     next_episode: null,
     added_at: e.first_watched_at ?? new Date(0).toISOString(),
+    my_rating: null,
   };
 }
 

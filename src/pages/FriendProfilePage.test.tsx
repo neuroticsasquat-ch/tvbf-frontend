@@ -49,6 +49,7 @@ function makeMyShow(showId: number, name: string): MyShowEntry {
     first_watched_at: null,
     next_episode: null,
     added_at: "2026-04-01T00:00:00Z",
+    my_rating: null,
   };
 }
 

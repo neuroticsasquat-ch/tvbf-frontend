@@ -1,6 +1,7 @@
 import { Link } from "react-router";
 import { Check } from "lucide-react";
 import type { MyShowEntry } from "@/api/types";
+import { RatingBadge } from "@/components/RatingBadge";
 import { WatchProgressBar } from "@/components/WatchProgressBar";
 
 const FALLBACK_POSTER =
@@ -31,21 +32,30 @@ export function MyShowCard({
       to={`/shows/${entry.show.id}`}
       className="group relative block overflow-hidden rounded border border-border bg-background transition hover:border-foreground"
     >
-      <img
-        src={entry.show.image_medium ?? FALLBACK_POSTER}
-        alt=""
-        className="aspect-[210/295] w-full object-cover"
-        loading="lazy"
-      />
-      {inMyShows && (
-        <span
-          className="absolute top-1 right-1 inline-flex h-5 w-5 items-center justify-center rounded-full bg-emerald-600 text-white shadow"
-          title="In My Shows"
-          aria-label="In My Shows"
-        >
-          <Check className="h-3.5 w-3.5" aria-hidden strokeWidth={3} />
-        </span>
-      )}
+      <div className="relative">
+        <img
+          src={entry.show.image_medium ?? FALLBACK_POSTER}
+          alt=""
+          className="aspect-[210/295] w-full object-cover"
+          loading="lazy"
+        />
+        {inMyShows && (
+          <span
+            className="absolute top-1 right-1 inline-flex h-5 w-5 items-center justify-center rounded-full bg-emerald-600 text-white shadow"
+            title="In My Shows"
+            aria-label="In My Shows"
+          >
+            <Check className="h-3.5 w-3.5" aria-hidden strokeWidth={3} />
+          </span>
+        )}
+        {entry.my_rating != null && entry.my_rating > 0 && (
+          <RatingBadge
+            value={entry.my_rating}
+            title="Your rating"
+            className="absolute bottom-1 left-1 text-[10px] py-0 px-1 shadow"
+          />
+        )}
+      </div>
       <div className="p-1.5">
         <h3 className="truncate text-xs font-medium leading-tight group-hover:underline">
           {entry.show.name}

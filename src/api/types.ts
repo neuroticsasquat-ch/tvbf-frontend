@@ -183,6 +183,10 @@ export interface MyShowEntry {
   first_watched_at: string | null;
   next_episode: EpisodeOut | null;
   added_at: string;
+  // The caller's own rating for this show. Hydrated by the /me/shows endpoint
+  // alongside `show: ShowSummary` (where `my_rating` stays null because the
+  // ShowSummary builder used inside my_shows_service doesn't carry it).
+  my_rating: number | null;
 }
 
 export interface WatchNextEntry {
