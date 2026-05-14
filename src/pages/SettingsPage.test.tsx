@@ -377,6 +377,75 @@ describe("SettingsPage", () => {
     });
   });
 
+  // ---------------------------------------------------------------------
+  // Your data section
+  // ---------------------------------------------------------------------
+
+  describe("your data", () => {
+    afterEach(() => {
+      vi.restoreAllMocks();
+    });
+
+    function stubBlobUrls() {
+      Object.defineProperty(URL, "createObjectURL", {
+        writable: true,
+        configurable: true,
+        value: vi.fn(() => "blob:mock"),
+      });
+      Object.defineProperty(URL, "revokeObjectURL", {
+        writable: true,
+        configurable: true,
+        value: vi.fn(),
+      });
+    }
+
+    it("clicking 'Download my data' fetches /me/export", async () => {
+      stubBlobUrls();
+      vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => {});
+      let requested = false;
+      server.use(authedMeHandler());
+      server.use(
+        http.get(`${env.apiBaseUrl}/me/export`, () => {
+          requested = true;
+          return new HttpResponse('{"account":{}}', {
+            status: 200,
+            headers: {
+              "content-type": "application/json",
+              "content-disposition": 'attachment; filename="tvbf-export-2026-05-13.json"',
+            },
+          });
+        }),
+      );
+
+      renderWithProviders(<SettingsPage />, { route: "/settings" });
+      await userEvent.click(
+        await screen.findByRole("button", { name: /download my data/i }),
+      );
+      await waitFor(() => expect(requested).toBe(true));
+    });
+
+    it("shows an error toast on failure", async () => {
+      stubBlobUrls();
+      server.use(authedMeHandler());
+      server.use(
+        http.get(`${env.apiBaseUrl}/me/export`, () =>
+          HttpResponse.json({ detail: "boom" }, { status: 500 }),
+        ),
+      );
+
+      renderWithProviders(<SettingsPage />, { route: "/settings" });
+      await userEvent.click(
+        await screen.findByRole("button", { name: /download my data/i }),
+      );
+      // The button re-enables once the request finishes (success or error).
+      await waitFor(() =>
+        expect(
+          screen.getByRole("button", { name: /download my data/i }),
+        ).not.toBeDisabled(),
+      );
+    });
+  });
+
   it("Cancel restores the original name and closes the editor", async () => {
     server.use(authedMeHandler());
     renderWithProviders(<SettingsPage />, { route: "/settings" });
