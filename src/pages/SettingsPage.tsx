@@ -3,6 +3,7 @@ import { toast } from "sonner";
 import { useAuth } from "@/components/AuthContext";
 import * as authApi from "@/api/auth";
 import { ApiError } from "@/api/client";
+import { downloadMyData } from "@/api/export";
 import {
   useMySessions,
   useRevokeOtherSessions,
@@ -24,7 +25,45 @@ export function SettingsPage() {
       <ProfileSection />
       <EmailSection />
       <SessionsSection />
+      <YourDataSection />
     </div>
+  );
+}
+
+function YourDataSection() {
+  const [downloading, setDownloading] = useState(false);
+
+  async function onDownload() {
+    setDownloading(true);
+    try {
+      await downloadMyData();
+    } catch {
+      toast.error("Couldn't download your data. Try again.");
+    } finally {
+      setDownloading(false);
+    }
+  }
+
+  return (
+    <section aria-labelledby="your-data-heading" className="space-y-4">
+      <h2 id="your-data-heading" className="text-lg font-semibold">
+        Your data
+      </h2>
+      <div className="rounded border border-border p-4 space-y-3 text-sm">
+        <p className="text-muted-foreground">
+          Download a JSON copy of your account info, My Shows list, and full
+          watch history.
+        </p>
+        <button
+          type="button"
+          onClick={onDownload}
+          disabled={downloading}
+          className="rounded bg-foreground text-background px-3 py-1 disabled:opacity-50"
+        >
+          {downloading ? "Preparing download…" : "Download my data"}
+        </button>
+      </div>
+    </section>
   );
 }
 
