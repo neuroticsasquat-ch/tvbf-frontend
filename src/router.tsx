@@ -16,6 +16,8 @@ import { FriendProfilePage } from "@/pages/FriendProfilePage";
 import { SettingsPage } from "@/pages/SettingsPage";
 import { VerifyEmailPage } from "@/pages/VerifyEmailPage";
 import { EmailChangeConfirmPage } from "@/pages/EmailChangeConfirmPage";
+import { ForgotPasswordPage } from "@/pages/ForgotPasswordPage";
+import { ResetPasswordPage } from "@/pages/ResetPasswordPage";
 
 export const router = createBrowserRouter([
   {
@@ -26,6 +28,8 @@ export const router = createBrowserRouter([
       { path: "signup", element: <SignupPage /> },
       { path: "verify-email", element: <VerifyEmailPage /> },
       { path: "email-change/confirm", element: <EmailChangeConfirmPage /> },
+      { path: "forgot-password", element: <ForgotPasswordPage /> },
+      { path: "reset-password", element: <ResetPasswordPage /> },
       {
         element: <RequireAuth />,
         children: [
