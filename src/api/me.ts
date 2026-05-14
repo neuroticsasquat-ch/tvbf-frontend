@@ -7,6 +7,8 @@ import type {
   EpisodeWatchOut,
   MyShowEntry,
   MyShowsSort,
+  Rating,
+  ShowDetail,
   UpcomingEntry,
   UpcomingSeasonEntry,
   UpcomingShowEntry,
@@ -157,6 +159,8 @@ function placeholderMyShowEntry(showId: number): MyShowEntry {
       web_channel: null,
       genres: [],
       matched_aka: null,
+      rating_average: null,
+      my_rating: null,
     },
     watched_episode_count: 0,
     total_episode_count: 0,
@@ -372,5 +376,76 @@ export function useUnmarkShow() {
       if (ctx) qc.setQueryData(ctx.key, ctx.prev);
     },
     onSettled: () => invalidateAll(qc),
+  });
+}
+
+/** PUT/DELETE the caller's rating for a show. Pass `null` to clear; otherwise a
+ * half-step value in [0.5, 5]. Optimistically updates the cached `["show", id]`
+ * detail; reverts on error; invalidates rating-related caches on settle. */
+export function useShowRating(showId: number) {
+  const qc = useQueryClient();
+  return useMutation<Rating | void, Error, number | null, { prev: ShowDetail | undefined }>({
+    mutationFn: (stars) => {
+      if (stars === null) {
+        return apiFetch<void>(`/me/shows/${showId}/rating`, { method: "DELETE" });
+      }
+      return apiFetch<Rating>(`/me/shows/${showId}/rating`, {
+        method: "PUT",
+        body: JSON.stringify({ stars }),
+      });
+    },
+    onMutate: async (stars) => {
+      await qc.cancelQueries({ queryKey: ["show", showId] });
+      const prev = qc.getQueryData<ShowDetail>(["show", showId]);
+      if (prev) {
+        qc.setQueryData<ShowDetail>(["show", showId], { ...prev, my_rating: stars });
+      }
+      return { prev };
+    },
+    onError: (_err, _stars, ctx) => {
+      if (ctx?.prev) qc.setQueryData(["show", showId], ctx.prev);
+      toast.error("Could not save your rating.");
+    },
+    onSettled: () => {
+      qc.invalidateQueries({ queryKey: ["show", showId] });
+      qc.invalidateQueries({ queryKey: ["my-shows"] });
+      qc.invalidateQueries({ queryKey: ["shows"] });
+    },
+  });
+}
+
+/** PUT/DELETE the caller's rating for an episode. */
+export function useEpisodeRating(episodeId: number) {
+  const qc = useQueryClient();
+  return useMutation<Rating | void, Error, number | null, { prev: EpisodeOut | undefined }>({
+    mutationFn: (stars) => {
+      if (stars === null) {
+        return apiFetch<void>(`/me/episodes/${episodeId}/rating`, { method: "DELETE" });
+      }
+      return apiFetch<Rating>(`/me/episodes/${episodeId}/rating`, {
+        method: "PUT",
+        body: JSON.stringify({ stars }),
+      });
+    },
+    onMutate: async (stars) => {
+      await qc.cancelQueries({ queryKey: ["episode", episodeId] });
+      const prev = qc.getQueryData<EpisodeOut>(["episode", episodeId]);
+      if (prev) {
+        qc.setQueryData<EpisodeOut>(["episode", episodeId], { ...prev, my_rating: stars });
+      }
+      return { prev };
+    },
+    onError: (_err, _stars, ctx) => {
+      if (ctx?.prev) qc.setQueryData(["episode", episodeId], ctx.prev);
+      toast.error("Could not save your rating.");
+    },
+    onSettled: () => {
+      qc.invalidateQueries({ queryKey: ["episode", episodeId] });
+      const prev = qc.getQueryData<EpisodeOut>(["episode", episodeId]);
+      const showId = prev?.show_id;
+      if (showId !== undefined) {
+        qc.invalidateQueries({ queryKey: ["show-episodes", showId] });
+      }
+    },
   });
 }

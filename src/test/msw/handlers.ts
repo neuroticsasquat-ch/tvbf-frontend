@@ -32,4 +32,22 @@ export const handlers = [
     if (season === "2") return HttpResponse.json(fixtureSeason2Episodes);
     return HttpResponse.json(fixtureEpisodes);
   }),
+  http.put(`${base}/me/shows/:id/rating`, async ({ params, request }) => {
+    const body = (await request.json()) as { stars: number };
+    return HttpResponse.json({
+      show_id: Number(params.id),
+      stars: body.stars,
+      rated_at: "2026-05-14T12:00:00Z",
+    });
+  }),
+  http.delete(`${base}/me/shows/:id/rating`, () => new HttpResponse(null, { status: 204 })),
+  http.put(`${base}/me/episodes/:id/rating`, async ({ params, request }) => {
+    const body = (await request.json()) as { stars: number };
+    return HttpResponse.json({
+      episode_id: Number(params.id),
+      stars: body.stars,
+      rated_at: "2026-05-14T12:00:00Z",
+    });
+  }),
+  http.delete(`${base}/me/episodes/:id/rating`, () => new HttpResponse(null, { status: 204 })),
 ];
