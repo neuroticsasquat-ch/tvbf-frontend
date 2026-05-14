@@ -7,6 +7,10 @@ import { env } from "@/env";
 import { renderWithProviders } from "@/test/renderWithProviders";
 import { SettingsPage } from "./SettingsPage";
 
+function sessionsHandler(rows: unknown[]) {
+  return http.get(`${env.apiBaseUrl}/me/sessions`, () => HttpResponse.json(rows));
+}
+
 function authedMeHandler() {
   return http.get(`${env.apiBaseUrl}/me`, () =>
     HttpResponse.json({
@@ -162,6 +166,63 @@ describe("SettingsPage", () => {
     // Form stays open so the user can fix and retry.
     expect(
       screen.getByRole("button", { name: /send confirmation link/i }),
+    ).toBeInTheDocument();
+  });
+
+  // ---------------------------------------------------------------------
+  // Sessions section
+  // ---------------------------------------------------------------------
+
+  it("renders sessions with device label, IP, and marks the current one", async () => {
+    server.use(authedMeHandler());
+    server.use(
+      sessionsHandler([
+        {
+          id: "sess-1",
+          device_label: "Chrome on macOS",
+          ip: "10.0.0.1",
+          last_seen_at: new Date(Date.now() - 60 * 1000).toISOString(),
+          created_at: new Date(Date.now() - 60 * 60 * 1000).toISOString(),
+          is_current: true,
+        },
+        {
+          id: "sess-2",
+          device_label: "Firefox on Windows",
+          ip: "10.0.0.2",
+          last_seen_at: new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString(),
+          created_at: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
+          is_current: false,
+        },
+      ]),
+    );
+
+    renderWithProviders(<SettingsPage />, { route: "/settings" });
+    expect(await screen.findByText("Chrome on macOS")).toBeInTheDocument();
+    expect(screen.getByText("Firefox on Windows")).toBeInTheDocument();
+    expect(screen.getByText("10.0.0.1")).toBeInTheDocument();
+    expect(screen.getByText("10.0.0.2")).toBeInTheDocument();
+    expect(screen.getByText(/this device/i)).toBeInTheDocument();
+  });
+
+  it("shows an empty state when there are no sessions", async () => {
+    server.use(authedMeHandler());
+    server.use(sessionsHandler([]));
+
+    renderWithProviders(<SettingsPage />, { route: "/settings" });
+    expect(await screen.findByText(/no active sessions/i)).toBeInTheDocument();
+  });
+
+  it("shows an error message if /me/sessions fails", async () => {
+    server.use(authedMeHandler());
+    server.use(
+      http.get(`${env.apiBaseUrl}/me/sessions`, () =>
+        HttpResponse.json({ detail: "boom" }, { status: 500 }),
+      ),
+    );
+
+    renderWithProviders(<SettingsPage />, { route: "/settings" });
+    expect(
+      await screen.findByText(/couldn't load your sessions/i),
     ).toBeInTheDocument();
   });
 

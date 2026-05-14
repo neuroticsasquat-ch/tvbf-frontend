@@ -18,6 +18,7 @@ export const handlers = [
   http.get(`${base}/me/watched`, () => HttpResponse.json([])),
   http.get(`${base}/me/watch-next`, () => HttpResponse.json([])),
   http.get(`${base}/me/upcoming`, () => HttpResponse.json([])),
+  http.get(`${base}/me/sessions`, () => HttpResponse.json([])),
   http.get(`${base}/genres`, () => HttpResponse.json(fixtureGenres)),
   http.get(`${base}/networks`, () => HttpResponse.json(fixtureNetworks)),
   http.get(`${base}/shows`, () => HttpResponse.json(fixtureShowListPage)),
