@@ -1,6 +1,7 @@
 import { Link } from "react-router";
 import { Check } from "lucide-react";
 import type { MyShowEntry } from "@/api/types";
+import { RatingBadge } from "@/components/RatingBadge";
 import { WatchProgressBar } from "@/components/WatchProgressBar";
 
 const FALLBACK_POSTER =
@@ -45,6 +46,13 @@ export function MyShowCard({
         >
           <Check className="h-3.5 w-3.5" aria-hidden strokeWidth={3} />
         </span>
+      )}
+      {entry.my_rating != null && entry.my_rating > 0 && (
+        <RatingBadge
+          value={entry.my_rating}
+          title="Your rating"
+          className="absolute bottom-1 left-1 text-[10px] py-0 px-1 shadow"
+        />
       )}
       <div className="p-1.5">
         <h3 className="truncate text-xs font-medium leading-tight group-hover:underline">

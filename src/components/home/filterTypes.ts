@@ -26,6 +26,9 @@ export const IN_MY_SHOWS_FILTERS: { key: InMyShowsFilter; label: string }[] = [
 ];
 export const IN_MY_SHOWS_KEYS = IN_MY_SHOWS_FILTERS.map((f) => f.key);
 
+export const RATED_FILTER_KEYS = ["all", "rated"] as const;
+export type RatedFilter = (typeof RATED_FILTER_KEYS)[number];
+
 export const SHOW_STATUSES: { key: ShowStatusFilter; label: string }[] = [
   { key: "all", label: "All" },
   { key: "running", label: "Running" },

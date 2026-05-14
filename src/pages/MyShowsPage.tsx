@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useSearchParams } from "react-router";
 import { useMyShows, useMyWatched } from "@/api/me";
 import { LibraryActiveList } from "@/components/library/LibraryActiveList";
@@ -70,8 +71,15 @@ export function MyShowsPage() {
 }
 
 function ActiveTab() {
-  const { data, isLoading } = useMyShows();
-  return <LibraryActiveList data={data} isLoading={isLoading} />;
+  const [ratedOnly, setRatedOnly] = useState(false);
+  const { data, isLoading } = useMyShows("recent_activity", { ratedOnly });
+  return (
+    <LibraryActiveList
+      data={data}
+      isLoading={isLoading}
+      onRatedOnlyChange={setRatedOnly}
+    />
+  );
 }
 
 function WatchedTab() {
