@@ -62,6 +62,11 @@ export function LoginPage() {
           />
         </div>
         {error && <p className="text-sm text-red-600">{error}</p>}
+        <div className="text-right">
+          <Link to="/forgot-password" className="text-sm underline">
+            Forgot your password?
+          </Link>
+        </div>
         <button
           type="submit"
           disabled={submitting}
