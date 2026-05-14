@@ -14,6 +14,7 @@ import { MyShowsPage } from "@/pages/MyShowsPage";
 import { ConnectionsPage } from "@/pages/ConnectionsPage";
 import { FriendProfilePage } from "@/pages/FriendProfilePage";
 import { SettingsPage } from "@/pages/SettingsPage";
+import { VerifyEmailPage } from "@/pages/VerifyEmailPage";
 
 export const router = createBrowserRouter([
   {
@@ -22,6 +23,7 @@ export const router = createBrowserRouter([
     children: [
       { path: "login", element: <LoginPage /> },
       { path: "signup", element: <SignupPage /> },
+      { path: "verify-email", element: <VerifyEmailPage /> },
       {
         element: <RequireAuth />,
         children: [

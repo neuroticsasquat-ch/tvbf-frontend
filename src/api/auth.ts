@@ -21,5 +21,14 @@ export const updateMe = (body: { display_name: string }) =>
 export const changePassword = (body: { current_password: string; new_password: string }) =>
   apiFetch<AuthedUser>("/auth/password", { method: "POST", body: JSON.stringify(body) });
 
+export const requestEmailVerification = () =>
+  apiFetch<void>("/me/email/verification", { method: "POST" });
+
+export const verifyEmail = (body: { token: string }) =>
+  apiFetch<{ ok: boolean }>("/verify-email", {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+
 export const deleteAccount = (body: { password: string }) =>
   apiFetch<void>("/me", { method: "DELETE", body: JSON.stringify(body) });
