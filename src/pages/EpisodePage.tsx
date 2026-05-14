@@ -8,6 +8,7 @@ import { NotFoundPage } from "./NotFoundPage";
 import { CollapsibleSummary } from "@/components/CollapsibleSummary";
 import { EpisodeWatchCheckbox } from "@/components/EpisodeWatchCheckbox";
 import { EpisodeFriendsWatched } from "@/components/friends/FriendActivity";
+import { FriendRatingsList } from "@/components/FriendRatingsList";
 import { FilterSheet } from "@/components/home/FilterSheet";
 import { Button } from "@/components/ui/button";
 import { RatingBadge } from "@/components/RatingBadge";
@@ -159,6 +160,7 @@ export function EpisodePage() {
           </section>
         ) : null}
         <EpisodeFriendsWatched episodeId={ep.id} />
+        <FriendRatingsList episodeId={ep.id} />
         <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
           <EpisodeWatchCheckbox showId={ep.show_id} episodeId={ep.id} withLabel />
           <div className="inline-flex">

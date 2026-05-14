@@ -12,6 +12,7 @@ import { MyShowsToggle } from "@/components/MyShowsToggle";
 import { ShowWatchCheckbox } from "@/components/ShowWatchCheckbox";
 import { NextEpisodeCard } from "@/components/NextEpisodeCard";
 import { ShowFriendActivityStrip } from "@/components/friends/FriendActivity";
+import { FriendRatingsList } from "@/components/FriendRatingsList";
 import { WatchProgressBar } from "@/components/WatchProgressBar";
 import { SeasonWatchCheckbox } from "@/components/SeasonWatchCheckbox";
 import { useMyShows, useSeasonProgress, useShowRating } from "@/api/me";
@@ -110,6 +111,8 @@ export function ShowDetailPage() {
       ) : null}
 
       <ShowFriendActivityStrip showId={show.id} />
+
+      <FriendRatingsList showId={show.id} />
 
       <NextEpisodeCard showId={show.id} />
 

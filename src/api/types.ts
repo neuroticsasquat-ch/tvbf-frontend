@@ -264,3 +264,16 @@ export interface ShowFriendActivity {
   in_my_shows: UserBrief[];
   watched: UserBrief[];
 }
+
+export interface FriendRating {
+  user_id: string;
+  display_name: string;
+  stars: number;
+  rated_at: string;
+}
+
+export interface FriendRatingsResponse {
+  avg: number | null;
+  count: number;
+  items: FriendRating[];
+}

@@ -50,4 +50,10 @@ export const handlers = [
     });
   }),
   http.delete(`${base}/me/episodes/:id/rating`, () => new HttpResponse(null, { status: 204 })),
+  http.get(`${base}/shows/:id/friends/ratings`, () =>
+    HttpResponse.json({ avg: null, count: 0, items: [] }),
+  ),
+  http.get(`${base}/episodes/:id/friends/ratings`, () =>
+    HttpResponse.json({ avg: null, count: 0, items: [] }),
+  ),
 ];
