@@ -16,6 +16,7 @@ type AuthContextValue = {
   ) => Promise<void>;
   logout: () => Promise<void>;
   changePassword: (currentPassword: string, newPassword: string) => Promise<void>;
+  updateDisplayName: (displayName: string) => Promise<void>;
   deleteAccount: (password: string) => Promise<void>;
   refresh: () => Promise<void>;
 };
@@ -82,6 +83,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       qc.setQueryData(["me"], user);
     },
   });
+  const updateMeMut = useMutation({
+    mutationFn: (vars: { display_name: string }) => authApi.updateMe(vars),
+    onSuccess: (user) => {
+      setCsrfToken(user.csrf_token);
+      qc.setQueryData(["me"], user);
+    },
+  });
   const deleteMut = useMutation({
     mutationFn: (vars: { password: string }) => authApi.deleteAccount(vars),
     onSuccess: () => {
@@ -112,6 +120,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       changePassword: async (cur, next) => {
         await changePwMut.mutateAsync({ current_password: cur, new_password: next });
       },
+      updateDisplayName: async (displayName) => {
+        await updateMeMut.mutateAsync({ display_name: displayName });
+      },
       deleteAccount: async (password) => {
         await deleteMut.mutateAsync({ password });
       },
@@ -124,6 +135,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       signupMut,
       logoutMut,
       changePwMut,
+      updateMeMut,
       deleteMut,
       refresh,
     ],

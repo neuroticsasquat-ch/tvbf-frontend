@@ -156,6 +156,7 @@ export interface User {
   email: string;
   display_name: string;
   created_at: string;
+  email_verified_at: string | null;
 }
 
 export interface AuthedUser extends User {

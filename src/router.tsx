@@ -13,6 +13,7 @@ import { UpcomingPage } from "@/pages/UpcomingPage";
 import { MyShowsPage } from "@/pages/MyShowsPage";
 import { ConnectionsPage } from "@/pages/ConnectionsPage";
 import { FriendProfilePage } from "@/pages/FriendProfilePage";
+import { SettingsPage } from "@/pages/SettingsPage";
 
 export const router = createBrowserRouter([
   {
@@ -28,6 +29,7 @@ export const router = createBrowserRouter([
           { path: "upcoming", element: <UpcomingPage /> },
           { path: "my-shows", element: <MyShowsPage /> },
           { path: "connections", element: <ConnectionsPage /> },
+          { path: "settings", element: <SettingsPage /> },
           { path: "users/:userId", element: <FriendProfilePage /> },
           // Redirects from old paths.
           { path: "watch-next", element: <Navigate to="/" replace /> },
