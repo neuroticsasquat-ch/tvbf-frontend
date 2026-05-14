@@ -3,6 +3,8 @@ import { toast } from "sonner";
 import { useAuth } from "@/components/AuthContext";
 import * as authApi from "@/api/auth";
 import { ApiError } from "@/api/client";
+import { useMySessions, type SessionSummary } from "@/api/sessions";
+import { formatRelativeTime } from "@/lib/relativeTime";
 
 /** Settings page shell. Today this only carries the Profile section
  * (display-name edit). M2/M5/M6 stories drop additional sections in here. */
@@ -16,7 +18,67 @@ export function SettingsPage() {
       <h1 className="text-2xl font-semibold">Settings</h1>
       <ProfileSection />
       <EmailSection />
+      <SessionsSection />
     </div>
+  );
+}
+
+function SessionsSection() {
+  const { data, isLoading, isError } = useMySessions();
+
+  return (
+    <section aria-labelledby="sessions-heading" className="space-y-4">
+      <h2 id="sessions-heading" className="text-lg font-semibold">
+        Sessions
+      </h2>
+
+      <div className="rounded border border-border">
+        {isLoading ? (
+          <p className="p-4 text-sm text-muted-foreground" role="status">
+            Loading sessions…
+          </p>
+        ) : isError ? (
+          <p className="p-4 text-sm text-red-600" role="alert">
+            Couldn't load your sessions. Try again later.
+          </p>
+        ) : !data || data.length === 0 ? (
+          <p className="p-4 text-sm text-muted-foreground">
+            No active sessions.
+          </p>
+        ) : (
+          <ul className="divide-y divide-border">
+            {data.map((s) => (
+              <SessionRow key={s.id} session={s} />
+            ))}
+          </ul>
+        )}
+      </div>
+    </section>
+  );
+}
+
+function SessionRow({ session: s }: { session: SessionSummary }) {
+  return (
+    <li className="flex flex-wrap items-center gap-x-4 gap-y-1 p-4 text-sm">
+      <div className="flex flex-1 min-w-0 items-center gap-2">
+        <span className="truncate font-medium text-foreground">
+          {s.device_label}
+        </span>
+        {s.is_current && (
+          <span className="text-xs rounded bg-emerald-100 px-1.5 py-0.5 text-emerald-900 dark:bg-emerald-900/40 dark:text-emerald-200">
+            This device
+          </span>
+        )}
+      </div>
+      <div className="text-xs text-muted-foreground sm:text-right">
+        <p>{s.ip ?? "Unknown IP"}</p>
+        <p>
+          <span aria-label={`Last active ${new Date(s.last_seen_at).toLocaleString()}`}>
+            Last active {formatRelativeTime(s.last_seen_at)}
+          </span>
+        </p>
+      </div>
+    </li>
   );
 }
 
