@@ -73,6 +73,8 @@ export interface EpisodeOut {
   // Per-user watched flag. Populated by `/me/*` list endpoints; null on
   // catalog-browse endpoints that have no user context.
   watched: boolean | null;
+  rating_average: number | null;
+  my_rating: number | null;
 }
 
 export interface ShowSummary {
@@ -89,6 +91,13 @@ export interface ShowSummary {
   web_channel: NetworkRef | null;
   genres: string[];
   matched_aka: string | null;
+  rating_average: number | null;
+  my_rating: number | null;
+}
+
+export interface Rating {
+  stars: number;
+  rated_at: string;
 }
 
 export interface ShowDetail extends ShowSummary {

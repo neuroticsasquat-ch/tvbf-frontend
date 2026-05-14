@@ -44,6 +44,8 @@ export const fixtureShow: ShowDetail = {
   web_channel: null,
   genres: ["Drama"],
   matched_aka: null,
+  rating_average: 8.4,
+  my_rating: null,
   summary: "<p>A <b>test</b> show.</p>",
   runtime: 60,
   official_site: "https://example.com/show",
@@ -95,6 +97,8 @@ export const fixtureShowListPage: ShowListPage = {
       web_channel: null,
       genres: ["Drama"],
       matched_aka: null,
+      rating_average: 8.4,
+      my_rating: null,
     },
     {
       id: 101,
@@ -110,6 +114,8 @@ export const fixtureShowListPage: ShowListPage = {
       web_channel: null,
       genres: ["Comedy"],
       matched_aka: null,
+      rating_average: null,
+      my_rating: null,
     },
   ],
   page: 1,
@@ -133,6 +139,8 @@ export const fixtureEpisodes: EpisodeOut[] = [
     image_medium: null,
     image_original: null,
     watched: false,
+    rating_average: 8.4,
+    my_rating: null,
   },
   {
     id: 5001,
@@ -148,6 +156,8 @@ export const fixtureEpisodes: EpisodeOut[] = [
     image_medium: null,
     image_original: null,
     watched: false,
+    rating_average: null,
+    my_rating: null,
   },
 ];
 
@@ -166,6 +176,8 @@ export const fixtureSeason2Episodes: EpisodeOut[] = [
     image_medium: null,
     image_original: null,
     watched: false,
+    rating_average: null,
+    my_rating: null,
   },
 ];
 

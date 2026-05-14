@@ -35,6 +35,8 @@ function makeWatched(
       web_channel: null,
       genres: [],
       matched_aka: null,
+      rating_average: null,
+      my_rating: null,
     },
     watched_episode_count: 8,
     aired_episode_count: 10,
