@@ -12,6 +12,7 @@ import { UserMenu } from "./UserMenu";
 import { ChangePasswordDialog } from "./ChangePasswordDialog";
 import { DeleteAccountDialog } from "./DeleteAccountDialog";
 import { SearchOverlay } from "./SearchOverlay";
+import { UnverifiedEmailBanner } from "./UnverifiedEmailBanner";
 import { cn } from "@/lib/cn";
 
 type Placement = "desktop" | "mobile-header" | "mobile-bottom";
@@ -193,6 +194,8 @@ export function AppShell() {
           )}
         </div>
       </header>
+
+      {user && <UnverifiedEmailBanner />}
 
       {overlayActive ? (
         <section
