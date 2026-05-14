@@ -24,6 +24,15 @@ export const changePassword = (body: { current_password: string; new_password: s
 export const requestEmailVerification = () =>
   apiFetch<void>("/me/email/verification", { method: "POST" });
 
+export const requestEmailChange = (body: { new_email: string; current_password: string }) =>
+  apiFetch<void>("/me/email/change", { method: "POST", body: JSON.stringify(body) });
+
+export const confirmEmailChange = (body: { token: string }) =>
+  apiFetch<{ ok: boolean }>("/email-change/confirm", {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+
 export const verifyEmail = (body: { token: string }) =>
   apiFetch<{ ok: boolean }>("/verify-email", {
     method: "POST",

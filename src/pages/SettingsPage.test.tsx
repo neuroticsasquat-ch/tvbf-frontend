@@ -104,6 +104,67 @@ describe("SettingsPage", () => {
     expect(await screen.findByRole("alert")).toHaveTextContent(/1–80 characters/);
   });
 
+  // ---------------------------------------------------------------------
+  // Email section
+  // ---------------------------------------------------------------------
+
+  it("shows current email and verified/unverified state", async () => {
+    server.use(authedMeHandler());
+    renderWithProviders(<SettingsPage />, { route: "/settings" });
+    expect(await screen.findByText("alice@example.com")).toBeInTheDocument();
+    expect(screen.getByText(/^unverified$/i)).toBeInTheDocument();
+  });
+
+  it("happy-path: submitting the change-email form shows a sent-confirmation message", async () => {
+    server.use(authedMeHandler());
+    server.use(
+      http.post(`${env.apiBaseUrl}/me/email/change`, () => new HttpResponse(null, { status: 202 })),
+    );
+
+    renderWithProviders(<SettingsPage />, { route: "/settings" });
+    await screen.findByText("alice@example.com");
+    await userEvent.click(screen.getByRole("button", { name: /change email/i }));
+
+    await userEvent.type(screen.getByLabelText(/new email/i), "new@example.com");
+    await userEvent.type(screen.getByLabelText(/current password/i), "hunter2hunter2");
+    await userEvent.click(
+      screen.getByRole("button", { name: /send confirmation link/i }),
+    );
+
+    expect(
+      await screen.findByText(/we sent a confirmation link to/i),
+    ).toBeInTheDocument();
+    expect(screen.getByText("new@example.com")).toBeInTheDocument();
+  });
+
+  it.each([
+    [401, /password is incorrect/i],
+    [409, /already used by another account/i],
+    [429, /too many requests/i],
+  ])("change-email surface for status %i shows %s", async (status, copy) => {
+    server.use(authedMeHandler());
+    server.use(
+      http.post(`${env.apiBaseUrl}/me/email/change`, () =>
+        HttpResponse.json({ detail: "err" }, { status }),
+      ),
+    );
+
+    renderWithProviders(<SettingsPage />, { route: "/settings" });
+    await screen.findByText("alice@example.com");
+    await userEvent.click(screen.getByRole("button", { name: /change email/i }));
+    await userEvent.type(screen.getByLabelText(/new email/i), "new@example.com");
+    await userEvent.type(screen.getByLabelText(/current password/i), "wrong");
+    await userEvent.click(
+      screen.getByRole("button", { name: /send confirmation link/i }),
+    );
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(copy);
+    // Form stays open so the user can fix and retry.
+    expect(
+      screen.getByRole("button", { name: /send confirmation link/i }),
+    ).toBeInTheDocument();
+  });
+
   it("Cancel restores the original name and closes the editor", async () => {
     server.use(authedMeHandler());
     renderWithProviders(<SettingsPage />, { route: "/settings" });
