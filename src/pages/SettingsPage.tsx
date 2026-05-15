@@ -4,6 +4,7 @@ import { useAuth } from "@/components/AuthContext";
 import * as authApi from "@/api/auth";
 import { ApiError } from "@/api/client";
 import { downloadMyData } from "@/api/export";
+import { useUpdatePreferences } from "@/api/me";
 import {
   useMySessions,
   useRevokeOtherSessions,
@@ -24,6 +25,7 @@ export function SettingsPage() {
       <h1 className="text-2xl font-semibold">Settings</h1>
       <ProfileSection />
       <EmailSection />
+      <PrivacySection />
       <SessionsSection />
       <YourDataSection />
     </div>
@@ -449,6 +451,39 @@ function ProfileSection() {
         </div>
 
       </div>
+    </section>
+  );
+}
+
+function PrivacySection() {
+  const { user } = useAuth();
+  const update = useUpdatePreferences();
+  if (!user) return null;
+  const checked = user.activity_feed_enabled;
+  return (
+    <section aria-labelledby="privacy-heading" className="space-y-3">
+      <h2 id="privacy-heading" className="text-lg font-semibold">
+        Privacy
+      </h2>
+      <label className="flex items-center justify-between gap-3">
+        <span>
+          <span className="block text-base text-foreground">Share my activity with friends</span>
+          <span className="block text-sm text-muted-foreground">
+            When off, your adds, watches, and ratings won't appear in friends' activity feeds.
+          </span>
+        </span>
+        <input
+          type="checkbox"
+          role="switch"
+          aria-label="Share my activity with friends"
+          checked={checked}
+          disabled={update.isPending}
+          onChange={(e) =>
+            update.mutate({ activity_feed_enabled: e.currentTarget.checked })
+          }
+          className="h-5 w-5"
+        />
+      </label>
     </section>
   );
 }
