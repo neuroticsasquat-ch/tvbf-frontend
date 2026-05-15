@@ -11,6 +11,7 @@ import { RequireAuth } from "@/components/RequireAuth";
 import { WatchNextPage } from "@/pages/WatchNextPage";
 import { UpcomingPage } from "@/pages/UpcomingPage";
 import { MyShowsPage } from "@/pages/MyShowsPage";
+import { AdminPage } from "@/pages/AdminPage";
 import { FriendProfilePage } from "@/pages/FriendProfilePage";
 import { FriendsFeedPage } from "@/pages/FriendsFeedPage";
 import { SettingsPage } from "@/pages/SettingsPage";
@@ -37,6 +38,7 @@ export const router = createBrowserRouter([
           { path: "upcoming", element: <UpcomingPage /> },
           { path: "my-shows", element: <MyShowsPage /> },
           { path: "friends", element: <FriendsFeedPage /> },
+          { path: "admin", element: <AdminPage /> },
           { path: "connections", element: <Navigate to="/friends?section=connections" replace /> },
           { path: "settings", element: <SettingsPage /> },
           { path: "users/:userId", element: <FriendProfilePage /> },
