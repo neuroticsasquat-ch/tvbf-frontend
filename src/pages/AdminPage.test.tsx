@@ -68,6 +68,35 @@ describe("AdminPage", () => {
     expect(screen.getByText("Admin Alice")).toBeInTheDocument();
   });
 
+  it("filters the user list by name or email as the admin types", async () => {
+    server.use(
+      meHandler({ id: "viewer", is_admin: true }),
+      adminUsersHandler([
+        userRow({ id: "viewer", is_admin: true, display_name: "Admin Alice" }),
+        userRow({ id: "u2", is_admin: false, display_name: "Bob Builder" }),
+        userRow({ id: "u3", is_admin: false, display_name: "Carol Carpenter" }),
+      ]),
+    );
+    renderWithProviders(routed(), { route: "/admin" });
+    await screen.findByText("Bob Builder");
+
+    const input = screen.getByRole("searchbox", { name: /filter users/i });
+    await userEvent.type(input, "carol");
+
+    expect(screen.queryByText("Bob Builder")).not.toBeInTheDocument();
+    expect(screen.queryByText("Admin Alice")).not.toBeInTheDocument();
+    expect(screen.getByText("Carol Carpenter")).toBeInTheDocument();
+
+    await userEvent.clear(input);
+    await userEvent.type(input, "u3@example.com");
+    expect(screen.getByText("Carol Carpenter")).toBeInTheDocument();
+    expect(screen.queryByText("Bob Builder")).not.toBeInTheDocument();
+
+    await userEvent.clear(input);
+    await userEvent.type(input, "zzz-no-match");
+    expect(screen.getByText(/no users match "zzz-no-match"/i)).toBeInTheDocument();
+  });
+
   it("disables the toggle on the viewer's own row and fires PATCH for others", async () => {
     const calls: Array<{ userId: string; body: { is_admin: boolean } }> = [];
     server.use(
