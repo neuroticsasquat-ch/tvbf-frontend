@@ -171,6 +171,15 @@ export interface User {
 export interface AuthedUser extends User {
   csrf_token: string;
   activity_feed_enabled: boolean;
+  is_admin: boolean;
+}
+
+export interface AdminUserRow {
+  id: string;
+  email: string;
+  display_name: string;
+  created_at: string;
+  is_admin: boolean;
 }
 
 export interface MyShowEntry {

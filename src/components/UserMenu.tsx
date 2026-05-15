@@ -79,6 +79,18 @@ export function UserMenu({ onChangePassword, onDeleteAccount, variant = "icon" }
               Settings
             </Link>
           </li>
+          {user.is_admin && (
+            <li>
+              <Link
+                role="menuitem"
+                to="/admin"
+                onClick={() => setOpen(false)}
+                className="block w-full text-left px-3 py-2 hover:bg-muted"
+              >
+                Admin
+              </Link>
+            </li>
+          )}
           <li>
             <button
               type="button"
