@@ -20,39 +20,36 @@ export function AdminUsersTab() {
   }
 
   return (
-    <table className="w-full text-sm">
-      <thead>
-        <tr className="border-b border-border text-left text-muted-foreground">
-          <th className="py-2 pr-3 font-medium">Name</th>
-          <th className="py-2 pr-3 font-medium">Email</th>
-          <th className="py-2 pr-3 font-medium">Joined</th>
-          <th className="py-2 pr-3 font-medium">Admin</th>
-        </tr>
-      </thead>
-      <tbody>
-        {data.map((u) => {
-          const isSelf = u.id === viewer?.id;
-          return (
-            <tr key={u.id} className="border-b border-border last:border-b-0">
-              <td className="py-2 pr-3">{u.display_name}</td>
-              <td className="py-2 pr-3 text-muted-foreground">{u.email}</td>
-              <td className="py-2 pr-3 text-muted-foreground">{formatDate(u.created_at)}</td>
-              <td className="py-2 pr-3">
-                <input
-                  type="checkbox"
-                  role="switch"
-                  aria-label={`Admin status for ${u.display_name}`}
-                  checked={u.is_admin}
-                  disabled={isSelf || toggle.isPending}
-                  onChange={(e) =>
-                    toggle.mutate({ userId: u.id, isAdmin: e.currentTarget.checked })
-                  }
-                />
-              </td>
-            </tr>
-          );
-        })}
-      </tbody>
-    </table>
+    <ul className="divide-y divide-border">
+      {data.map((u) => {
+        const isSelf = u.id === viewer?.id;
+        return (
+          <li
+            key={u.id}
+            className="flex items-center gap-3 py-3 text-sm"
+            data-testid="admin-user-row"
+          >
+            <div className="min-w-0 flex-1">
+              <p className="truncate font-medium text-foreground">{u.display_name}</p>
+              <p className="truncate text-xs text-muted-foreground">{u.email}</p>
+              <p className="text-xs text-muted-foreground">Joined {formatDate(u.created_at)}</p>
+            </div>
+            <label className="inline-flex items-center gap-2 shrink-0">
+              <span className="text-xs text-muted-foreground">Admin</span>
+              <input
+                type="checkbox"
+                role="switch"
+                aria-label={`Admin status for ${u.display_name}`}
+                checked={u.is_admin}
+                disabled={isSelf || toggle.isPending}
+                onChange={(e) =>
+                  toggle.mutate({ userId: u.id, isAdmin: e.currentTarget.checked })
+                }
+              />
+            </label>
+          </li>
+        );
+      })}
+    </ul>
   );
 }

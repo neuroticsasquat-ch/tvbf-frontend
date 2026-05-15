@@ -98,7 +98,7 @@ export function AppShell() {
 
   const linkCls = (placement: Placement) =>
     placement === "mobile-bottom"
-      ? "flex flex-col items-center justify-center flex-1 py-2 text-xs gap-0.5"
+      ? "flex flex-col items-center justify-center flex-1 min-w-0 py-2 text-xs gap-0.5"
       : placement === "mobile-header"
         ? "inline-flex items-center justify-center h-9 w-9 rounded hover:bg-accent"
         : "inline-flex items-center h-9 px-3 rounded hover:bg-accent gap-1.5 text-sm";
@@ -186,7 +186,12 @@ export function AppShell() {
   return (
     // pb-20 reserves space at the document bottom on mobile so the fixed
     // bottom nav doesn't visually cover the footer. Removed at md+.
-    <div className={cn("flex min-h-screen flex-col", user && "pb-20 md:pb-0")}>
+    <div
+      className={cn(
+        "flex min-h-screen flex-col overflow-x-hidden",
+        user && "pb-20 md:pb-0",
+      )}
+    >
       <header className="sticky top-0 z-30 border-b border-border bg-background">
         <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-3 px-4 py-3">
           <Link
