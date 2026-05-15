@@ -9,6 +9,7 @@ import {
   Tv as TvIcon,
 } from "lucide-react";
 import { useAuth } from "./AuthContext";
+import { useIncomingRequestCount } from "@/api/incomingRequests";
 import { UserMenu } from "./UserMenu";
 import { ChangePasswordDialog } from "./ChangePasswordDialog";
 import { DeleteAccountDialog } from "./DeleteAccountDialog";
@@ -20,6 +21,7 @@ type Placement = "desktop" | "mobile-header" | "mobile-bottom";
 
 export function AppShell() {
   const { user } = useAuth();
+  const incomingRequestCount = useIncomingRequestCount(!!user);
   const location = useLocation();
   const [pwOpen, setPwOpen] = useState(false);
   const [delOpen, setDelOpen] = useState(false);
@@ -149,11 +151,23 @@ export function AppShell() {
       <NavLink
         to="/friends"
         className={({ isActive }) =>
-          cn(linkCls(placement), isActive ? activeCls(placement) : inactiveCls)
+          cn(linkCls(placement), isActive ? activeCls(placement) : inactiveCls, "relative")
         }
-        aria-label="Friends"
+        aria-label={
+          incomingRequestCount > 0
+            ? `Friends (${incomingRequestCount} pending request${incomingRequestCount === 1 ? "" : "s"})`
+            : "Friends"
+        }
       >
-        <FriendsIcon className="h-5 w-5" aria-hidden />
+        <span className="relative inline-flex">
+          <FriendsIcon className="h-5 w-5" aria-hidden />
+          {incomingRequestCount > 0 && (
+            <span
+              aria-hidden
+              className="absolute -top-1 -right-1 inline-flex h-2 w-2 rounded-full bg-red-500"
+            />
+          )}
+        </span>
         {showLabel(placement) && <span>Friends</span>}
       </NavLink>
     </>

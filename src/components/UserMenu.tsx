@@ -72,16 +72,6 @@ export function UserMenu({ onChangePassword, onDeleteAccount, variant = "icon" }
           <li>
             <Link
               role="menuitem"
-              to="/connections"
-              onClick={() => setOpen(false)}
-              className="block w-full text-left px-3 py-2 hover:bg-muted"
-            >
-              Connections
-            </Link>
-          </li>
-          <li>
-            <Link
-              role="menuitem"
               to="/settings"
               onClick={() => setOpen(false)}
               className="block w-full text-left px-3 py-2 hover:bg-muted"

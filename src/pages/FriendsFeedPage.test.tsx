@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeAll, afterAll, afterEach, vi, beforeEach } from "vitest";
-import { screen, waitFor, act } from "@testing-library/react";
+import { screen, waitFor, act, fireEvent } from "@testing-library/react";
 import { http, HttpResponse } from "msw";
 import { setupServer } from "msw/node";
 import { renderWithProviders } from "@/test/renderWithProviders";
@@ -93,7 +93,7 @@ describe("FriendsFeedPage", () => {
     renderWithProviders(<FriendsFeedPage />);
     await waitFor(() => expect(screen.getAllByTestId("feed-row")).toHaveLength(7));
 
-    const text = screen.getByRole("region", { name: /friends activity/i }).textContent ?? "";
+    const text = screen.getByRole("region", { name: /^friends$/i }).textContent ?? "";
     expect(text).toContain("Alice added Severance to My Shows.");
     expect(text).toContain("Alice watched Severance S2E5.");
     expect(text).toContain("Alice watched 5 episodes of Severance.");
@@ -143,6 +143,96 @@ describe("FriendsFeedPage", () => {
     renderWithProviders(<FriendsFeedPage />);
     await waitFor(() =>
       expect(screen.getByText(/no activity from your friends yet/i)).toBeInTheDocument(),
+    );
+  });
+
+  it("exposes Activity and Connections section tabs with Activity active by default", async () => {
+    server.use(
+      http.get(`${env.apiBaseUrl}/me/feed`, () =>
+        HttpResponse.json({ items: [], next_cursor: null }),
+      ),
+    );
+    renderWithProviders(<FriendsFeedPage />);
+    const tablist = await screen.findByRole("tablist", { name: /friends sections/i });
+    const tabs = screen.getAllByRole("tab", { current: false }).concat(
+      screen.getAllByRole("tab", { selected: true }),
+    );
+    expect(tablist).toBeInTheDocument();
+    expect(tabs.length).toBeGreaterThanOrEqual(2);
+    expect(screen.getByRole("tab", { name: /^activity$/i })).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
+    expect(screen.getByRole("tab", { name: /^connections$/i })).toHaveAttribute(
+      "aria-selected",
+      "false",
+    );
+  });
+
+  it("badges the outer Connections tab with the incoming-request count", async () => {
+    server.use(
+      http.get(`${env.apiBaseUrl}/me/feed`, () =>
+        HttpResponse.json({ items: [], next_cursor: null }),
+      ),
+      http.get(`${env.apiBaseUrl}/me/connection-requests`, () =>
+        HttpResponse.json({
+          incoming: [
+            {
+              id: "r1",
+              requester: { id: "u1", display_name: "U1" },
+              addressee: { id: "me", display_name: "Me" },
+              state: "pending",
+              created_at: "2026-05-15T10:00:00Z",
+              responded_at: null,
+            },
+            {
+              id: "r2",
+              requester: { id: "u2", display_name: "U2" },
+              addressee: { id: "me", display_name: "Me" },
+              state: "pending",
+              created_at: "2026-05-15T10:00:00Z",
+              responded_at: null,
+            },
+            {
+              id: "r3",
+              requester: { id: "u3", display_name: "U3" },
+              addressee: { id: "me", display_name: "Me" },
+              state: "pending",
+              created_at: "2026-05-15T10:00:00Z",
+              responded_at: null,
+            },
+          ],
+          outgoing: [],
+        }),
+      ),
+    );
+    renderWithProviders(<FriendsFeedPage />);
+    await waitFor(() =>
+      expect(
+        document.getElementById("friends-tab-connections")?.textContent,
+      ).toMatch(/Connections \(3\)/),
+    );
+  });
+
+  it("switches to the Connections section when its tab is clicked", async () => {
+    server.use(
+      http.get(`${env.apiBaseUrl}/me/feed`, () =>
+        HttpResponse.json({ items: [], next_cursor: null }),
+      ),
+      http.get(`${env.apiBaseUrl}/me/connections`, () => HttpResponse.json([])),
+    );
+    renderWithProviders(<FriendsFeedPage />);
+    const outerConnectionsTab = await screen.findByRole("tab", { name: /^connections$/i });
+    fireEvent.click(outerConnectionsTab);
+    // The nested Connections sub-tablist appears.
+    await waitFor(() =>
+      expect(
+        screen.getByRole("tablist", { name: /connections sections/i }),
+      ).toBeInTheDocument(),
+    );
+    expect(document.getElementById("friends-tab-connections")).toHaveAttribute(
+      "aria-selected",
+      "true",
     );
   });
 });

@@ -1,11 +1,11 @@
 import { describe, expect, it, vi } from "vitest";
 import { fireEvent, screen, waitFor } from "@testing-library/react";
 import { renderWithProviders } from "@/test/renderWithProviders";
-import { ConnectionsPage } from "./ConnectionsPage";
+import { ConnectionsTabs } from "./ConnectionsTabs";
 import * as connectionsApi from "@/api/connections";
 
-describe("ConnectionsPage shell", () => {
-  it("renders the page heading and tab list", async () => {
+describe("ConnectionsTabs", () => {
+  it("renders the tab list with Connections selected by default", async () => {
     const listConnections = vi.spyOn(connectionsApi, "listConnections").mockResolvedValue([]);
     vi.spyOn(connectionsApi, "listConnectionRequests").mockResolvedValue({
       incoming: [],
@@ -13,9 +13,8 @@ describe("ConnectionsPage shell", () => {
     });
     vi.spyOn(connectionsApi, "listBlocks").mockResolvedValue([]);
 
-    renderWithProviders(<ConnectionsPage />);
+    renderWithProviders(<ConnectionsTabs />);
 
-    expect(screen.getByRole("heading", { name: /connections/i, level: 1 })).toBeInTheDocument();
     expect(screen.getAllByRole("tab")).toHaveLength(3);
     expect(screen.getByRole("tab", { name: /connections/i })).toHaveAttribute(
       "aria-selected",
@@ -24,32 +23,33 @@ describe("ConnectionsPage shell", () => {
     await waitFor(() => expect(listConnections).toHaveBeenCalledTimes(1));
   });
 
-  it("does not fetch other tabs' data until they are viewed", async () => {
+  it("does not fetch the Blocked tab's data until it is viewed", async () => {
     const listConnections = vi.spyOn(connectionsApi, "listConnections").mockResolvedValue([]);
-    const listRequests = vi
-      .spyOn(connectionsApi, "listConnectionRequests")
-      .mockResolvedValue({ incoming: [], outgoing: [] });
+    // Requests is fetched eagerly to drive the badge — no longer lazy.
+    vi.spyOn(connectionsApi, "listConnectionRequests").mockResolvedValue({
+      incoming: [],
+      outgoing: [],
+    });
     const listBlocks = vi.spyOn(connectionsApi, "listBlocks").mockResolvedValue([]);
 
-    renderWithProviders(<ConnectionsPage />);
+    renderWithProviders(<ConnectionsTabs />);
 
     await waitFor(() => expect(listConnections).toHaveBeenCalled());
-    expect(listRequests).not.toHaveBeenCalled();
     expect(listBlocks).not.toHaveBeenCalled();
   });
 
-  it("switches to Requests tab and fetches its data", async () => {
+  it("switches to Requests tab and shows its content", async () => {
     vi.spyOn(connectionsApi, "listConnections").mockResolvedValue([]);
-    const listRequests = vi
-      .spyOn(connectionsApi, "listConnectionRequests")
-      .mockResolvedValue({ incoming: [], outgoing: [] });
+    vi.spyOn(connectionsApi, "listConnectionRequests").mockResolvedValue({
+      incoming: [],
+      outgoing: [],
+    });
     vi.spyOn(connectionsApi, "listBlocks").mockResolvedValue([]);
 
-    renderWithProviders(<ConnectionsPage />);
+    renderWithProviders(<ConnectionsTabs />);
 
     fireEvent.click(screen.getByRole("tab", { name: /requests/i }));
 
-    await waitFor(() => expect(listRequests).toHaveBeenCalledTimes(1));
     expect(screen.getByRole("tab", { name: /requests/i })).toHaveAttribute("aria-selected", "true");
     await waitFor(() => expect(screen.getByText(/no incoming requests/i)).toBeInTheDocument());
   });
@@ -62,12 +62,44 @@ describe("ConnectionsPage shell", () => {
     });
     const listBlocks = vi.spyOn(connectionsApi, "listBlocks").mockResolvedValue([]);
 
-    renderWithProviders(<ConnectionsPage />);
+    renderWithProviders(<ConnectionsTabs />);
 
     fireEvent.click(screen.getByRole("tab", { name: /blocked/i }));
 
     await waitFor(() => expect(listBlocks).toHaveBeenCalledTimes(1));
     await waitFor(() => expect(screen.getByText(/no blocked users/i)).toBeInTheDocument());
+  });
+
+  it("badges the Requests sub-tab with the incoming count", async () => {
+    vi.spyOn(connectionsApi, "listConnections").mockResolvedValue([]);
+    vi.spyOn(connectionsApi, "listConnectionRequests").mockResolvedValue({
+      incoming: [
+        {
+          id: "r1",
+          requester: { id: "u1", display_name: "U1" },
+          addressee: { id: "me", display_name: "Me" },
+          state: "pending",
+          created_at: new Date().toISOString(),
+          responded_at: null,
+        },
+        {
+          id: "r2",
+          requester: { id: "u2", display_name: "U2" },
+          addressee: { id: "me", display_name: "Me" },
+          state: "pending",
+          created_at: new Date().toISOString(),
+          responded_at: null,
+        },
+      ],
+      outgoing: [],
+    });
+    vi.spyOn(connectionsApi, "listBlocks").mockResolvedValue([]);
+
+    renderWithProviders(<ConnectionsTabs />);
+
+    await waitFor(() =>
+      expect(screen.getByRole("tab", { name: /requests \(2\)/i })).toBeInTheDocument(),
+    );
   });
 
   it("shows empty-state on the default tab", async () => {
@@ -78,7 +110,7 @@ describe("ConnectionsPage shell", () => {
     });
     vi.spyOn(connectionsApi, "listBlocks").mockResolvedValue([]);
 
-    renderWithProviders(<ConnectionsPage />);
+    renderWithProviders(<ConnectionsTabs />);
 
     await waitFor(() => expect(screen.getByText(/no connections yet/i)).toBeInTheDocument());
   });

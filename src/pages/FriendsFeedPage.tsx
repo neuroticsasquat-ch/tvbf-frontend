@@ -1,100 +1,80 @@
-import { useEffect, useRef } from "react";
-import { useFeed } from "@/api/me";
-import { FeedItemRow } from "@/components/friends/FeedItemRow";
-import { Skeleton } from "@/components/ui/skeleton";
+import { useSearchParams } from "react-router";
+import { ActivityFeed } from "@/components/friends/ActivityFeed";
+import { ConnectionsTabs } from "@/components/connections/ConnectionsTabs";
+import { useIncomingRequestCount } from "@/api/incomingRequests";
+import { cn } from "@/lib/cn";
 
-function LoadingSkeleton() {
-  return (
-    <ul aria-busy="true" className="flex flex-col gap-3">
-      {Array.from({ length: 6 }).map((_, i) => (
-        <li key={i} className="flex items-start gap-3 py-2">
-          <Skeleton className="h-4 w-4 rounded-full" />
-          <Skeleton className="h-4 flex-1" />
-          <Skeleton className="h-3 w-10" />
-        </li>
-      ))}
-    </ul>
-  );
-}
+type Section = "activity" | "connections";
 
-function EmptyState() {
-  return (
-    <p className="rounded border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
-      No activity from your friends yet. When they add shows, mark episodes
-      watched, or leave ratings, it'll show up here.
-    </p>
-  );
+const SECTIONS: { key: Section; label: string }[] = [
+  { key: "activity", label: "Activity" },
+  { key: "connections", label: "Connections" },
+];
+
+function isSection(value: string | null): value is Section {
+  return value === "activity" || value === "connections";
 }
 
 export function FriendsFeedPage() {
-  const query = useFeed();
-  const sentinelRef = useRef<HTMLDivElement | null>(null);
+  const [params, setParams] = useSearchParams();
+  const raw = params.get("section");
+  const active: Section = isSection(raw) ? raw : "activity";
+  const incomingCount = useIncomingRequestCount(true);
 
-  useEffect(() => {
-    const node = sentinelRef.current;
-    if (!node) return;
-    const obs = new IntersectionObserver(
-      (entries) => {
-        if (
-          entries.some((e) => e.isIntersecting) &&
-          query.hasNextPage &&
-          !query.isFetchingNextPage
-        ) {
-          query.fetchNextPage();
-        }
-      },
-      { rootMargin: "200px 0px" },
-    );
-    obs.observe(node);
-    return () => obs.disconnect();
-  }, [query]);
-
-  if (query.isLoading) {
-    return (
-      <section aria-label="Friends activity" className="space-y-3">
-        <h1 className="text-2xl font-semibold">Friends</h1>
-        <LoadingSkeleton />
-      </section>
-    );
+  function selectSection(next: Section) {
+    if (next === "activity") {
+      params.delete("section");
+    } else {
+      params.set("section", next);
+    }
+    // Switching top-level sections clears the Connections sub-tab.
+    params.delete("tab");
+    setParams(params, { replace: true });
   }
-
-  if (query.isError) {
-    return (
-      <section aria-label="Friends activity" className="space-y-3">
-        <h1 className="text-2xl font-semibold">Friends</h1>
-        <p className="text-sm text-red-600" role="alert">
-          Failed to load activity.
-        </p>
-      </section>
-    );
-  }
-
-  const items = (query.data?.pages ?? []).flatMap((p) => p.items);
 
   return (
-    <section aria-label="Friends activity" className="space-y-3">
+    <section aria-label="Friends" className="space-y-4">
       <h1 className="text-2xl font-semibold">Friends</h1>
-      {items.length === 0 ? (
-        <EmptyState />
-      ) : (
-        <>
-          <ul className="divide-y divide-border">
-            {items.map((item) => (
-              <FeedItemRow key={item.id} item={item} />
-            ))}
-          </ul>
-          <div ref={sentinelRef} aria-hidden className="h-1" />
-          {query.isFetchingNextPage && (
-            <p
-              className="py-3 text-center text-sm text-muted-foreground"
-              role="status"
-              aria-live="polite"
+
+      <div
+        role="tablist"
+        aria-label="Friends sections"
+        className="flex gap-1 border-b border-border"
+      >
+        {SECTIONS.map((s) => {
+          const selected = s.key === active;
+          const showBadge = s.key === "connections" && incomingCount > 0;
+          const label = showBadge ? `${s.label} (${incomingCount})` : s.label;
+          return (
+            <button
+              key={s.key}
+              type="button"
+              role="tab"
+              aria-selected={selected}
+              aria-controls={`friends-panel-${s.key}`}
+              id={`friends-tab-${s.key}`}
+              onClick={() => selectSection(s.key)}
+              className={cn(
+                "px-3 py-2 text-sm border-b-2 -mb-px rounded-sm",
+                "focus:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                selected
+                  ? "border-foreground font-medium text-foreground"
+                  : "border-transparent text-muted-foreground hover:text-foreground",
+              )}
             >
-              Loading more…
-            </p>
-          )}
-        </>
-      )}
+              {label}
+            </button>
+          );
+        })}
+      </div>
+
+      <div
+        role="tabpanel"
+        id={`friends-panel-${active}`}
+        aria-labelledby={`friends-tab-${active}`}
+      >
+        {active === "activity" ? <ActivityFeed /> : <ConnectionsTabs />}
+      </div>
     </section>
   );
 }

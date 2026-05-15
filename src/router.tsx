@@ -11,7 +11,6 @@ import { RequireAuth } from "@/components/RequireAuth";
 import { WatchNextPage } from "@/pages/WatchNextPage";
 import { UpcomingPage } from "@/pages/UpcomingPage";
 import { MyShowsPage } from "@/pages/MyShowsPage";
-import { ConnectionsPage } from "@/pages/ConnectionsPage";
 import { FriendProfilePage } from "@/pages/FriendProfilePage";
 import { FriendsFeedPage } from "@/pages/FriendsFeedPage";
 import { SettingsPage } from "@/pages/SettingsPage";
@@ -37,8 +36,8 @@ export const router = createBrowserRouter([
           { index: true, element: <WatchNextPage /> },
           { path: "upcoming", element: <UpcomingPage /> },
           { path: "my-shows", element: <MyShowsPage /> },
-          { path: "connections", element: <ConnectionsPage /> },
           { path: "friends", element: <FriendsFeedPage /> },
+          { path: "connections", element: <Navigate to="/friends?section=connections" replace /> },
           { path: "settings", element: <SettingsPage /> },
           { path: "users/:userId", element: <FriendProfilePage /> },
           // Redirects from old paths.
