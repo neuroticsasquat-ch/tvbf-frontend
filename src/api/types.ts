@@ -281,3 +281,41 @@ export interface FriendRatingsResponse {
   count: number;
   items: FriendRating[];
 }
+
+export type FeedKind =
+  | "added_show"
+  | "watched_episode"
+  | "watched_episode_run"
+  | "watched_season"
+  | "watched_show"
+  | "rated_show"
+  | "rated_episode";
+
+export interface FeedShowMini {
+  id: number;
+  name: string;
+}
+
+export interface FeedEpisodeMini {
+  id: number;
+  name: string | null;
+  season: number;
+  number: number;
+}
+
+export interface FeedItem {
+  id: string;
+  actor: UserBrief;
+  kind: FeedKind;
+  show: FeedShowMini | null;
+  episode: FeedEpisodeMini | null;
+  season_number: number | null;
+  rollup_count: number | null;
+  stars: number | null;
+  occurred_at: string;
+}
+
+export interface FeedPage {
+  items: FeedItem[];
+  next_cursor: string | null;
+}

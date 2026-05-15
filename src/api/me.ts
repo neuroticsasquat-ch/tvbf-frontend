@@ -1,10 +1,11 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { apiFetch } from "./client";
 import { localToday } from "./today";
 import type {
   EpisodeOut,
   EpisodeWatchOut,
+  FeedPage,
   MyShowEntry,
   MyShowsSort,
   Rating,
@@ -458,5 +459,21 @@ export function useEpisodeRating(episodeId: number) {
         qc.invalidateQueries({ queryKey: ["show-episodes", showId] });
       }
     },
+  });
+}
+
+export function fetchFeed(cursor: string | null, limit = 20): Promise<FeedPage> {
+  const params = new URLSearchParams({ limit: String(limit) });
+  if (cursor) params.set("cursor", cursor);
+  return apiFetch<FeedPage>(`/me/feed?${params.toString()}`);
+}
+
+export function useFeed(limit = 20) {
+  return useInfiniteQuery<FeedPage>({
+    queryKey: ["me-feed", limit],
+    queryFn: ({ pageParam }) => fetchFeed((pageParam as string | null) ?? null, limit),
+    initialPageParam: null as string | null,
+    getNextPageParam: (lastPage) => lastPage.next_cursor,
+    staleTime: 0,
   });
 }
