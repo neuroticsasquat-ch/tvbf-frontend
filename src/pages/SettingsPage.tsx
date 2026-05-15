@@ -265,6 +265,10 @@ function EmailSection() {
       <div className="rounded border border-border p-4 space-y-3">
         <div className="text-sm">
           <p className="text-muted-foreground mb-1">Current email</p>
+          <p className="text-xs text-muted-foreground mb-2">
+            Your email won't be shown to other users, but they can find you with
+            it to send a connection request.
+          </p>
           <div className="flex items-center gap-2">
             <span className="text-base text-foreground">{user.email}</span>
             <span
@@ -406,6 +410,9 @@ function ProfileSection() {
       <div className="rounded border border-border p-4 space-y-3">
         <div className="text-sm">
           <p className="text-muted-foreground mb-1">Display name</p>
+          <p className="text-xs text-muted-foreground mb-2">
+            This is the name other users will see on the site.
+          </p>
           {editing ? (
             <form onSubmit={save} className="space-y-2">
               <input
