@@ -9,6 +9,7 @@ import { NotFoundPage } from "./NotFoundPage";
 import { CollapsibleSummary } from "@/components/CollapsibleSummary";
 import { Badge } from "@/components/ui/badge";
 import { MyShowsToggle } from "@/components/MyShowsToggle";
+import { HideFromActivityToggle } from "@/components/friends/HideFromActivityToggle";
 import { ShowWatchCheckbox } from "@/components/ShowWatchCheckbox";
 import { NextEpisodeCard } from "@/components/NextEpisodeCard";
 import { ShowFriendActivityStrip } from "@/components/friends/FriendActivity";
@@ -96,6 +97,14 @@ export function ShowDetailPage() {
               />
             )}
           </div>
+          {myEntry && (
+            <div className="pt-2">
+              <HideFromActivityToggle
+                showId={show.id}
+                value={myEntry.hide_from_activity ?? false}
+              />
+            </div>
+          )}
         </div>
       </header>
 

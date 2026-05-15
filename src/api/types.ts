@@ -170,6 +170,7 @@ export interface User {
 
 export interface AuthedUser extends User {
   csrf_token: string;
+  activity_feed_enabled: boolean;
 }
 
 export interface MyShowEntry {
@@ -187,6 +188,7 @@ export interface MyShowEntry {
   // alongside `show: ShowSummary` (where `my_rating` stays null because the
   // ShowSummary builder used inside my_shows_service doesn't carry it).
   my_rating: number | null;
+  hide_from_activity?: boolean;
 }
 
 export interface WatchNextEntry {

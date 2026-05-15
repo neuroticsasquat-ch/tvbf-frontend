@@ -3,6 +3,7 @@ import { toast } from "sonner";
 import { apiFetch } from "./client";
 import { localToday } from "./today";
 import type {
+  AuthedUser,
   EpisodeOut,
   EpisodeWatchOut,
   FeedPage,
@@ -183,6 +184,7 @@ function placeholderMyShowEntry(showId: number): MyShowEntry {
     next_episode: null,
     added_at: new Date().toISOString(),
     my_rating: null,
+    hide_from_activity: false,
   };
 }
 
@@ -475,5 +477,70 @@ export function useFeed(limit = 20) {
     initialPageParam: null as string | null,
     getNextPageParam: (lastPage) => lastPage.next_cursor,
     staleTime: 0,
+  });
+}
+
+export function patchPreferences(opts: { activity_feed_enabled?: boolean }): Promise<AuthedUser> {
+  return apiFetch<AuthedUser>("/me/preferences", {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(opts),
+  });
+}
+
+export function useUpdatePreferences() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: patchPreferences,
+    onMutate: async (vars) => {
+      await qc.cancelQueries({ queryKey: ["me"] });
+      const prev = qc.getQueryData<AuthedUser | null>(["me"]);
+      if (prev && typeof vars.activity_feed_enabled === "boolean") {
+        qc.setQueryData<AuthedUser | null>(["me"], {
+          ...prev,
+          activity_feed_enabled: vars.activity_feed_enabled,
+        });
+      }
+      return { prev };
+    },
+    onError: (_e, _v, ctx) => {
+      if (ctx?.prev !== undefined) qc.setQueryData(["me"], ctx.prev);
+      toast.error("Could not update preferences.");
+    },
+    onSuccess: (data) => {
+      qc.setQueryData<AuthedUser | null>(["me"], data);
+    },
+  });
+}
+
+export function patchHideFromActivity(showId: number, value: boolean): Promise<void> {
+  return apiFetch<void>(`/me/shows/${showId}/hide-from-activity`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ hide_from_activity: value }),
+  });
+}
+
+export function useToggleHideFromActivity(showId: number) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (value: boolean) => patchHideFromActivity(showId, value),
+    onMutate: async (value) => {
+      await qc.cancelQueries({ queryKey: ["my-shows"] });
+      const snapshots = qc.getQueriesData<MyShowEntry[]>({ queryKey: ["my-shows"] });
+      qc.setQueriesData<MyShowEntry[]>({ queryKey: ["my-shows"] }, (prev) =>
+        prev?.map((e) =>
+          e.show.id === showId ? { ...e, hide_from_activity: value } : e,
+        ),
+      );
+      return { snapshots };
+    },
+    onError: (_e, _v, ctx) => {
+      ctx?.snapshots.forEach(([key, data]) => qc.setQueryData(key, data));
+      toast.error("Could not update show privacy.");
+    },
+    onSettled: () => {
+      qc.invalidateQueries({ queryKey: ["my-shows"] });
+    },
   });
 }
