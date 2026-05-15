@@ -4,6 +4,7 @@ import {
   PlayCircle as WatchNextIcon,
   Calendar as CalendarIcon,
   Library as MyShowsIcon,
+  Users as FriendsIcon,
   Search as SearchIcon,
   Tv as TvIcon,
 } from "lucide-react";
@@ -144,6 +145,16 @@ export function AppShell() {
       >
         <MyShowsIcon className="h-5 w-5" aria-hidden />
         {showLabel(placement) && <span>My Shows</span>}
+      </NavLink>
+      <NavLink
+        to="/friends"
+        className={({ isActive }) =>
+          cn(linkCls(placement), isActive ? activeCls(placement) : inactiveCls)
+        }
+        aria-label="Friends"
+      >
+        <FriendsIcon className="h-5 w-5" aria-hidden />
+        {showLabel(placement) && <span>Friends</span>}
       </NavLink>
     </>
   );
