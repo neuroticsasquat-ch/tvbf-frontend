@@ -182,6 +182,14 @@ export interface AdminUserRow {
   is_admin: boolean;
 }
 
+export interface InviteRow {
+  code: string;
+  email_hint: string | null;
+  created_at: string;
+  consumed_at: string | null;
+  consumed_by_user_id: string | null;
+}
+
 export interface MyShowEntry {
   show: ShowSummary;
   watched_episode_count: number;
