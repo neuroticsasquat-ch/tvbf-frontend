@@ -93,6 +93,14 @@ describe("SignupPage", () => {
     expect(input.value).toBe("abc123");
   });
 
+  it("pre-fills invite code and email from ?invite= and ?email= query params", () => {
+    renderAt("/signup?invite=XYZ&email=foo%40bar.com");
+    const invite = screen.getByLabelText(/invite code/i) as HTMLInputElement;
+    const email = screen.getByLabelText(/email/i) as HTMLInputElement;
+    expect(invite.value).toBe("XYZ");
+    expect(email.value).toBe("foo@bar.com");
+  });
+
   it("blocks submit when invite code is empty", async () => {
     renderAt("/signup");
     // Fill everything EXCEPT invite code.

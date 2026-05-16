@@ -1,6 +1,5 @@
 import { useSearchParams } from "react-router";
-import { useQueryClient } from "@tanstack/react-query";
-import type { ConnectionRequestList } from "@/api/types";
+import { useIncomingRequestCount } from "@/api/incomingRequests";
 import { BlockedList } from "@/components/connections/BlockedList";
 import { ConnectionsList } from "@/components/connections/ConnectionsList";
 import { FindPeople } from "@/components/connections/FindPeople";
@@ -19,7 +18,7 @@ function isTab(value: string | null): value is Tab {
   return value === "connections" || value === "requests" || value === "blocked";
 }
 
-export function ConnectionsPage() {
+export function ConnectionsTabs() {
   const [params, setParams] = useSearchParams();
   const raw = params.get("tab");
   const active: Tab = isTab(raw) ? raw : "connections";
@@ -34,11 +33,8 @@ export function ConnectionsPage() {
   }
 
   return (
-    <section className="flex flex-col gap-4">
-      <h1 className="text-2xl font-semibold">Connections</h1>
-
+    <div className="flex flex-col gap-4">
       <TabBar active={active} onSelect={selectTab} />
-
       <div
         role="tabpanel"
         id={`connections-panel-${active}`}
@@ -48,16 +44,12 @@ export function ConnectionsPage() {
         {active === "requests" && <RequestsTab />}
         {active === "blocked" && <BlockedTab />}
       </div>
-    </section>
+    </div>
   );
 }
 
 function TabBar({ active, onSelect }: { active: Tab; onSelect: (next: Tab) => void }) {
-  const qc = useQueryClient();
-  // Read incoming-pending count from cache only, so the badge appears once
-  // the user has visited the Requests tab without forcing a fetch on mount.
-  const cached = qc.getQueryData<ConnectionRequestList>(["connection-requests"]);
-  const incomingCount = cached?.incoming.length ?? 0;
+  const incomingCount = useIncomingRequestCount(true);
 
   return (
     <div

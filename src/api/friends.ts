@@ -1,5 +1,6 @@
 import { apiFetch } from "./client";
 import type {
+  FriendRatingsResponse,
   MyShowEntry,
   MyShowsSort,
   ShowFriendActivity,
@@ -51,4 +52,14 @@ export function getShowFriendActivity(showId: number): Promise<ShowFriendActivit
 
 export function getEpisodeFriendsWatched(episodeId: number): Promise<UserBrief[]> {
   return apiFetch<UserBrief[]>(`/episodes/${episodeId}/friends/watched`);
+}
+
+// Friend ratings (NEU-169) -------------------------------------------------
+
+export function getShowFriendRatings(showId: number): Promise<FriendRatingsResponse> {
+  return apiFetch<FriendRatingsResponse>(`/shows/${showId}/friends/ratings`);
+}
+
+export function getEpisodeFriendRatings(episodeId: number): Promise<FriendRatingsResponse> {
+  return apiFetch<FriendRatingsResponse>(`/episodes/${episodeId}/friends/ratings`);
 }

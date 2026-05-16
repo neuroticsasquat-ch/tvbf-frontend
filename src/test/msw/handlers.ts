@@ -18,6 +18,7 @@ export const handlers = [
   http.get(`${base}/me/watched`, () => HttpResponse.json([])),
   http.get(`${base}/me/watch-next`, () => HttpResponse.json([])),
   http.get(`${base}/me/upcoming`, () => HttpResponse.json([])),
+  http.get(`${base}/me/sessions`, () => HttpResponse.json([])),
   http.get(`${base}/genres`, () => HttpResponse.json(fixtureGenres)),
   http.get(`${base}/networks`, () => HttpResponse.json(fixtureNetworks)),
   http.get(`${base}/shows`, () => HttpResponse.json(fixtureShowListPage)),
@@ -31,4 +32,28 @@ export const handlers = [
     if (season === "2") return HttpResponse.json(fixtureSeason2Episodes);
     return HttpResponse.json(fixtureEpisodes);
   }),
+  http.put(`${base}/me/shows/:id/rating`, async ({ params, request }) => {
+    const body = (await request.json()) as { stars: number };
+    return HttpResponse.json({
+      show_id: Number(params.id),
+      stars: body.stars,
+      rated_at: "2026-05-14T12:00:00Z",
+    });
+  }),
+  http.delete(`${base}/me/shows/:id/rating`, () => new HttpResponse(null, { status: 204 })),
+  http.put(`${base}/me/episodes/:id/rating`, async ({ params, request }) => {
+    const body = (await request.json()) as { stars: number };
+    return HttpResponse.json({
+      episode_id: Number(params.id),
+      stars: body.stars,
+      rated_at: "2026-05-14T12:00:00Z",
+    });
+  }),
+  http.delete(`${base}/me/episodes/:id/rating`, () => new HttpResponse(null, { status: 204 })),
+  http.get(`${base}/shows/:id/friends/ratings`, () =>
+    HttpResponse.json({ avg: null, count: 0, items: [] }),
+  ),
+  http.get(`${base}/episodes/:id/friends/ratings`, () =>
+    HttpResponse.json({ avg: null, count: 0, items: [] }),
+  ),
 ];

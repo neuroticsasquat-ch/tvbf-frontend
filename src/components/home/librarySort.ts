@@ -7,7 +7,9 @@ export type LibrarySort =
   | "premiered_asc"
   | "premiered_desc"
   | "added_desc"
-  | "first_watched_desc";
+  | "first_watched_desc"
+  | "my_rating_desc"
+  | "my_rating_asc";
 
 export const LIBRARY_SORTS: { key: LibrarySort; label: string }[] = [
   { key: "name_asc", label: "Show Title" },
@@ -17,6 +19,8 @@ export const LIBRARY_SORTS: { key: LibrarySort; label: string }[] = [
   { key: "premiered_desc", label: "Premiered Last" },
   { key: "added_desc", label: "Recently Added" },
   { key: "first_watched_desc", label: "First Watched" },
+  { key: "my_rating_desc", label: "My Rating, High → Low" },
+  { key: "my_rating_asc", label: "My Rating, Low → High" },
 ];
 
 export const LIBRARY_SORT_KEYS = LIBRARY_SORTS.map((s) => s.key);
@@ -35,6 +39,22 @@ function fromEntry<K extends string>(entry: LibraryEntry, key: K): unknown {
 function getString(entry: LibraryEntry, key: string): string | null {
   const v = fromEntry(entry, key);
   return typeof v === "string" ? v : null;
+}
+
+function ratingOf(entry: LibraryEntry): number | null {
+  // MyShowEntry carries my_rating at the top level (hydrated by /me/shows).
+  // WatchedEntry doesn't surface it today — treat as unrated.
+  return "my_rating" in entry ? (entry.my_rating ?? null) : null;
+}
+
+function compareRating(a: LibraryEntry, b: LibraryEntry, desc: boolean): number {
+  const av = ratingOf(a);
+  const bv = ratingOf(b);
+  // Unrated (null/undefined) rows sink to the bottom in both directions.
+  if (av === null && bv === null) return 0;
+  if (av === null) return 1;
+  if (bv === null) return -1;
+  return desc ? bv - av : av - bv;
 }
 
 function compareNullable(a: string | null, b: string | null, desc: boolean): number {
@@ -65,5 +85,9 @@ export function compareLibraryEntries(a: LibraryEntry, b: LibraryEntry, sort: Li
         compareNullable(getString(a, "first_watched_at"), getString(b, "first_watched_at"), true) ||
         tiebreak
       );
+    case "my_rating_desc":
+      return compareRating(a, b, true) || tiebreak;
+    case "my_rating_asc":
+      return compareRating(a, b, false) || tiebreak;
   }
 }

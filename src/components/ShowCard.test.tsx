@@ -20,6 +20,8 @@ function makeShow(overrides: Partial<ShowSummary> = {}): ShowSummary {
     web_channel: null,
     genres: ["Drama"],
     matched_aka: null,
+    rating_average: null,
+    my_rating: null,
     ...overrides,
   };
 }
@@ -33,5 +35,19 @@ describe("ShowCard", () => {
   it("omits matched AKA element when null", () => {
     renderWithProviders(<ShowCard show={makeShow()} />);
     expect(screen.queryByText(/Matched:/i)).not.toBeInTheDocument();
+  });
+
+  it("renders both aggregate and my_rating badges when present", () => {
+    renderWithProviders(
+      <ShowCard show={makeShow({ rating_average: 8.4, my_rating: 4.5 })} />,
+    );
+    expect(screen.getByTitle("TV Maze average")).toBeInTheDocument();
+    expect(screen.getByTitle("Your rating")).toBeInTheDocument();
+  });
+
+  it("hides rating badges when both are null", () => {
+    renderWithProviders(<ShowCard show={makeShow()} />);
+    expect(screen.queryByTitle("TV Maze average")).not.toBeInTheDocument();
+    expect(screen.queryByTitle("Your rating")).not.toBeInTheDocument();
   });
 });

@@ -37,6 +37,8 @@ function makeMyShow(showId: number, name: string): MyShowEntry {
       web_channel: null,
       genres: [],
       matched_aka: null,
+      rating_average: null,
+      my_rating: null,
     },
     watched_episode_count: 0,
     total_episode_count: 0,
@@ -47,6 +49,7 @@ function makeMyShow(showId: number, name: string): MyShowEntry {
     first_watched_at: null,
     next_episode: null,
     added_at: "2026-04-01T00:00:00Z",
+    my_rating: null,
   };
 }
 
@@ -70,6 +73,8 @@ function makeWatched(
       web_channel: null,
       genres: [],
       matched_aka: null,
+      rating_average: null,
+      my_rating: null,
     },
     watched_episode_count: 5,
     aired_episode_count: 5,

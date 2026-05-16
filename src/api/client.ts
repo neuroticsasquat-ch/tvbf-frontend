@@ -56,8 +56,12 @@ export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> 
     throw new ApiError(res.status, message, body);
   }
 
-  if (res.status === 204) return undefined as T;
-  return (await res.json()) as T;
+  // 204 and 205 are explicitly no-content; many of our 202 endpoints return
+  // no body either. Avoid `res.json()` on those — empty-body parses throw.
+  if (res.status === 204 || res.status === 205) return undefined as T;
+  const text = await res.text();
+  if (text.length === 0) return undefined as T;
+  return JSON.parse(text) as T;
 }
 
 export function buildShowsQuery(filters: ShowFilters): string {

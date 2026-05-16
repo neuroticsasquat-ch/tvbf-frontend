@@ -8,8 +8,14 @@ import { NotFoundPage } from "./NotFoundPage";
 import { CollapsibleSummary } from "@/components/CollapsibleSummary";
 import { EpisodeWatchCheckbox } from "@/components/EpisodeWatchCheckbox";
 import { EpisodeFriendsWatched } from "@/components/friends/FriendActivity";
+import { FriendRatingsList } from "@/components/FriendRatingsList";
 import { FilterSheet } from "@/components/home/FilterSheet";
 import { Button } from "@/components/ui/button";
+import { RatingBadge } from "@/components/RatingBadge";
+import { StarRatingInput } from "@/components/StarRatingInput";
+import { tvmazeToFiveStar } from "@/lib/rating";
+import { useEpisodeRating } from "@/api/me";
+import { useAuth } from "@/components/AuthContext";
 
 const DATE_FMT = new Intl.DateTimeFormat("en-US", {
   weekday: "short",
@@ -28,6 +34,8 @@ export function EpisodePage() {
   const navigate = useNavigate();
   const id = Number(episodeId);
   const episodeQuery = useEpisode(id);
+  const { user } = useAuth();
+  const rate = useEpisodeRating(id);
   const showQuery = useShow(episodeQuery.data?.show_id ?? -1);
   const seasonEpisodesQuery = useShowEpisodes(
     episodeQuery.data?.show_id ?? -1,
@@ -131,14 +139,28 @@ export function EpisodePage() {
             triggerAlign="start"
           />
         </h1>
-        {(ep.airdate || ep.runtime) && (
-          <p className="text-sm text-muted-foreground">
-            {ep.airdate ? formatAirdate(ep.airdate) : ""}
-            {ep.airdate && ep.runtime ? " · " : ""}
-            {ep.runtime ? `${ep.runtime} min` : ""}
+        {(ep.airdate || ep.runtime || ep.rating_average != null) && (
+          <p className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+            {ep.airdate ? <span>{formatAirdate(ep.airdate)}</span> : null}
+            {ep.airdate && ep.runtime ? <span aria-hidden>·</span> : null}
+            {ep.runtime ? <span>{ep.runtime} min</span> : null}
+            <RatingBadge
+              value={tvmazeToFiveStar(ep.rating_average)}
+              title="TV Maze average"
+            />
           </p>
         )}
+        {user ? (
+          <section>
+            <h2 className="text-base font-semibold">Your rating</h2>
+            <StarRatingInput
+              value={ep.my_rating}
+              onChange={(next) => rate.mutate(next)}
+            />
+          </section>
+        ) : null}
         <EpisodeFriendsWatched episodeId={ep.id} />
+        <FriendRatingsList episodeId={ep.id} />
         <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
           <EpisodeWatchCheckbox showId={ep.show_id} episodeId={ep.id} withLabel />
           <div className="inline-flex">

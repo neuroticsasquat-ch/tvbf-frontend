@@ -1,12 +1,16 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { apiFetch } from "./client";
 import { localToday } from "./today";
 import type {
+  AuthedUser,
   EpisodeOut,
   EpisodeWatchOut,
+  FeedPage,
   MyShowEntry,
   MyShowsSort,
+  Rating,
+  ShowDetail,
   UpcomingEntry,
   UpcomingSeasonEntry,
   UpcomingShowEntry,
@@ -17,15 +21,25 @@ import type {
 
 const FIVE_MINUTES = 5 * 60 * 1000;
 
-export function fetchMyShows(opts: { sort: MyShowsSort; today: string }): Promise<MyShowEntry[]> {
-  return apiFetch<MyShowEntry[]>(`/me/shows?sort=${opts.sort}&today=${opts.today}`);
+export function fetchMyShows(opts: {
+  sort: MyShowsSort;
+  today: string;
+  ratedOnly?: boolean;
+}): Promise<MyShowEntry[]> {
+  const params = new URLSearchParams({ sort: opts.sort, today: opts.today });
+  if (opts.ratedOnly) params.set("rated_only", "true");
+  return apiFetch<MyShowEntry[]>(`/me/shows?${params.toString()}`);
 }
 
-export function useMyShows(sort: MyShowsSort = "recent_activity") {
+export function useMyShows(
+  sort: MyShowsSort = "recent_activity",
+  options: { ratedOnly?: boolean } = {},
+) {
   const today = localToday();
+  const ratedOnly = options.ratedOnly ?? false;
   return useQuery<MyShowEntry[]>({
-    queryKey: ["my-shows", sort, today],
-    queryFn: () => fetchMyShows({ sort, today }),
+    queryKey: ["my-shows", sort, today, ratedOnly],
+    queryFn: () => fetchMyShows({ sort, today, ratedOnly }),
     staleTime: FIVE_MINUTES,
   });
 }
@@ -157,6 +171,8 @@ function placeholderMyShowEntry(showId: number): MyShowEntry {
       web_channel: null,
       genres: [],
       matched_aka: null,
+      rating_average: null,
+      my_rating: null,
     },
     watched_episode_count: 0,
     total_episode_count: 0,
@@ -167,6 +183,8 @@ function placeholderMyShowEntry(showId: number): MyShowEntry {
     first_watched_at: null,
     next_episode: null,
     added_at: new Date().toISOString(),
+    my_rating: null,
+    hide_from_activity: false,
   };
 }
 
@@ -372,5 +390,157 @@ export function useUnmarkShow() {
       if (ctx) qc.setQueryData(ctx.key, ctx.prev);
     },
     onSettled: () => invalidateAll(qc),
+  });
+}
+
+/** PUT/DELETE the caller's rating for a show. Pass `null` to clear; otherwise a
+ * half-step value in [0.5, 5]. Optimistically updates the cached `["show", id]`
+ * detail; reverts on error; invalidates rating-related caches on settle. */
+export function useShowRating(showId: number) {
+  const qc = useQueryClient();
+  return useMutation<Rating | void, Error, number | null, { prev: ShowDetail | undefined }>({
+    mutationFn: (stars) => {
+      if (stars === null) {
+        return apiFetch<void>(`/me/shows/${showId}/rating`, { method: "DELETE" });
+      }
+      return apiFetch<Rating>(`/me/shows/${showId}/rating`, {
+        method: "PUT",
+        body: JSON.stringify({ stars }),
+      });
+    },
+    onMutate: async (stars) => {
+      await qc.cancelQueries({ queryKey: ["show", showId] });
+      const prev = qc.getQueryData<ShowDetail>(["show", showId]);
+      if (prev) {
+        qc.setQueryData<ShowDetail>(["show", showId], { ...prev, my_rating: stars });
+      }
+      return { prev };
+    },
+    onError: (_err, _stars, ctx) => {
+      if (ctx?.prev) qc.setQueryData(["show", showId], ctx.prev);
+      toast.error("Could not save your rating.");
+    },
+    onSettled: () => {
+      qc.invalidateQueries({ queryKey: ["show", showId] });
+      qc.invalidateQueries({ queryKey: ["my-shows"] });
+      qc.invalidateQueries({ queryKey: ["shows"] });
+    },
+  });
+}
+
+/** PUT/DELETE the caller's rating for an episode. */
+export function useEpisodeRating(episodeId: number) {
+  const qc = useQueryClient();
+  return useMutation<Rating | void, Error, number | null, { prev: EpisodeOut | undefined }>({
+    mutationFn: (stars) => {
+      if (stars === null) {
+        return apiFetch<void>(`/me/episodes/${episodeId}/rating`, { method: "DELETE" });
+      }
+      return apiFetch<Rating>(`/me/episodes/${episodeId}/rating`, {
+        method: "PUT",
+        body: JSON.stringify({ stars }),
+      });
+    },
+    onMutate: async (stars) => {
+      await qc.cancelQueries({ queryKey: ["episode", episodeId] });
+      const prev = qc.getQueryData<EpisodeOut>(["episode", episodeId]);
+      if (prev) {
+        qc.setQueryData<EpisodeOut>(["episode", episodeId], { ...prev, my_rating: stars });
+      }
+      return { prev };
+    },
+    onError: (_err, _stars, ctx) => {
+      if (ctx?.prev) qc.setQueryData(["episode", episodeId], ctx.prev);
+      toast.error("Could not save your rating.");
+    },
+    onSettled: () => {
+      qc.invalidateQueries({ queryKey: ["episode", episodeId] });
+      const prev = qc.getQueryData<EpisodeOut>(["episode", episodeId]);
+      const showId = prev?.show_id;
+      if (showId !== undefined) {
+        qc.invalidateQueries({ queryKey: ["show-episodes", showId] });
+      }
+    },
+  });
+}
+
+export function fetchFeed(cursor: string | null, limit = 20): Promise<FeedPage> {
+  const params = new URLSearchParams({ limit: String(limit) });
+  if (cursor) params.set("cursor", cursor);
+  return apiFetch<FeedPage>(`/me/feed?${params.toString()}`);
+}
+
+export function useFeed(limit = 20) {
+  return useInfiniteQuery<FeedPage>({
+    queryKey: ["me-feed", limit],
+    queryFn: ({ pageParam }) => fetchFeed((pageParam as string | null) ?? null, limit),
+    initialPageParam: null as string | null,
+    getNextPageParam: (lastPage) => lastPage.next_cursor,
+    staleTime: 0,
+  });
+}
+
+export function patchPreferences(opts: { activity_feed_enabled?: boolean }): Promise<AuthedUser> {
+  return apiFetch<AuthedUser>("/me/preferences", {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(opts),
+  });
+}
+
+export function useUpdatePreferences() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: patchPreferences,
+    onMutate: async (vars) => {
+      await qc.cancelQueries({ queryKey: ["me"] });
+      const prev = qc.getQueryData<AuthedUser | null>(["me"]);
+      if (prev && typeof vars.activity_feed_enabled === "boolean") {
+        qc.setQueryData<AuthedUser | null>(["me"], {
+          ...prev,
+          activity_feed_enabled: vars.activity_feed_enabled,
+        });
+      }
+      return { prev };
+    },
+    onError: (_e, _v, ctx) => {
+      if (ctx?.prev !== undefined) qc.setQueryData(["me"], ctx.prev);
+      toast.error("Could not update preferences.");
+    },
+    onSuccess: (data) => {
+      qc.setQueryData<AuthedUser | null>(["me"], data);
+    },
+  });
+}
+
+export function patchHideFromActivity(showId: number, value: boolean): Promise<void> {
+  return apiFetch<void>(`/me/shows/${showId}/hide-from-activity`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ hide_from_activity: value }),
+  });
+}
+
+export function useToggleHideFromActivity(showId: number) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (value: boolean) => patchHideFromActivity(showId, value),
+    onMutate: async (value) => {
+      await qc.cancelQueries({ queryKey: ["my-shows"] });
+      const snapshots = qc.getQueriesData<MyShowEntry[]>({ queryKey: ["my-shows"] });
+      qc.setQueriesData<MyShowEntry[]>({ queryKey: ["my-shows"] }, (prev) =>
+        prev?.map((e) =>
+          e.show.id === showId ? { ...e, hide_from_activity: value } : e,
+        ),
+      );
+      return { snapshots };
+    },
+    onError: (_e, _v, ctx) => {
+      ctx?.snapshots.forEach(([key, data]) => qc.setQueryData(key, data));
+      toast.error("Could not update show privacy.");
+    },
+    onSettled: () => {
+      qc.invalidateQueries({ queryKey: ["my-shows"] });
+    },
   });
 }

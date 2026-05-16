@@ -8,7 +8,7 @@ export function SignupPage() {
   const { signup } = useAuth();
   const navigate = useNavigate();
   const [params] = useSearchParams();
-  const [email, setEmail] = useState("");
+  const [email, setEmail] = useState(() => params.get("email") ?? "");
   const [displayName, setDisplayName] = useState("");
   const [password, setPassword] = useState("");
   const [inviteCode, setInviteCode] = useState(() => params.get("invite") ?? "");
@@ -74,8 +74,13 @@ export function SignupPage() {
             required
             value={email}
             onChange={(e) => setEmail(e.target.value)}
+            aria-describedby="email-help"
             className="mt-1 w-full rounded border px-3 py-2"
           />
+          <p id="email-help" className="text-xs text-gray-500 mt-1">
+            Your email won't be shown to other users, but they can find you with
+            it to send a connection request.
+          </p>
         </div>
         <div>
           <label htmlFor="display_name" className="block text-sm">
@@ -88,8 +93,12 @@ export function SignupPage() {
             maxLength={100}
             value={displayName}
             onChange={(e) => setDisplayName(e.target.value)}
+            aria-describedby="display-name-help"
             className="mt-1 w-full rounded border px-3 py-2"
           />
+          <p id="display-name-help" className="text-xs text-gray-500 mt-1">
+            This is the name other users will see on the site.
+          </p>
         </div>
         <div>
           <label htmlFor="password" className="block text-sm">
