@@ -1,5 +1,6 @@
 import { Navigate, useSearchParams } from "react-router";
 import { useAuth } from "@/components/AuthContext";
+import { AdminInvitesTab } from "@/components/admin/AdminInvitesTab";
 import { AdminUsersTab } from "@/components/admin/AdminUsersTab";
 import { cn } from "@/lib/cn";
 
@@ -67,11 +68,7 @@ export function AdminPage() {
       </div>
 
       <div role="tabpanel" id={`admin-panel-${active}`} aria-labelledby={`admin-tab-${active}`}>
-        {active === "users" ? (
-          <AdminUsersTab />
-        ) : (
-          <p className="text-sm text-muted-foreground">Invites coming soon.</p>
-        )}
+        {active === "users" ? <AdminUsersTab /> : <AdminInvitesTab />}
       </div>
     </section>
   );
