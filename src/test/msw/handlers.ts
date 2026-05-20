@@ -56,4 +56,14 @@ export const handlers = [
   http.get(`${base}/episodes/:id/friends/ratings`, () =>
     HttpResponse.json({ avg: null, count: 0, items: [] }),
   ),
+  http.post(`${base}/me/feedback`, async ({ request }) => {
+    const body = (await request.json().catch(() => ({}))) as {
+      subject?: string;
+      body?: string;
+    };
+    if (!body.subject || !body.body) {
+      return HttpResponse.json({ detail: "Validation error" }, { status: 422 });
+    }
+    return new HttpResponse(null, { status: 204 });
+  }),
 ];
