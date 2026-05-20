@@ -13,6 +13,7 @@ import { useIncomingRequestCount } from "@/api/incomingRequests";
 import { UserMenu } from "./UserMenu";
 import { ChangePasswordDialog } from "./ChangePasswordDialog";
 import { DeleteAccountDialog } from "./DeleteAccountDialog";
+import { FeedbackDialog } from "./feedback/FeedbackDialog";
 import { SearchOverlay } from "./SearchOverlay";
 import { UnverifiedEmailBanner } from "./UnverifiedEmailBanner";
 import { cn } from "@/lib/cn";
@@ -25,6 +26,7 @@ export function AppShell() {
   const location = useLocation();
   const [pwOpen, setPwOpen] = useState(false);
   const [delOpen, setDelOpen] = useState(false);
+  const [feedbackOpen, setFeedbackOpen] = useState(false);
   const [searchInput, setSearchInput] = useState("");
   const searchFormRef = useRef<HTMLFormElement>(null);
   const overlayRef = useRef<HTMLElement>(null);
@@ -178,6 +180,7 @@ export function AppShell() {
       <UserMenu
         onChangePassword={() => setPwOpen(true)}
         onDeleteAccount={() => setDelOpen(true)}
+        onSendFeedback={() => setFeedbackOpen(true)}
         variant={userMenuVariant(placement)}
       />
     </>
@@ -277,6 +280,7 @@ export function AppShell() {
 
       <ChangePasswordDialog open={pwOpen} onClose={() => setPwOpen(false)} />
       <DeleteAccountDialog open={delOpen} onClose={() => setDelOpen(false)} />
+      <FeedbackDialog open={feedbackOpen} onOpenChange={setFeedbackOpen} />
     </div>
   );
 }

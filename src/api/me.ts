@@ -1,6 +1,7 @@
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { apiFetch } from "./client";
+import type { ApiError } from "./client";
 import { localToday } from "./today";
 import type {
   AuthedUser,
@@ -542,5 +543,17 @@ export function useToggleHideFromActivity(showId: number) {
     onSettled: () => {
       qc.invalidateQueries({ queryKey: ["my-shows"] });
     },
+  });
+}
+
+export type FeedbackInput = { subject: string; body: string };
+
+export function useSubmitFeedback() {
+  return useMutation<void, ApiError, FeedbackInput>({
+    mutationFn: (input) =>
+      apiFetch<void>("/me/feedback", {
+        method: "POST",
+        body: JSON.stringify(input),
+      }),
   });
 }
