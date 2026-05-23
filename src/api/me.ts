@@ -497,10 +497,11 @@ export function useUpdatePreferences() {
       await qc.cancelQueries({ queryKey: ["me"] });
       const prev = qc.getQueryData<AuthedUser | null>(["me"]);
       if (prev && typeof vars.activity_feed_enabled === "boolean") {
-        qc.setQueryData<AuthedUser | null>(["me"], {
+        const next: AuthedUser = {
           ...prev,
           activity_feed_enabled: vars.activity_feed_enabled,
-        });
+        };
+        qc.setQueryData<AuthedUser | null>(["me"], next);
       }
       return { prev };
     },
@@ -530,9 +531,7 @@ export function useToggleHideFromActivity(showId: number) {
       await qc.cancelQueries({ queryKey: ["my-shows"] });
       const snapshots = qc.getQueriesData<MyShowEntry[]>({ queryKey: ["my-shows"] });
       qc.setQueriesData<MyShowEntry[]>({ queryKey: ["my-shows"] }, (prev) =>
-        prev?.map((e) =>
-          e.show.id === showId ? { ...e, hide_from_activity: value } : e,
-        ),
+        prev?.map((e) => (e.show.id === showId ? { ...e, hide_from_activity: value } : e)),
       );
       return { snapshots };
     },
