@@ -2,6 +2,26 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.1.0] - 2026-05-16
+
+### Features
+
+- Add Invites tab to AdminPage and prefill signup form from URL params (NEU-188) (#99)
+- Add /admin route with Users tab and conditional UserMenu link (NEU-186) (#98)
+- Polish Friends tab with nav link, icons, infinite scroll, empty + loading states (NEU-182) (#97)
+- Add activity privacy toggles to Settings and ShowDetailPage (NEU-181) (#96)
+- Add useFeed hook and minimal /friends page (NEU-179) (#95)
+- Surface my-rating across cards and library sort/filter (NEU-172) (#94)
+- Show friend ratings on show + episode pages (#93)
+- Add half-star rating input on show + episode pages (#92)
+- Add 'Download my data' button (NEU-159) (#91)
+- Add session revoke + log-out-everywhere controls (NEU-156) (#90)
+- Add active-sessions list (NEU-153) (#89)
+- Add /forgot-password + /reset-password pages (NEU-147) (#88)
+- Add change-email UI + confirm page (NEU-144) (#87)
+- Add unverified-email banner + /verify-email landing page (NEU-141) (#86)
+- Add /settings page with display-name edit (NEU-150) (#85)
+
 ## [2026-05-10] - 2026-05-10
 
 ### Bug Fixes

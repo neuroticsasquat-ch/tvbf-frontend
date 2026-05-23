@@ -25,6 +25,8 @@ function makeEntry(overrides: {
       web_channel: null,
       genres: [],
       matched_aka: null,
+      rating_average: null,
+      my_rating: null,
     },
     episode: {
       id: overrides.id * 100,
@@ -40,6 +42,8 @@ function makeEntry(overrides: {
       image_medium: null,
       image_original: null,
       watched: false,
+      rating_average: null,
+      my_rating: null,
     },
     last_watched_at: overrides.last_watched_at ?? null,
     last_aired: overrides.last_aired ?? null,

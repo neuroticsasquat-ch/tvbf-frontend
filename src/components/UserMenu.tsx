@@ -7,10 +7,11 @@ import { cn } from "@/lib/cn";
 type UserMenuProps = {
   onChangePassword: () => void;
   onDeleteAccount: () => void;
+  onSendFeedback: () => void;
   variant?: "icon" | "bottom-tab" | "icon-only";
 };
 
-export function UserMenu({ onChangePassword, onDeleteAccount, variant = "icon" }: UserMenuProps) {
+export function UserMenu({ onChangePassword, onDeleteAccount, onSendFeedback, variant = "icon" }: UserMenuProps) {
   const { user, logout } = useAuth();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement | null>(null);
@@ -72,12 +73,37 @@ export function UserMenu({ onChangePassword, onDeleteAccount, variant = "icon" }
           <li>
             <Link
               role="menuitem"
-              to="/connections"
+              to="/settings"
               onClick={() => setOpen(false)}
               className="block w-full text-left px-3 py-2 hover:bg-muted"
             >
-              Connections
+              Settings
             </Link>
+          </li>
+          {user.is_admin && (
+            <li>
+              <Link
+                role="menuitem"
+                to="/admin"
+                onClick={() => setOpen(false)}
+                className="block w-full text-left px-3 py-2 hover:bg-muted"
+              >
+                Admin
+              </Link>
+            </li>
+          )}
+          <li>
+            <button
+              type="button"
+              role="menuitem"
+              onClick={() => {
+                setOpen(false);
+                onSendFeedback();
+              }}
+              className="w-full text-left px-3 py-2 hover:bg-muted"
+            >
+              Send feedback
+            </button>
           </li>
           <li>
             <button

@@ -1,11 +1,13 @@
-import { BookmarkCheck, Eye, Tv, Tag, User, X } from "lucide-react";
+import { BookmarkCheck, Eye, Star, Tv, Tag, User, X } from "lucide-react";
 import { useGenres } from "@/api/shows";
 import { FilterSheet } from "@/components/home/FilterSheet";
 import {
   IN_MY_SHOWS_FILTERS,
+  RATED_FILTER_KEYS,
   SHOW_STATUSES,
   WATCH_STATES,
   type InMyShowsFilter,
+  type RatedFilter,
   type ShowStatusFilter,
   type WatchState,
   genreOptions,
@@ -163,6 +165,33 @@ export function ShowStatusFilterPicker({
       triggerIcon={<Tv className={ICON_CLS} aria-hidden />}
       ariaLabel={`Filter by show status (current: ${label})`}
       options={SHOW_STATUSES}
+      value={value}
+      onChange={onChange}
+      active={value !== "all"}
+    />
+  );
+}
+
+const RATED_FILTER_OPTIONS: { key: RatedFilter; label: string }[] = RATED_FILTER_KEYS.map((k) => ({
+  key: k,
+  label: k === "all" ? "All" : "Rated only",
+}));
+
+export function RatedOnlyFilter({
+  value,
+  onChange,
+}: {
+  value: RatedFilter;
+  onChange: (next: RatedFilter) => void;
+}) {
+  const label = RATED_FILTER_OPTIONS.find((o) => o.key === value)?.label ?? "All";
+  return (
+    <FilterSheet
+      title="My ratings"
+      triggerLabel={`Rated: ${label}`}
+      triggerIcon={<Star className={ICON_CLS} aria-hidden />}
+      ariaLabel={`Filter by my ratings (current: ${label})`}
+      options={RATED_FILTER_OPTIONS}
       value={value}
       onChange={onChange}
       active={value !== "all"}

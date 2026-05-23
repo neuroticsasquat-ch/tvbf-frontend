@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router";
 import { ArrowDown, ArrowUp, Check, Plus } from "lucide-react";
 import { useAddShow, useRemoveShow } from "@/api/me";
@@ -17,11 +17,14 @@ import {
   ClearFiltersButton,
   GenreFilter,
   InMyShowsFilterPicker,
+  RatedOnlyFilter,
   ShowStatusFilterPicker,
   WatchStateFilter,
 } from "@/components/home/FilterPickers";
+import { RatingBadge } from "@/components/RatingBadge";
 import {
   IN_MY_SHOWS_KEYS,
+  RATED_FILTER_KEYS,
   SHOW_STATUS_KEYS,
   WATCH_STATE_KEYS,
   libraryStatusFor,
@@ -29,6 +32,7 @@ import {
   matchesStatus,
   watchStateOf,
   type InMyShowsFilter,
+  type RatedFilter,
   type ShowStatusFilter,
   type WatchState,
 } from "@/components/home/filterTypes";
@@ -62,6 +66,10 @@ interface Props {
    * `"my-shows"` so existing self-library prefs keep working. Friend variants
    * pass e.g. `"friend-active"` so they don't collide. */
   storagePrefix?: string;
+  /** Fires when the rated-only filter toggles. Self-mode parents can pipe this
+   * back into `useMyShows({ ratedOnly })` so the server-side filter kicks in.
+   * The list also filters client-side on `my_rating`, so omitting this is safe. */
+  onRatedOnlyChange?: (ratedOnly: boolean) => void;
 }
 
 export function LibraryActiveList({
@@ -70,6 +78,7 @@ export function LibraryActiveList({
   viewerContext = "self",
   callerLibrary,
   storagePrefix = "my-shows",
+  onRatedOnlyChange,
 }: Props) {
   const [sort, setSort] = usePersistedSort<LibrarySort>(
     storagePrefix,
@@ -101,8 +110,20 @@ export function LibraryActiveList({
     WATCH_STATE_KEYS,
     "all",
   );
+  const [rated, setRated] = usePersistedSort<RatedFilter>(
+    `${storagePrefix}-rated`,
+    RATED_FILTER_KEYS,
+    "all",
+  );
   const [genre, setGenre] = usePersistedString(`${storagePrefix}-genre`, "all");
   const [view, setView] = usePersistedView(storagePrefix, "list");
+
+  // Notify the parent so it can pass `ratedOnly` to `useMyShows`. The list
+  // also applies the filter client-side below, so this is purely an
+  // optimization (server-side filter shrinks the payload).
+  useEffect(() => {
+    onRatedOnlyChange?.(rated === "rated");
+  }, [rated, onRatedOnlyChange]);
 
   const filteredAndSorted = useMemo(() => {
     if (!data) return data;
@@ -112,8 +133,19 @@ export function LibraryActiveList({
       .filter((e) => matchesGenre(e.show, genre))
       .filter((e) => matchesCallerMembership(e.show.id, callerMembership, callerLibrary))
       .filter((e) => matchesCallerWatchState(callerWatchState, e, callerLibrary))
+      .filter((e) => rated === "all" || (e.my_rating != null && e.my_rating > 0))
       .sort((a, b) => compareLibraryEntries(a, b, sort));
-  }, [data, sort, watchState, status, genre, callerMembership, callerWatchState, callerLibrary]);
+  }, [
+    data,
+    sort,
+    watchState,
+    status,
+    genre,
+    callerMembership,
+    callerWatchState,
+    callerLibrary,
+    rated,
+  ]);
 
   const sortLabel = LIBRARY_SORTS.find((s) => s.key === sort)?.label ?? "";
   const filtersActive =
@@ -122,7 +154,8 @@ export function LibraryActiveList({
     genre !== "all" ||
     inMyShows !== "all" ||
     callerMembership !== "all" ||
-    callerWatchState !== "all";
+    callerWatchState !== "all" ||
+    rated !== "all";
 
   return (
     <div>
@@ -157,6 +190,7 @@ export function LibraryActiveList({
             <CallerWatchStateFilterPicker value={callerWatchState} onChange={setCallerWatchState} />
           </>
         )}
+        {viewerContext === "self" && <RatedOnlyFilter value={rated} onChange={setRated} />}
         <GenreFilter value={genre} onChange={setGenre} />
         {filtersActive && (
           <ClearFiltersButton
@@ -167,6 +201,7 @@ export function LibraryActiveList({
               setCallerMembership("all");
               setCallerWatchState("all");
               setGenre("all");
+              setRated("all");
             }}
           />
         )}
@@ -318,6 +353,7 @@ function ActiveRow({
           </>
         )}
         <div className="flex flex-wrap items-center justify-end gap-2 pt-1">
+          <RatingBadge value={entry.my_rating} title="Your rating" />
           <CallerProgressNote
             showId={entry.show.id}
             viewerContext={viewerContext}

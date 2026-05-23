@@ -17,6 +17,8 @@ function showWith(status: string | null): ShowSummary {
     web_channel: null,
     genres: [],
     matched_aka: null,
+    rating_average: null,
+    my_rating: null,
   };
 }
 

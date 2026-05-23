@@ -20,6 +20,8 @@ function makeShow(overrides: Partial<ShowSummary> = {}): ShowSummary {
     web_channel: null,
     genres: ["Drama"],
     matched_aka: null,
+    rating_average: null,
+    my_rating: null,
     ...overrides,
   };
 }

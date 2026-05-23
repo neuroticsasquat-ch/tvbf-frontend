@@ -73,6 +73,8 @@ export interface EpisodeOut {
   // Per-user watched flag. Populated by `/me/*` list endpoints; null on
   // catalog-browse endpoints that have no user context.
   watched: boolean | null;
+  rating_average: number | null;
+  my_rating: number | null;
 }
 
 export interface ShowSummary {
@@ -89,6 +91,13 @@ export interface ShowSummary {
   web_channel: NetworkRef | null;
   genres: string[];
   matched_aka: string | null;
+  rating_average: number | null;
+  my_rating: number | null;
+}
+
+export interface Rating {
+  stars: number;
+  rated_at: string;
 }
 
 export interface ShowDetail extends ShowSummary {
@@ -156,10 +165,29 @@ export interface User {
   email: string;
   display_name: string;
   created_at: string;
+  email_verified_at: string | null;
 }
 
 export interface AuthedUser extends User {
   csrf_token: string;
+  activity_feed_enabled: boolean;
+  is_admin: boolean;
+}
+
+export interface AdminUserRow {
+  id: string;
+  email: string;
+  display_name: string;
+  created_at: string;
+  is_admin: boolean;
+}
+
+export interface InviteRow {
+  code: string;
+  email_hint: string | null;
+  created_at: string;
+  consumed_at: string | null;
+  consumed_by_user_id: string | null;
 }
 
 export interface MyShowEntry {
@@ -173,6 +201,11 @@ export interface MyShowEntry {
   first_watched_at: string | null;
   next_episode: EpisodeOut | null;
   added_at: string;
+  // The caller's own rating for this show. Hydrated by the /me/shows endpoint
+  // alongside `show: ShowSummary` (where `my_rating` stays null because the
+  // ShowSummary builder used inside my_shows_service doesn't carry it).
+  my_rating: number | null;
+  hide_from_activity?: boolean;
 }
 
 export interface WatchNextEntry {
@@ -253,4 +286,55 @@ export interface BlockedUserOut {
 export interface ShowFriendActivity {
   in_my_shows: UserBrief[];
   watched: UserBrief[];
+}
+
+export interface FriendRating {
+  user_id: string;
+  display_name: string;
+  stars: number;
+  rated_at: string;
+}
+
+export interface FriendRatingsResponse {
+  avg: number | null;
+  count: number;
+  items: FriendRating[];
+}
+
+export type FeedKind =
+  | "added_show"
+  | "watched_episode"
+  | "watched_episode_run"
+  | "watched_season"
+  | "watched_show"
+  | "rated_show"
+  | "rated_episode";
+
+export interface FeedShowMini {
+  id: number;
+  name: string;
+}
+
+export interface FeedEpisodeMini {
+  id: number;
+  name: string | null;
+  season: number;
+  number: number;
+}
+
+export interface FeedItem {
+  id: string;
+  actor: UserBrief;
+  kind: FeedKind;
+  show: FeedShowMini | null;
+  episode: FeedEpisodeMini | null;
+  season_number: number | null;
+  rollup_count: number | null;
+  stars: number | null;
+  occurred_at: string;
+}
+
+export interface FeedPage {
+  items: FeedItem[];
+  next_cursor: string | null;
 }

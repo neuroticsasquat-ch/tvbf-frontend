@@ -11,8 +11,14 @@ import { RequireAuth } from "@/components/RequireAuth";
 import { WatchNextPage } from "@/pages/WatchNextPage";
 import { UpcomingPage } from "@/pages/UpcomingPage";
 import { MyShowsPage } from "@/pages/MyShowsPage";
-import { ConnectionsPage } from "@/pages/ConnectionsPage";
+import { AdminPage } from "@/pages/AdminPage";
 import { FriendProfilePage } from "@/pages/FriendProfilePage";
+import { FriendsFeedPage } from "@/pages/FriendsFeedPage";
+import { SettingsPage } from "@/pages/SettingsPage";
+import { VerifyEmailPage } from "@/pages/VerifyEmailPage";
+import { EmailChangeConfirmPage } from "@/pages/EmailChangeConfirmPage";
+import { ForgotPasswordPage } from "@/pages/ForgotPasswordPage";
+import { ResetPasswordPage } from "@/pages/ResetPasswordPage";
 
 export const router = createBrowserRouter([
   {
@@ -21,13 +27,20 @@ export const router = createBrowserRouter([
     children: [
       { path: "login", element: <LoginPage /> },
       { path: "signup", element: <SignupPage /> },
+      { path: "verify-email", element: <VerifyEmailPage /> },
+      { path: "email-change/confirm", element: <EmailChangeConfirmPage /> },
+      { path: "forgot-password", element: <ForgotPasswordPage /> },
+      { path: "reset-password", element: <ResetPasswordPage /> },
       {
         element: <RequireAuth />,
         children: [
           { index: true, element: <WatchNextPage /> },
           { path: "upcoming", element: <UpcomingPage /> },
           { path: "my-shows", element: <MyShowsPage /> },
-          { path: "connections", element: <ConnectionsPage /> },
+          { path: "friends", element: <FriendsFeedPage /> },
+          { path: "admin", element: <AdminPage /> },
+          { path: "connections", element: <Navigate to="/friends?section=connections" replace /> },
+          { path: "settings", element: <SettingsPage /> },
           { path: "users/:userId", element: <FriendProfilePage /> },
           // Redirects from old paths.
           { path: "watch-next", element: <Navigate to="/" replace /> },

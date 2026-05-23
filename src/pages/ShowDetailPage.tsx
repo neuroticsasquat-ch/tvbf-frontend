@@ -9,13 +9,18 @@ import { NotFoundPage } from "./NotFoundPage";
 import { CollapsibleSummary } from "@/components/CollapsibleSummary";
 import { Badge } from "@/components/ui/badge";
 import { MyShowsToggle } from "@/components/MyShowsToggle";
+import { HideFromActivityToggle } from "@/components/friends/HideFromActivityToggle";
 import { ShowWatchCheckbox } from "@/components/ShowWatchCheckbox";
 import { NextEpisodeCard } from "@/components/NextEpisodeCard";
 import { ShowFriendActivityStrip } from "@/components/friends/FriendActivity";
+import { FriendRatingsList } from "@/components/FriendRatingsList";
 import { WatchProgressBar } from "@/components/WatchProgressBar";
 import { SeasonWatchCheckbox } from "@/components/SeasonWatchCheckbox";
-import { useMyShows, useSeasonProgress } from "@/api/me";
+import { useMyShows, useSeasonProgress, useShowRating } from "@/api/me";
 import { Tv } from "lucide-react";
+import { RatingBadge } from "@/components/RatingBadge";
+import { StarRatingInput } from "@/components/StarRatingInput";
+import { tvmazeToFiveStar } from "@/lib/rating";
 
 function yearRange(premiered: string | null, ended: string | null) {
   if (!premiered) return "—";
@@ -32,6 +37,7 @@ export function ShowDetailPage() {
   const myEntry = myShowsQuery.data?.find((e) => e.show.id === showId);
   const { user } = useAuth();
   const progressQuery = useSeasonProgress(showId, !!user && !!myEntry);
+  const rate = useShowRating(showId);
   const [seasonFilter, setSeasonFilter] = useState<"all" | "unwatched">("all");
 
   if (query.isPending) return <LoadingState rows={1} />;
@@ -51,7 +57,13 @@ export function ShowDetailPage() {
           />
         ) : null}
         <div className="flex-1 space-y-2">
-          <h1 className="text-3xl font-semibold">{show.name}</h1>
+          <div className="flex flex-wrap items-center gap-2">
+            <h1 className="text-3xl font-semibold">{show.name}</h1>
+            <RatingBadge
+              value={tvmazeToFiveStar(show.rating_average)}
+              title="TV Maze average"
+            />
+          </div>
           <p className="text-sm text-muted-foreground">
             {yearRange(show.premiered, show.ended)}
             {show.network?.name ? ` · ${show.network.name}` : ""}
@@ -85,10 +97,31 @@ export function ShowDetailPage() {
               />
             )}
           </div>
+          {myEntry && (
+            <div className="pt-2">
+              <HideFromActivityToggle
+                showId={show.id}
+                value={myEntry.hide_from_activity ?? false}
+              />
+            </div>
+          )}
         </div>
       </header>
 
+      {user ? (
+        <section>
+          <h2 className="text-base font-semibold">Your rating</h2>
+          <StarRatingInput
+            value={show.my_rating}
+            onChange={(next) => rate.mutate(next)}
+            disabled={!user}
+          />
+        </section>
+      ) : null}
+
       <ShowFriendActivityStrip showId={show.id} />
+
+      <FriendRatingsList showId={show.id} />
 
       <NextEpisodeCard showId={show.id} />
 
