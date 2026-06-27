@@ -2,9 +2,7 @@ name: Merge main into dependency branch
 
 on:
   schedule:
-    # 05:15 EDT / 04:15 EST Saturday. Scheduled runs are best-effort and can be
-    # delayed up to ~2hr; the wide buffer keeps us ahead of Dependabot at 9am ET.
-    - cron: "15 9 * * 6"
+    - cron: "0 12 * * 6" # 7am EST / 8am EDT — always ≥1hr before Dependabot at 9am ET
   workflow_dispatch:
 
 permissions:
@@ -15,14 +13,14 @@ jobs:
   merge:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
-      - name: Skip if updates/dependencies already contains main
+      - name: Skip if updates/dependencies is already up to date
         id: check
         run: |
-          git fetch --quiet origin main updates/dependencies
+          git fetch origin main updates/dependencies
           if git merge-base --is-ancestor origin/main origin/updates/dependencies; then
             echo "skip=true" >> "$GITHUB_OUTPUT"
             echo "updates/dependencies already contains main; nothing to do."
