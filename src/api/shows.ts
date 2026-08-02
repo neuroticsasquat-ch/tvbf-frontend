@@ -25,7 +25,10 @@ export function useShows(filters: ShowFilters, options: { enabled?: boolean } = 
   const queryString = buildShowsQuery(filters);
   return useQuery<ShowListPage>({
     queryKey: ["shows", filters],
-    queryFn: () => apiFetch<ShowListPage>(`/shows${queryString ? `?${queryString}` : ""}`),
+    // `signal` aborts a superseded search request instead of leaving it in
+    // flight — search fires one of these per (debounced) keystroke.
+    queryFn: ({ signal }) =>
+      apiFetch<ShowListPage>(`/shows${queryString ? `?${queryString}` : ""}`, { signal }),
     staleTime: FIVE_MINUTES,
     enabled: options.enabled ?? true,
   });

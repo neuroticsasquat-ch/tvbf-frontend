@@ -4,6 +4,7 @@ import type {
   GenreOut,
   NetworkOut,
   PersonCredits,
+  PersonListPage,
   PersonOut,
   ShowDetail,
   ShowListPage,
@@ -286,4 +287,27 @@ export const fixturePersonCredits: PersonCredits = {
       voice: false,
     },
   ],
+};
+
+/** A page of person search results. Two people so tab order across the
+ * Shows → People boundary has somewhere to land. */
+export const fixturePersonListPage: PersonListPage = {
+  items: [
+    fixturePerson,
+    {
+      id: 301,
+      name: "Adam Second",
+      country_code: "US",
+      country_name: "United States",
+      birthday: "1980-04-01",
+      deathday: null,
+      gender: "Male",
+      image_medium: null,
+      image_original: null,
+    },
+  ],
+  page: 1,
+  per_page: 24,
+  total: 2,
+  total_pages: 1,
 };
