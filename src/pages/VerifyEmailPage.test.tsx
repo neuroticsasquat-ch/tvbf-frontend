@@ -8,11 +8,7 @@ import { VerifyEmailPage } from "./VerifyEmailPage";
 
 describe("VerifyEmailPage", () => {
   it("shows a success message when /verify-email returns 200", async () => {
-    server.use(
-      http.post(`${env.apiBaseUrl}/verify-email`, () =>
-        HttpResponse.json({ ok: true }),
-      ),
-    );
+    server.use(http.post(`${env.apiBaseUrl}/verify-email`, () => HttpResponse.json({ ok: true })));
     renderWithProviders(<VerifyEmailPage />, { route: "/verify-email?token=good" });
     expect(await screen.findByText(/your email is verified/i)).toBeInTheDocument();
   });

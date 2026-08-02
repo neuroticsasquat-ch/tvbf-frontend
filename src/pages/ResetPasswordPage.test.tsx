@@ -16,17 +16,12 @@ describe("ResetPasswordPage", () => {
       route: "/reset-password?token=good",
     });
     await userEvent.type(screen.getByLabelText(/^new password$/i), "brandnew12345");
-    await userEvent.type(
-      screen.getByLabelText(/confirm new password/i),
-      "brandnew12345",
-    );
+    await userEvent.type(screen.getByLabelText(/confirm new password/i), "brandnew12345");
     await userEvent.click(screen.getByRole("button", { name: /save new password/i }));
 
     // After success the form disappears (navigation happens).
     await waitFor(() =>
-      expect(
-        screen.queryByRole("button", { name: /save new password/i }),
-      ).not.toBeInTheDocument(),
+      expect(screen.queryByRole("button", { name: /save new password/i })).not.toBeInTheDocument(),
     );
   });
 
@@ -40,10 +35,7 @@ describe("ResetPasswordPage", () => {
       route: "/reset-password?token=expired",
     });
     await userEvent.type(screen.getByLabelText(/^new password$/i), "brandnew12345");
-    await userEvent.type(
-      screen.getByLabelText(/confirm new password/i),
-      "brandnew12345",
-    );
+    await userEvent.type(screen.getByLabelText(/confirm new password/i), "brandnew12345");
     await userEvent.click(screen.getByRole("button", { name: /save new password/i }));
 
     expect(await screen.findByRole("alert")).toHaveTextContent(
@@ -61,10 +53,7 @@ describe("ResetPasswordPage", () => {
       route: "/reset-password?token=ok",
     });
     await userEvent.type(screen.getByLabelText(/^new password$/i), "brandnew12345");
-    await userEvent.type(
-      screen.getByLabelText(/confirm new password/i),
-      "brandnew12345",
-    );
+    await userEvent.type(screen.getByLabelText(/confirm new password/i), "brandnew12345");
     await userEvent.click(screen.getByRole("button", { name: /save new password/i }));
 
     expect(await screen.findByRole("alert")).toHaveTextContent(/isn't allowed/i);
@@ -80,10 +69,7 @@ describe("ResetPasswordPage", () => {
       route: "/reset-password?token=ok",
     });
     await userEvent.type(screen.getByLabelText(/^new password$/i), "brandnew12345");
-    await userEvent.type(
-      screen.getByLabelText(/confirm new password/i),
-      "different12345",
-    );
+    await userEvent.type(screen.getByLabelText(/confirm new password/i), "different12345");
     await userEvent.click(screen.getByRole("button", { name: /save new password/i }));
 
     expect(await screen.findByRole("alert")).toHaveTextContent(/don't match/i);

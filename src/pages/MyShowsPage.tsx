@@ -73,13 +73,7 @@ export function MyShowsPage() {
 function ActiveTab() {
   const [ratedOnly, setRatedOnly] = useState(false);
   const { data, isLoading } = useMyShows("recent_activity", { ratedOnly });
-  return (
-    <LibraryActiveList
-      data={data}
-      isLoading={isLoading}
-      onRatedOnlyChange={setRatedOnly}
-    />
-  );
+  return <LibraryActiveList data={data} isLoading={isLoading} onRatedOnlyChange={setRatedOnly} />;
 }
 
 function WatchedTab() {

@@ -47,9 +47,7 @@ export function ResetPasswordPage() {
       navigate("/login", { replace: true });
     } catch (e) {
       if (e instanceof ApiError && e.status === 400) {
-        setError(
-          "This reset link is invalid or has expired. Request a new one.",
-        );
+        setError("This reset link is invalid or has expired. Request a new one.");
       } else if (e instanceof ApiError && e.status === 422) {
         setError("That password isn't allowed. Pick a different one.");
       } else {

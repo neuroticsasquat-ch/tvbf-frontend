@@ -87,14 +87,11 @@ describe("ShowDetailPage hide-from-activity toggle", () => {
     server.use(
       authedMe(),
       myShowsHandler([entry(100, { hide_from_activity: true })]),
-      http.patch(
-        `${env.apiBaseUrl}/me/shows/:id/hide-from-activity`,
-        async ({ request }) => {
-          const body = (await request.json()) as { hide_from_activity: boolean };
-          calls.push(body);
-          return new HttpResponse(null, { status: 204 });
-        },
-      ),
+      http.patch(`${env.apiBaseUrl}/me/shows/:id/hide-from-activity`, async ({ request }) => {
+        const body = (await request.json()) as { hide_from_activity: boolean };
+        calls.push(body);
+        return new HttpResponse(null, { status: 204 });
+      }),
     );
     renderWithProviders(routed(), { route: "/shows/100" });
 

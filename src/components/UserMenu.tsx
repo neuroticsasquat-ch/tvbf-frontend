@@ -11,7 +11,12 @@ type UserMenuProps = {
   variant?: "icon" | "bottom-tab" | "icon-only";
 };
 
-export function UserMenu({ onChangePassword, onDeleteAccount, onSendFeedback, variant = "icon" }: UserMenuProps) {
+export function UserMenu({
+  onChangePassword,
+  onDeleteAccount,
+  onSendFeedback,
+  variant = "icon",
+}: UserMenuProps) {
   const { user, logout } = useAuth();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement | null>(null);

@@ -78,8 +78,8 @@ export function SignupPage() {
             className="mt-1 w-full rounded border px-3 py-2"
           />
           <p id="email-help" className="text-xs text-gray-500 mt-1">
-            Your email won't be shown to other users, but they can find you with
-            it to send a connection request.
+            Your email won't be shown to other users, but they can find you with it to send a
+            connection request.
           </p>
         </div>
         <div>

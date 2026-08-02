@@ -33,7 +33,10 @@ describe("UnverifiedEmailBanner", () => {
   it("renders when the user is unverified and the resend button works on success", async () => {
     server.use(meHandler(null));
     server.use(
-      http.post(`${env.apiBaseUrl}/me/email/verification`, () => new HttpResponse(null, { status: 202 })),
+      http.post(
+        `${env.apiBaseUrl}/me/email/verification`,
+        () => new HttpResponse(null, { status: 202 }),
+      ),
     );
 
     renderWithProviders(<UnverifiedEmailBanner />);

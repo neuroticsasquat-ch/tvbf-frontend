@@ -86,9 +86,7 @@ describe("FriendsFeedPage", () => {
       }),
     ];
     server.use(
-      http.get(`${env.apiBaseUrl}/me/feed`, () =>
-        HttpResponse.json({ items, next_cursor: null }),
-      ),
+      http.get(`${env.apiBaseUrl}/me/feed`, () => HttpResponse.json({ items, next_cursor: null })),
     );
     renderWithProviders(<FriendsFeedPage />);
     await waitFor(() => expect(screen.getAllByTestId("feed-row")).toHaveLength(7));
@@ -154,9 +152,9 @@ describe("FriendsFeedPage", () => {
     );
     renderWithProviders(<FriendsFeedPage />);
     const tablist = await screen.findByRole("tablist", { name: /friends sections/i });
-    const tabs = screen.getAllByRole("tab", { current: false }).concat(
-      screen.getAllByRole("tab", { selected: true }),
-    );
+    const tabs = screen
+      .getAllByRole("tab", { current: false })
+      .concat(screen.getAllByRole("tab", { selected: true }));
     expect(tablist).toBeInTheDocument();
     expect(tabs.length).toBeGreaterThanOrEqual(2);
     expect(screen.getByRole("tab", { name: /^activity$/i })).toHaveAttribute(
@@ -208,9 +206,9 @@ describe("FriendsFeedPage", () => {
     );
     renderWithProviders(<FriendsFeedPage />);
     await waitFor(() =>
-      expect(
-        document.getElementById("friends-tab-connections")?.textContent,
-      ).toMatch(/Connections \(3\)/),
+      expect(document.getElementById("friends-tab-connections")?.textContent).toMatch(
+        /Connections \(3\)/,
+      ),
     );
   });
 
@@ -226,9 +224,7 @@ describe("FriendsFeedPage", () => {
     fireEvent.click(outerConnectionsTab);
     // The nested Connections sub-tablist appears.
     await waitFor(() =>
-      expect(
-        screen.getByRole("tablist", { name: /connections sections/i }),
-      ).toBeInTheDocument(),
+      expect(screen.getByRole("tablist", { name: /connections sections/i })).toBeInTheDocument(),
     );
     expect(document.getElementById("friends-tab-connections")).toHaveAttribute(
       "aria-selected",

@@ -68,11 +68,7 @@ export function FriendsFeedPage() {
         })}
       </div>
 
-      <div
-        role="tabpanel"
-        id={`friends-panel-${active}`}
-        aria-labelledby={`friends-tab-${active}`}
-      >
+      <div role="tabpanel" id={`friends-panel-${active}`} aria-labelledby={`friends-tab-${active}`}>
         {active === "activity" ? <ActivityFeed /> : <ConnectionsTabs />}
       </div>
     </section>

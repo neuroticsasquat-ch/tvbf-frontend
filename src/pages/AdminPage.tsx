@@ -37,11 +37,7 @@ export function AdminPage() {
     <section aria-label="Admin" className="space-y-4">
       <h1 className="text-2xl font-semibold">Admin</h1>
 
-      <div
-        role="tablist"
-        aria-label="Admin sections"
-        className="flex gap-1 border-b border-border"
-      >
+      <div role="tablist" aria-label="Admin sections" className="flex gap-1 border-b border-border">
         {SECTIONS.map((s) => {
           const selected = s.key === active;
           return (

@@ -15,9 +15,7 @@ describe("ForgotPasswordPage", () => {
     renderWithProviders(<ForgotPasswordPage />, { route: "/forgot-password" });
     await userEvent.type(screen.getByLabelText(/email/i), "alice@example.com");
     await userEvent.click(screen.getByRole("button", { name: /send reset link/i }));
-    expect(
-      await screen.findByText(/if that email belongs to an account/i),
-    ).toBeInTheDocument();
+    expect(await screen.findByText(/if that email belongs to an account/i)).toBeInTheDocument();
   });
 
   it("shows the same neutral confirmation when the API errors (no enumeration)", async () => {
@@ -29,8 +27,6 @@ describe("ForgotPasswordPage", () => {
     renderWithProviders(<ForgotPasswordPage />, { route: "/forgot-password" });
     await userEvent.type(screen.getByLabelText(/email/i), "ghost@example.com");
     await userEvent.click(screen.getByRole("button", { name: /send reset link/i }));
-    expect(
-      await screen.findByText(/if that email belongs to an account/i),
-    ).toBeInTheDocument();
+    expect(await screen.findByText(/if that email belongs to an account/i)).toBeInTheDocument();
   });
 });

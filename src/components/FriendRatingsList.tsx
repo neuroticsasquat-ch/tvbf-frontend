@@ -14,14 +14,8 @@ function Items({ data }: { data: FriendRatingsResponse }) {
   return (
     <ul className="flex flex-col gap-1 text-sm">
       {data.items.map((item) => (
-        <li
-          key={item.user_id}
-          className="flex flex-wrap items-center gap-2 text-muted-foreground"
-        >
-          <Link
-            to={`/users/${item.user_id}`}
-            className="hover:underline text-foreground"
-          >
+        <li key={item.user_id} className="flex flex-wrap items-center gap-2 text-muted-foreground">
+          <Link to={`/users/${item.user_id}`} className="hover:underline text-foreground">
             {item.display_name}
           </Link>
           <StarRatingDisplay value={item.stars} size="sm" />
@@ -38,8 +32,7 @@ export function FriendRatingsList(props: Props) {
   const id = isShow ? props.showId : props.episodeId;
   const { data } = useQuery<FriendRatingsResponse>({
     queryKey: ["friend-ratings", isShow ? "show" : "episode", id],
-    queryFn: () =>
-      isShow ? getShowFriendRatings(id) : getEpisodeFriendRatings(id),
+    queryFn: () => (isShow ? getShowFriendRatings(id) : getEpisodeFriendRatings(id)),
     enabled: !!user,
   });
 
