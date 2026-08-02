@@ -212,6 +212,23 @@ export const fixtureCast: CastMember[] = [
   },
 ];
 
+/** Guest cast is the same payload as show cast — distinct people so a test can
+ * tell the two sections apart. */
+export const fixtureGuestCast: CastMember[] = [
+  {
+    person: { id: 6, name: "Gus Guest", image_medium: "https://example.com/gus.jpg" },
+    character: { id: 16, name: "The Stranger", image_medium: null },
+    self: false,
+    voice: false,
+  },
+  {
+    person: { id: 7, name: "Ana Cameo", image_medium: null },
+    character: { id: 17, name: "Radio Announcer", image_medium: null },
+    self: false,
+    voice: true,
+  },
+];
+
 export const fixtureCrew: CrewMember[] = [
   {
     person: { id: 4, name: "Wes Creator", image_medium: null },

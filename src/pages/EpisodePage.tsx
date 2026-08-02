@@ -7,6 +7,7 @@ import { ErrorState } from "@/components/ErrorState";
 import { NotFoundPage } from "./NotFoundPage";
 import { CollapsibleSummary } from "@/components/CollapsibleSummary";
 import { EpisodeWatchCheckbox } from "@/components/EpisodeWatchCheckbox";
+import { EpisodeGuestCast } from "@/components/EpisodeGuestCast";
 import { EpisodeFriendsWatched } from "@/components/friends/FriendActivity";
 import { FriendRatingsList } from "@/components/FriendRatingsList";
 import { FilterSheet } from "@/components/home/FilterSheet";
@@ -202,6 +203,8 @@ export function EpisodePage() {
           )}
         </div>
       </div>
+
+      <EpisodeGuestCast episodeId={ep.id} />
     </article>
   );
 }

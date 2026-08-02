@@ -62,6 +62,27 @@ export function useShowCast(id: number) {
   });
 }
 
+/** Guest cast for one episode. Same payload shape as show cast, so the same
+ * `CastList` renders it. A known episode with no guest cast returns `[]` and a
+ * 200 — that's 96% of the catalog, and not a failure. (The route does 404 an
+ * *unknown* episode id, which this never sees: the section only mounts after
+ * the episode itself resolves.)
+ *
+ * Deferring the request behind a viewport observer would make that 96% cost
+ * zero requests, which is the cheaper option and was weighed. Rejected: the
+ * section sits within the first viewport on most episode pages, so the
+ * observer would fire immediately and save nothing, while costing a jsdom
+ * polyfill and a late pop-in on the 4% that do have guests. Revisit if episode
+ * pages ever grow long enough that it's genuinely below the fold. */
+export function useEpisodeGuestCast(id: number) {
+  return useQuery<CastMember[]>({
+    queryKey: ["episode-guest-cast", id],
+    queryFn: () => apiFetch<CastMember[]>(`/episodes/${id}/guest-cast`),
+    staleTime: FIVE_MINUTES,
+    enabled: Number.isFinite(id) && id > 0,
+  });
+}
+
 export function useShowCrew(id: number) {
   return useQuery<CrewMember[]>({
     queryKey: ["show-crew", id],
