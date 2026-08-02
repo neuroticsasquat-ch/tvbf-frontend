@@ -109,6 +109,31 @@ export interface ShowDetail extends ShowSummary {
   seasons: SeasonOut[];
 }
 
+export interface PersonRef {
+  id: number;
+  name: string;
+  image_medium: string | null;
+}
+
+export interface CharacterRef {
+  id: number;
+  name: string;
+  image_medium: string | null;
+}
+
+export interface CastMember {
+  person: PersonRef;
+  character: CharacterRef;
+  /** Credited as themselves (matches upstream's `self` key). */
+  self: boolean;
+  voice: boolean;
+}
+
+export interface CrewMember {
+  person: PersonRef;
+  role: string;
+}
+
 export interface ShowListPage {
   items: ShowSummary[];
   page: number;

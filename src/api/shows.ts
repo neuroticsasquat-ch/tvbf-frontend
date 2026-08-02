@@ -1,6 +1,14 @@
 import { useQuery } from "@tanstack/react-query";
 import { apiFetch, buildShowsQuery } from "./client";
-import type { EpisodeOut, GenreOut, ShowDetail, ShowFilters, ShowListPage } from "./types";
+import type {
+  CastMember,
+  CrewMember,
+  EpisodeOut,
+  GenreOut,
+  ShowDetail,
+  ShowFilters,
+  ShowListPage,
+} from "./types";
 
 const FIVE_MINUTES = 5 * 60 * 1000;
 const ONE_HOUR = 60 * 60 * 1000;
@@ -36,6 +44,25 @@ export function useEpisode(id: number) {
   return useQuery<EpisodeOut>({
     queryKey: ["episode", id],
     queryFn: () => apiFetch<EpisodeOut>(`/episodes/${id}`),
+    staleTime: FIVE_MINUTES,
+    enabled: Number.isFinite(id) && id > 0,
+  });
+}
+
+/** Cast is served in billing order by the API — never re-sort it client-side. */
+export function useShowCast(id: number) {
+  return useQuery<CastMember[]>({
+    queryKey: ["show-cast", id],
+    queryFn: () => apiFetch<CastMember[]>(`/shows/${id}/cast`),
+    staleTime: FIVE_MINUTES,
+    enabled: Number.isFinite(id) && id > 0,
+  });
+}
+
+export function useShowCrew(id: number) {
+  return useQuery<CrewMember[]>({
+    queryKey: ["show-crew", id],
+    queryFn: () => apiFetch<CrewMember[]>(`/shows/${id}/crew`),
     staleTime: FIVE_MINUTES,
     enabled: Number.isFinite(id) && id > 0,
   });

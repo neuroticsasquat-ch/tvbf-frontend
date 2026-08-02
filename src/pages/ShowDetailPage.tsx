@@ -16,6 +16,8 @@ import { ShowFriendActivityStrip } from "@/components/friends/FriendActivity";
 import { FriendRatingsList } from "@/components/FriendRatingsList";
 import { WatchProgressBar } from "@/components/WatchProgressBar";
 import { SeasonWatchCheckbox } from "@/components/SeasonWatchCheckbox";
+import { CastList } from "@/components/CastList";
+import { CrewList } from "@/components/CrewList";
 import { useMyShows, useSeasonProgress, useShowRating } from "@/api/me";
 import { Tv } from "lucide-react";
 import { RatingBadge } from "@/components/RatingBadge";
@@ -241,6 +243,10 @@ export function ShowDetailPage() {
           );
         })()}
       </section>
+
+      <CastList showId={show.id} />
+
+      <CrewList showId={show.id} />
     </article>
   );
 }

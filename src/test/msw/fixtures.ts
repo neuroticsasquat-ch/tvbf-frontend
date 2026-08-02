@@ -1,4 +1,6 @@
 import type {
+  CastMember,
+  CrewMember,
   GenreOut,
   NetworkOut,
   ShowDetail,
@@ -182,3 +184,45 @@ export const fixtureSeason2Episodes: EpisodeOut[] = [
 ];
 
 export const _seasonPlaceholder: SeasonOut[] = [];
+
+// Deliberately NOT alphabetical: billing order comes from the API's
+// `sort_order`, and the tests assert the rendered order matches it rather than
+// a client-side sort.
+export const fixtureCast: CastMember[] = [
+  {
+    person: { id: 1, name: "Zoe Lead", image_medium: "https://example.com/zoe.jpg" },
+    character: { id: 11, name: "Captain Alpha", image_medium: null },
+    self: false,
+    voice: false,
+  },
+  {
+    person: { id: 2, name: "Adam Second", image_medium: null },
+    character: { id: 12, name: "Doctor Beta", image_medium: null },
+    self: false,
+    voice: true,
+  },
+  {
+    person: { id: 3, name: "Mia Third", image_medium: "https://example.com/mia.jpg" },
+    character: { id: 13, name: "Mia Third", image_medium: null },
+    self: true,
+    voice: false,
+  },
+];
+
+export const fixtureCrew: CrewMember[] = [
+  {
+    person: { id: 4, name: "Wes Creator", image_medium: null },
+    role: "Creator",
+  },
+  {
+    person: { id: 5, name: "Ada Producer", image_medium: null },
+    role: "Executive Producer",
+  },
+  {
+    person: { id: 6, name: "Bo Producer", image_medium: null },
+    role: "Executive Producer",
+  },
+  { person: { id: 7, name: "Cy Writer", image_medium: null }, role: "Writer" },
+  { person: { id: 8, name: "Di Director", image_medium: null }, role: "Director" },
+  { person: { id: 9, name: "Eve Composer", image_medium: null }, role: "Composer" },
+];
