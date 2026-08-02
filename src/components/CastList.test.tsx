@@ -6,7 +6,7 @@ import { env } from "@/env";
 import { server } from "@/test/msw/server";
 import { fixtureCast } from "@/test/msw/fixtures";
 import { renderWithProviders } from "@/test/renderWithProviders";
-import { CastList } from "./CastList";
+import { ShowCastList } from "./CastList";
 
 const base = env.apiBaseUrl;
 
@@ -14,9 +14,9 @@ function renderedNames() {
   return screen.getAllByRole("listitem").map((li) => li.querySelector("p")?.textContent ?? "");
 }
 
-describe("CastList", () => {
+describe("ShowCastList", () => {
   it("renders cast in API order, not alphabetical", async () => {
-    renderWithProviders(<CastList showId={100} />);
+    renderWithProviders(<ShowCastList showId={100} />);
     await screen.findByRole("heading", { name: /Cast/ });
 
     // Alphabetical would be Adam, Mia, Zoe — the API's billing order is not.
@@ -24,14 +24,14 @@ describe("CastList", () => {
   });
 
   it("shows the character name and marks voice roles", async () => {
-    renderWithProviders(<CastList showId={100} />);
+    renderWithProviders(<ShowCastList showId={100} />);
 
     expect(await screen.findByText("Captain Alpha")).toBeInTheDocument();
     expect(screen.getByText("Doctor Beta (voice)")).toBeInTheDocument();
   });
 
   it("links each person to their person page", async () => {
-    renderWithProviders(<CastList showId={100} />);
+    renderWithProviders(<ShowCastList showId={100} />);
 
     expect(await screen.findByRole("link", { name: "Zoe Lead" })).toHaveAttribute(
       "href",
@@ -41,10 +41,17 @@ describe("CastList", () => {
 
   it("renders nothing when the show has no cast", async () => {
     server.use(http.get(`${base}/shows/100/cast`, () => HttpResponse.json([])));
-    const { container } = renderWithProviders(<CastList showId={100} />);
+    const { container, queryClient } = renderWithProviders(<ShowCastList showId={100} />);
+
+    // Wait on the query settling, not on the DOM — an unsettled query renders
+    // nothing too, so a bare `toBeEmptyDOMElement` would pass against the
+    // loading state without ever seeing the response.
+    await waitFor(() =>
+      expect(queryClient.getQueryState(["show-cast", 100])?.status).toBe("success"),
+    );
 
     // No header, no placeholder row — 27% of shows land here.
-    await waitFor(() => expect(container).toBeEmptyDOMElement());
+    expect(container).toBeEmptyDOMElement();
   });
 
   it("surfaces a failed request instead of looking empty", async () => {
@@ -53,7 +60,7 @@ describe("CastList", () => {
         HttpResponse.json({ detail: "boom" }, { status: 500 }),
       ),
     );
-    renderWithProviders(<CastList showId={100} />);
+    renderWithProviders(<ShowCastList showId={100} />);
 
     expect(await screen.findByRole("alert")).toHaveTextContent(/boom/);
   });
@@ -65,7 +72,7 @@ describe("CastList", () => {
       character: { id: 200 + i, name: `Character ${i}`, image_medium: null },
     }));
     server.use(http.get(`${base}/shows/100/cast`, () => HttpResponse.json(many)));
-    renderWithProviders(<CastList showId={100} />);
+    renderWithProviders(<ShowCastList showId={100} />);
 
     const toggle = await screen.findByRole("button", { name: "Show all 20" });
     expect(screen.getAllByRole("listitem")).toHaveLength(12);
