@@ -4,6 +4,7 @@ import { SearchPage } from "@/pages/SearchPage";
 import { ShowDetailPage } from "@/pages/ShowDetailPage";
 import { EpisodesPage } from "@/pages/EpisodesPage";
 import { EpisodePage } from "@/pages/EpisodePage";
+import { PersonPage } from "@/pages/PersonPage";
 import { NotFoundPage } from "@/pages/NotFoundPage";
 import { LoginPage } from "@/pages/LoginPage";
 import { SignupPage } from "@/pages/SignupPage";
@@ -51,6 +52,7 @@ export const router = createBrowserRouter([
           { path: "shows/:id", element: <ShowDetailPage /> },
           { path: "shows/:id/episodes", element: <EpisodesPage /> },
           { path: "episodes/:episodeId", element: <EpisodePage /> },
+          { path: "people/:personId", element: <PersonPage /> },
           { path: "*", element: <NotFoundPage /> },
         ],
       },

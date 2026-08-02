@@ -1,3 +1,4 @@
+import { Link } from "react-router";
 import type { PersonRef } from "@/api/types";
 
 const FALLBACK_HEADSHOT =
@@ -9,11 +10,8 @@ interface Props {
   detail?: string | null;
 }
 
-/** Headshot + name for one person, with an optional secondary line.
- *
- * The name renders as plain text today. NEU-951 adds `/people/:id`; when it
- * lands, wrap the name in a `<Link to={`/people/${person.id}`}>` here and every
- * credit list picks the link up. */
+/** Headshot + name for one person, with an optional secondary line. The name
+ * links to the person page, so every credit list picks the link up for free. */
 export function PersonChip({ person, detail }: Props) {
   return (
     <div className="flex min-w-0 items-center gap-2">
@@ -24,7 +22,14 @@ export function PersonChip({ person, detail }: Props) {
         loading="lazy"
       />
       <div className="min-w-0">
-        <p className="truncate text-sm font-medium leading-tight">{person.name}</p>
+        <p className="truncate text-sm font-medium leading-tight">
+          <Link
+            to={`/people/${person.id}`}
+            className="rounded underline-offset-2 hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            {person.name}
+          </Link>
+        </p>
         {detail ? (
           <p className="truncate text-xs text-muted-foreground leading-tight">{detail}</p>
         ) : null}

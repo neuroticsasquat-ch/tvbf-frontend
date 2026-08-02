@@ -30,6 +30,15 @@ describe("CastList", () => {
     expect(screen.getByText("Doctor Beta (voice)")).toBeInTheDocument();
   });
 
+  it("links each person to their person page", async () => {
+    renderWithProviders(<CastList showId={100} />);
+
+    expect(await screen.findByRole("link", { name: "Zoe Lead" })).toHaveAttribute(
+      "href",
+      "/people/1",
+    );
+  });
+
   it("renders nothing when the show has no cast", async () => {
     server.use(http.get(`${base}/shows/100/cast`, () => HttpResponse.json([])));
     const { container } = renderWithProviders(<CastList showId={100} />);
