@@ -41,9 +41,10 @@ describe("SearchOverlay", () => {
   it("renders both sections when shows and people match", async () => {
     renderOverlay();
 
-    expect(await screen.findByRole("heading", { name: /^Shows/ })).toBeInTheDocument();
+    // The Shows heading is up during the skeleton, so wait on a result.
+    expect(await screen.findByRole("link", { name: /Fixture Show/i })).toBeInTheDocument();
     expect(await screen.findByRole("heading", { name: /^People/ })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: /Fixture Show/i })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /^Shows/ })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Zoe Lead" })).toHaveAttribute("href", "/people/300");
     expect(screen.queryByText(/No shows or people match/i)).not.toBeInTheDocument();
   });
@@ -52,11 +53,11 @@ describe("SearchOverlay", () => {
     noPeople();
     renderOverlay();
 
-    expect(await screen.findByRole("heading", { name: /^Shows/ })).toBeInTheDocument();
+    expect(await screen.findByRole("link", { name: /Fixture Show/i })).toBeInTheDocument();
     await waitFor(() =>
       expect(screen.queryByRole("heading", { name: /^People/ })).not.toBeInTheDocument(),
     );
-    expect(screen.getByRole("link", { name: /Fixture Show/i })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /^Shows/ })).toBeInTheDocument();
     expect(screen.queryByText(/No shows or people match/i)).not.toBeInTheDocument();
   });
 
@@ -90,7 +91,7 @@ describe("SearchOverlay", () => {
     );
     const user = userEvent.setup();
     renderOverlay();
-    await screen.findByRole("heading", { name: /^Shows/ });
+    await screen.findByRole("link", { name: /Fixture Show/i });
 
     await user.click(screen.getByRole("button", { name: /filter by show status/i }));
     await user.click(await screen.findByRole("button", { name: "Running" }));
@@ -131,6 +132,23 @@ describe("SearchOverlay", () => {
     expect(await screen.findByRole("link", { name: /Fixture Show/i })).toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: /^People/ })).not.toBeInTheDocument();
     expect(await screen.findByRole("heading", { name: /^People/ })).toBeInTheDocument();
+  });
+
+  it("debounces the first keystroke too, so mounting fires no request", async () => {
+    // The overlay mounts on character one, so a first value that skipped the
+    // debounce would mean one un-debounced 1-character search per session.
+    const searched: string[] = [];
+    server.use(
+      http.get(`${base}/people`, ({ request }) => {
+        searched.push(new URL(request.url).searchParams.get("search") ?? "");
+        return HttpResponse.json(fixturePersonListPage);
+      }),
+    );
+    renderOverlay("z");
+
+    expect(searched).toEqual([]);
+    await screen.findByRole("heading", { name: /^People/ });
+    expect(searched).toEqual(["z"]);
   });
 
   it("counts each section from the API total, not the rendered page", async () => {

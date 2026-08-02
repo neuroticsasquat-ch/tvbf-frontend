@@ -2,12 +2,14 @@ import { useEffect, useState } from "react";
 
 /** Debounce a fast-changing value — a search box, typically.
  *
- * The first value passes through immediately: a consumer that mounts with a
- * query already in hand (the search overlay does, since it only mounts once the
- * box is non-empty) must not sit blank for the delay. Only later changes wait.
+ * `initialValue` is what the hook reports until the first delay elapses, and it
+ * is what makes the *first* change debounced like every other one. A consumer
+ * that mounts the moment typing starts (the search overlay mounts on character
+ * one) would otherwise fire one un-debounced request per search session: pass
+ * an empty query here and that request never happens.
  */
-export function useDebouncedValue<T>(value: T, delayMs: number): T {
-  const [debounced, setDebounced] = useState(value);
+export function useDebouncedValue<T>(value: T, delayMs: number, initialValue: T): T {
+  const [debounced, setDebounced] = useState(initialValue);
 
   useEffect(() => {
     if (Object.is(value, debounced)) return;

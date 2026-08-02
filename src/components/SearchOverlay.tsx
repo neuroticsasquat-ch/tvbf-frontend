@@ -45,7 +45,9 @@ const PER_PAGE = 50;
 const PEOPLE_PER_PAGE = 24;
 /** One debounce for both queries: a keystroke costs two requests, and firing
  * them on different schedules would make the sections settle at different
- * times for no benefit. */
+ * times for no benefit. The overlay mounts on character one, so the first
+ * keystroke has to be debounced along with the rest — hence the empty initial
+ * query rather than passing the mounted-with value straight through. */
 const DEBOUNCE_MS = 250;
 
 /** "1972–2020", "b. 1972", or nothing — enough to tell two same-named people
@@ -111,7 +113,7 @@ function SearchSection({
  */
 export function SearchOverlay({ search }: { search: string }) {
   const trimmed = search.trim();
-  const query = useDebouncedValue(trimmed, DEBOUNCE_MS);
+  const query = useDebouncedValue(trimmed, DEBOUNCE_MS, "");
   const [view, setView] = usePersistedView("search", "grid");
   const [sort, setSort] = usePersistedSort<SortKey>("search", SEARCH_SORT_KEYS, "-last_aired");
   const [status, setStatus] = usePersistedSort<ShowStatusFilter>(
