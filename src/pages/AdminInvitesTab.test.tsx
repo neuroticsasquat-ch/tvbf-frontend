@@ -23,11 +23,13 @@ function meAdmin() {
   );
 }
 
-function invite(overrides: Partial<{
-  code: string;
-  email_hint: string | null;
-  consumed_at: string | null;
-}> = {}) {
+function invite(
+  overrides: Partial<{
+    code: string;
+    email_hint: string | null;
+    consumed_at: string | null;
+  }> = {},
+) {
   return {
     code: overrides.code ?? "CODE-1",
     email_hint: overrides.email_hint ?? "user@example.com",
@@ -64,9 +66,7 @@ describe("AdminPage Invites tab", () => {
       ),
     );
     renderWithProviders(routed(), { route: "/admin?section=invites" });
-    await waitFor(() =>
-      expect(screen.getByText("alice@example.com")).toBeInTheDocument(),
-    );
+    await waitFor(() => expect(screen.getByText("alice@example.com")).toBeInTheDocument());
     expect(screen.getByText("bob@example.com")).toBeInTheDocument();
     expect(screen.getByText(/AAA/)).toBeInTheDocument();
     // The consumed row carries the "Consumed" badge.

@@ -28,11 +28,7 @@ describe("UserMenu admin link", () => {
   it("does not show the Admin link for non-admins", async () => {
     server.use(meHandler(false));
     renderWithProviders(
-      <UserMenu
-        onChangePassword={() => {}}
-        onDeleteAccount={() => {}}
-        onSendFeedback={() => {}}
-      />,
+      <UserMenu onChangePassword={() => {}} onDeleteAccount={() => {}} onSendFeedback={() => {}} />,
     );
     const trigger = await screen.findByRole("button", { name: /account menu/i });
     await userEvent.click(trigger);
@@ -42,11 +38,7 @@ describe("UserMenu admin link", () => {
   it("shows the Admin link for admins", async () => {
     server.use(meHandler(true));
     renderWithProviders(
-      <UserMenu
-        onChangePassword={() => {}}
-        onDeleteAccount={() => {}}
-        onSendFeedback={() => {}}
-      />,
+      <UserMenu onChangePassword={() => {}} onDeleteAccount={() => {}} onSendFeedback={() => {}} />,
     );
     const trigger = await screen.findByRole("button", { name: /account menu/i });
     await userEvent.click(trigger);

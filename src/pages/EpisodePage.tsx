@@ -144,19 +144,13 @@ export function EpisodePage() {
             {ep.airdate ? <span>{formatAirdate(ep.airdate)}</span> : null}
             {ep.airdate && ep.runtime ? <span aria-hidden>·</span> : null}
             {ep.runtime ? <span>{ep.runtime} min</span> : null}
-            <RatingBadge
-              value={tvmazeToFiveStar(ep.rating_average)}
-              title="TV Maze average"
-            />
+            <RatingBadge value={tvmazeToFiveStar(ep.rating_average)} title="TV Maze average" />
           </p>
         )}
         {user ? (
           <section>
             <h2 className="text-base font-semibold">Your rating</h2>
-            <StarRatingInput
-              value={ep.my_rating}
-              onChange={(next) => rate.mutate(next)}
-            />
+            <StarRatingInput value={ep.my_rating} onChange={(next) => rate.mutate(next)} />
           </section>
         ) : null}
         <EpisodeFriendsWatched episodeId={ep.id} />

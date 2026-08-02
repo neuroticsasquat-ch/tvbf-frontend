@@ -189,12 +189,7 @@ export function AppShell() {
   return (
     // pb-20 reserves space at the document bottom on mobile so the fixed
     // bottom nav doesn't visually cover the footer. Removed at md+.
-    <div
-      className={cn(
-        "flex min-h-screen flex-col overflow-x-hidden",
-        user && "pb-20 md:pb-0",
-      )}
-    >
+    <div className={cn("flex min-h-screen flex-col overflow-x-hidden", user && "pb-20 md:pb-0")}>
       <header className="sticky top-0 z-30 border-b border-border bg-background">
         <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-3 px-4 py-3">
           <Link
