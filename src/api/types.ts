@@ -194,6 +194,17 @@ export interface PersonCredits {
   guest_cast: PersonGuestCredit[];
 }
 
+/** A page of person search results. Items are full `PersonOut` rows, not a
+ * compact form — a person row is small, so search results render everything the
+ * person page header shows without a second fetch. */
+export interface PersonListPage {
+  items: PersonOut[];
+  page: number;
+  per_page: number;
+  total: number;
+  total_pages: number;
+}
+
 export interface ShowListPage {
   items: ShowSummary[];
   page: number;

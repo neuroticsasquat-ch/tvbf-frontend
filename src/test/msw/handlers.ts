@@ -8,6 +8,7 @@ import {
   fixtureNetworks,
   fixturePerson,
   fixturePersonCredits,
+  fixturePersonListPage,
   fixtureSeason2Episodes,
   fixtureShow,
   fixtureShowListPage,
@@ -35,6 +36,7 @@ export const handlers = [
   // Every other show has no credits — the empty case is 27% of the catalog.
   http.get(`${base}/shows/:id/cast`, () => HttpResponse.json([])),
   http.get(`${base}/shows/:id/crew`, () => HttpResponse.json([])),
+  http.get(`${base}/people`, () => HttpResponse.json(fixturePersonListPage)),
   http.get(`${base}/people/300`, () => HttpResponse.json(fixturePerson)),
   http.get(`${base}/people/300/credits`, () => HttpResponse.json(fixturePersonCredits)),
   // Every other person has no credits — plenty in the mirror have none at all.
