@@ -1,9 +1,15 @@
 import { HttpResponse, http } from "msw";
 import { env } from "@/env";
 import {
+  fixtureCast,
+  fixtureCrew,
   fixtureEpisodes,
   fixtureGenres,
+  fixtureGuestCast,
   fixtureNetworks,
+  fixturePerson,
+  fixturePersonCredits,
+  fixturePersonListPage,
   fixtureSeason2Episodes,
   fixtureShow,
   fixtureShowListPage,
@@ -25,6 +31,24 @@ export const handlers = [
   http.get(`${base}/shows/100`, () => HttpResponse.json(fixtureShow)),
   http.get(`${base}/shows/:id`, () =>
     HttpResponse.json({ detail: "show not found" }, { status: 404 }),
+  ),
+  http.get(`${base}/shows/100/cast`, () => HttpResponse.json(fixtureCast)),
+  http.get(`${base}/shows/100/crew`, () => HttpResponse.json(fixtureCrew)),
+  // Every other show has no credits — the empty case is 27% of the catalog.
+  http.get(`${base}/shows/:id/cast`, () => HttpResponse.json([])),
+  http.get(`${base}/shows/:id/crew`, () => HttpResponse.json([])),
+  http.get(`${base}/episodes/5000/guest-cast`, () => HttpResponse.json(fixtureGuestCast)),
+  // Every other episode has no guest cast — that is 96% of the catalog.
+  http.get(`${base}/episodes/:id/guest-cast`, () => HttpResponse.json([])),
+  http.get(`${base}/people`, () => HttpResponse.json(fixturePersonListPage)),
+  http.get(`${base}/people/300`, () => HttpResponse.json(fixturePerson)),
+  http.get(`${base}/people/300/credits`, () => HttpResponse.json(fixturePersonCredits)),
+  // Every other person has no credits — plenty in the mirror have none at all.
+  http.get(`${base}/people/:id/credits`, () =>
+    HttpResponse.json({ cast: [], crew: [], guest_cast: [] }),
+  ),
+  http.get(`${base}/people/:id`, () =>
+    HttpResponse.json({ detail: "person not found" }, { status: 404 }),
   ),
   http.get(`${base}/shows/100/episodes`, ({ request }) => {
     const url = new URL(request.url);

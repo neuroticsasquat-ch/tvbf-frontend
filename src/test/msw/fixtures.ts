@@ -1,6 +1,11 @@
 import type {
+  CastMember,
+  CrewMember,
   GenreOut,
   NetworkOut,
+  PersonCredits,
+  PersonListPage,
+  PersonOut,
   ShowDetail,
   ShowListPage,
   SeasonOut,
@@ -182,3 +187,144 @@ export const fixtureSeason2Episodes: EpisodeOut[] = [
 ];
 
 export const _seasonPlaceholder: SeasonOut[] = [];
+
+// Deliberately NOT alphabetical: billing order comes from the API's
+// `sort_order`, and the tests assert the rendered order matches it rather than
+// a client-side sort.
+export const fixtureCast: CastMember[] = [
+  {
+    person: { id: 1, name: "Zoe Lead", image_medium: "https://example.com/zoe.jpg" },
+    character: { id: 11, name: "Captain Alpha", image_medium: null },
+    self: false,
+    voice: false,
+  },
+  {
+    person: { id: 2, name: "Adam Second", image_medium: null },
+    character: { id: 12, name: "Doctor Beta", image_medium: null },
+    self: false,
+    voice: true,
+  },
+  {
+    person: { id: 3, name: "Mia Third", image_medium: "https://example.com/mia.jpg" },
+    character: { id: 13, name: "Mia Third", image_medium: null },
+    self: true,
+    voice: false,
+  },
+];
+
+/** Guest cast is the same payload as show cast — distinct people so a test can
+ * tell the two sections apart. */
+export const fixtureGuestCast: CastMember[] = [
+  {
+    person: { id: 6, name: "Gus Guest", image_medium: "https://example.com/gus.jpg" },
+    character: { id: 16, name: "The Stranger", image_medium: null },
+    self: false,
+    voice: false,
+  },
+  {
+    person: { id: 7, name: "Ana Cameo", image_medium: null },
+    character: { id: 17, name: "Radio Announcer", image_medium: null },
+    self: false,
+    voice: true,
+  },
+];
+
+export const fixtureCrew: CrewMember[] = [
+  {
+    person: { id: 4, name: "Wes Creator", image_medium: null },
+    role: "Creator",
+  },
+  {
+    person: { id: 5, name: "Ada Producer", image_medium: null },
+    role: "Executive Producer",
+  },
+  {
+    person: { id: 6, name: "Bo Producer", image_medium: null },
+    role: "Executive Producer",
+  },
+  { person: { id: 7, name: "Cy Writer", image_medium: null }, role: "Writer" },
+  { person: { id: 8, name: "Di Director", image_medium: null }, role: "Director" },
+  { person: { id: 9, name: "Eve Composer", image_medium: null }, role: "Composer" },
+];
+
+export const fixturePerson: PersonOut = {
+  id: 300,
+  name: "Zoe Lead",
+  country_code: "HR",
+  country_name: "Croatia",
+  birthday: "1972-09-09",
+  deathday: null,
+  gender: "Female",
+  image_medium: "https://example.com/zoe-m.jpg",
+  image_original: "https://example.com/zoe-o.jpg",
+};
+
+/** All three credit kinds populated, in the order the API serves them. */
+export const fixturePersonCredits: PersonCredits = {
+  cast: [
+    {
+      show: { id: 100, name: "Alpha Show", image_medium: null, premiered: "2020-01-01" },
+      character: { id: 11, name: "Captain Alpha", image_medium: null },
+      self: false,
+      voice: false,
+    },
+    {
+      show: { id: 101, name: "Beta Show", image_medium: null, premiered: "2015-06-01" },
+      character: { id: 12, name: "Doctor Beta", image_medium: null },
+      self: false,
+      voice: true,
+    },
+  ],
+  crew: [
+    {
+      show: { id: 100, name: "Alpha Show", image_medium: null, premiered: "2020-01-01" },
+      role: "Executive Producer",
+    },
+  ],
+  guest_cast: [
+    {
+      show: { id: 102, name: "Gamma Show", image_medium: null, premiered: "2018-03-01" },
+      episode: {
+        id: 900,
+        name: "The Reckoning",
+        season: 2,
+        number: 11,
+        airdate: "2019-04-02",
+      },
+      character: { id: 13, name: "Guest Of The Week", image_medium: null },
+      self: false,
+      voice: false,
+    },
+    {
+      // A special: upstream leaves these unnumbered, so the code renders "S1".
+      show: { id: 103, name: "Delta Show", image_medium: null, premiered: null },
+      episode: { id: 901, name: null, season: 1, number: null, airdate: null },
+      character: { id: 14, name: "Herself", image_medium: null },
+      self: true,
+      voice: false,
+    },
+  ],
+};
+
+/** A page of person search results. Two people so tab order across the
+ * Shows → People boundary has somewhere to land. */
+export const fixturePersonListPage: PersonListPage = {
+  items: [
+    fixturePerson,
+    {
+      id: 301,
+      name: "Adam Second",
+      country_code: "US",
+      country_name: "United States",
+      birthday: "1980-04-01",
+      deathday: null,
+      gender: "Male",
+      image_medium: null,
+      image_original: null,
+    },
+  ],
+  page: 1,
+  per_page: 24,
+  total: 2,
+  total_pages: 1,
+};

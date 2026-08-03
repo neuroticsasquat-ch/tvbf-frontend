@@ -53,8 +53,7 @@ function YourDataSection() {
       </h2>
       <div className="rounded border border-border p-4 space-y-3 text-sm">
         <p className="text-muted-foreground">
-          Download a JSON copy of your account info, My Shows list, and full
-          watch history.
+          Download a JSON copy of your account info, My Shows list, and full watch history.
         </p>
         <button
           type="button"
@@ -126,9 +125,7 @@ function SessionsSection() {
             Couldn't load your sessions. Try again later.
           </p>
         ) : !data || data.length === 0 ? (
-          <p className="p-4 text-sm text-muted-foreground">
-            No active sessions.
-          </p>
+          <p className="p-4 text-sm text-muted-foreground">No active sessions.</p>
         ) : (
           <ul className="divide-y divide-border">
             {data.map((s) => (
@@ -163,9 +160,7 @@ function SessionRow({ session: s }: { session: SessionSummary }) {
   return (
     <li className="flex flex-wrap items-center gap-x-4 gap-y-1 p-4 text-sm">
       <div className="flex flex-1 min-w-0 items-center gap-2">
-        <span className="truncate font-medium text-foreground">
-          {s.device_label}
-        </span>
+        <span className="truncate font-medium text-foreground">{s.device_label}</span>
         {s.is_current && (
           <span className="text-xs rounded bg-emerald-100 px-1.5 py-0.5 text-emerald-900 dark:bg-emerald-900/40 dark:text-emerald-200">
             This device
@@ -241,10 +236,8 @@ function EmailSection() {
     } catch (e) {
       if (e instanceof ApiError) {
         if (e.status === 401) setError("That password is incorrect.");
-        else if (e.status === 409)
-          setError("That email is already used by another account.");
-        else if (e.status === 429)
-          setError("Too many requests. Try again in a few minutes.");
+        else if (e.status === 409) setError("That email is already used by another account.");
+        else if (e.status === 429) setError("Too many requests. Try again in a few minutes.");
         else setError("Couldn't request the change. Try again.");
       } else {
         setError("Couldn't request the change. Try again.");
@@ -266,8 +259,8 @@ function EmailSection() {
         <div className="text-sm">
           <p className="text-muted-foreground mb-1">Current email</p>
           <p className="text-xs text-muted-foreground mb-2">
-            Your email won't be shown to other users, but they can find you with
-            it to send a connection request.
+            Your email won't be shown to other users, but they can find you with it to send a
+            connection request.
           </p>
           <div className="flex items-center gap-2">
             <span className="text-base text-foreground">{user.email}</span>
@@ -284,14 +277,9 @@ function EmailSection() {
         </div>
 
         {sent && (
-          <p
-            role="status"
-            aria-live="polite"
-            className="text-sm text-muted-foreground"
-          >
-            We sent a confirmation link to{" "}
-            <span className="text-foreground">{sent}</span>. Click the link in
-            that email to finish changing your address.
+          <p role="status" aria-live="polite" className="text-sm text-muted-foreground">
+            We sent a confirmation link to <span className="text-foreground">{sent}</span>. Click
+            the link in that email to finish changing your address.
           </p>
         )}
 
@@ -309,9 +297,7 @@ function EmailSection() {
               />
             </label>
             <label className="block text-sm">
-              <span className="block text-muted-foreground mb-1">
-                Current password
-              </span>
+              <span className="block text-muted-foreground mb-1">Current password</span>
               <input
                 type="password"
                 required
@@ -333,12 +319,7 @@ function EmailSection() {
               >
                 {submitting ? "Sending…" : "Send confirmation link"}
               </button>
-              <button
-                type="button"
-                onClick={cancel}
-                disabled={submitting}
-                className="px-3 py-1"
-              >
+              <button type="button" onClick={cancel} disabled={submitting} className="px-3 py-1">
                 Cancel
               </button>
             </div>
@@ -437,12 +418,7 @@ function ProfileSection() {
                 >
                   {submitting ? "Saving…" : "Save"}
                 </button>
-                <button
-                  type="button"
-                  onClick={cancel}
-                  disabled={submitting}
-                  className="px-3 py-1"
-                >
+                <button type="button" onClick={cancel} disabled={submitting} className="px-3 py-1">
                   Cancel
                 </button>
               </div>
@@ -456,7 +432,6 @@ function ProfileSection() {
             </div>
           )}
         </div>
-
       </div>
     </section>
   );
@@ -485,9 +460,7 @@ function PrivacySection() {
           aria-label="Share my activity with friends"
           checked={checked}
           disabled={update.isPending}
-          onChange={(e) =>
-            update.mutate({ activity_feed_enabled: e.currentTarget.checked })
-          }
+          onChange={(e) => update.mutate({ activity_feed_enabled: e.currentTarget.checked })}
           className="h-5 w-5"
         />
       </label>

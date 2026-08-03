@@ -28,9 +28,7 @@ export function useSendInvite() {
   return useMutation({
     mutationFn: sendInvite,
     onSuccess: (row) => {
-      qc.setQueryData<InviteRow[]>(["admin-invites"], (cur) =>
-        cur ? [row, ...cur] : [row],
-      );
+      qc.setQueryData<InviteRow[]>(["admin-invites"], (cur) => (cur ? [row, ...cur] : [row]));
       toast.success(`Invite sent to ${row.email_hint ?? "—"}.`);
     },
     onError: () => {

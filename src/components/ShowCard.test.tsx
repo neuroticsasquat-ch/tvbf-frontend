@@ -38,9 +38,7 @@ describe("ShowCard", () => {
   });
 
   it("renders both aggregate and my_rating badges when present", () => {
-    renderWithProviders(
-      <ShowCard show={makeShow({ rating_average: 8.4, my_rating: 4.5 })} />,
-    );
+    renderWithProviders(<ShowCard show={makeShow({ rating_average: 8.4, my_rating: 4.5 })} />);
     expect(screen.getByTitle("TV Maze average")).toBeInTheDocument();
     expect(screen.getByTitle("Your rating")).toBeInTheDocument();
   });

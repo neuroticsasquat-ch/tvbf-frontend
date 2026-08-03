@@ -16,9 +16,7 @@ export async function downloadMyData(): Promise<void> {
     throw new ApiError(res.status, `Export failed with status ${res.status}`, null);
   }
   const blob = await res.blob();
-  const filename = filenameFromContentDisposition(
-    res.headers.get("content-disposition"),
-  );
+  const filename = filenameFromContentDisposition(res.headers.get("content-disposition"));
 
   const url = URL.createObjectURL(blob);
   try {

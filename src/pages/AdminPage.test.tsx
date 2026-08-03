@@ -122,8 +122,6 @@ describe("AdminPage", () => {
 
     const bobSwitch = screen.getByRole("switch", { name: /admin status for Bob/i });
     await userEvent.click(bobSwitch);
-    await waitFor(() =>
-      expect(calls).toEqual([{ userId: "u2", body: { is_admin: true } }]),
-    );
+    await waitFor(() => expect(calls).toEqual([{ userId: "u2", body: { is_admin: true } }]));
   });
 });

@@ -9,16 +9,12 @@ import { EmailChangeConfirmPage } from "./EmailChangeConfirmPage";
 describe("EmailChangeConfirmPage", () => {
   it("shows a success message on 200", async () => {
     server.use(
-      http.post(`${env.apiBaseUrl}/email-change/confirm`, () =>
-        HttpResponse.json({ ok: true }),
-      ),
+      http.post(`${env.apiBaseUrl}/email-change/confirm`, () => HttpResponse.json({ ok: true })),
     );
     renderWithProviders(<EmailChangeConfirmPage />, {
       route: "/email-change/confirm?token=good",
     });
-    expect(
-      await screen.findByText(/your email address has been updated/i),
-    ).toBeInTheDocument();
+    expect(await screen.findByText(/your email address has been updated/i)).toBeInTheDocument();
   });
 
   it("shows invalid/expired copy on 400", async () => {
@@ -44,17 +40,13 @@ describe("EmailChangeConfirmPage", () => {
     renderWithProviders(<EmailChangeConfirmPage />, {
       route: "/email-change/confirm?token=race",
     });
-    expect(
-      await screen.findByText(/already in use by another account/i),
-    ).toBeInTheDocument();
+    expect(await screen.findByText(/already in use by another account/i)).toBeInTheDocument();
   });
 
   it("shows missing-token state when there's no ?token=", async () => {
     renderWithProviders(<EmailChangeConfirmPage />, {
       route: "/email-change/confirm",
     });
-    expect(
-      await screen.findByText(/no confirmation token/i),
-    ).toBeInTheDocument();
+    expect(await screen.findByText(/no confirmation token/i)).toBeInTheDocument();
   });
 });

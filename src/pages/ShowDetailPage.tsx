@@ -16,6 +16,8 @@ import { ShowFriendActivityStrip } from "@/components/friends/FriendActivity";
 import { FriendRatingsList } from "@/components/FriendRatingsList";
 import { WatchProgressBar } from "@/components/WatchProgressBar";
 import { SeasonWatchCheckbox } from "@/components/SeasonWatchCheckbox";
+import { ShowCastList } from "@/components/CastList";
+import { CrewList } from "@/components/CrewList";
 import { useMyShows, useSeasonProgress, useShowRating } from "@/api/me";
 import { Tv } from "lucide-react";
 import { RatingBadge } from "@/components/RatingBadge";
@@ -59,10 +61,7 @@ export function ShowDetailPage() {
         <div className="flex-1 space-y-2">
           <div className="flex flex-wrap items-center gap-2">
             <h1 className="text-3xl font-semibold">{show.name}</h1>
-            <RatingBadge
-              value={tvmazeToFiveStar(show.rating_average)}
-              title="TV Maze average"
-            />
+            <RatingBadge value={tvmazeToFiveStar(show.rating_average)} title="TV Maze average" />
           </div>
           <p className="text-sm text-muted-foreground">
             {yearRange(show.premiered, show.ended)}
@@ -241,6 +240,10 @@ export function ShowDetailPage() {
           );
         })()}
       </section>
+
+      <ShowCastList showId={show.id} />
+
+      <CrewList showId={show.id} />
     </article>
   );
 }

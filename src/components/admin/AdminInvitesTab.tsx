@@ -26,8 +26,8 @@ export function AdminInvitesTab() {
           Send an invite
         </label>
         <p className="text-xs text-muted-foreground">
-          The recipient will get an email with a signup link that prefills their
-          invite code and email address.
+          The recipient will get an email with a signup link that prefills their invite code and
+          email address.
         </p>
         <div className="flex flex-col gap-2 sm:flex-row">
           <input
@@ -74,9 +74,7 @@ export function AdminInvitesTab() {
                   <p className="truncate text-xs text-muted-foreground">
                     Code <code className="font-mono">{row.code}</code>
                   </p>
-                  <p className="text-xs text-muted-foreground">
-                    Sent {formatDate(row.created_at)}
-                  </p>
+                  <p className="text-xs text-muted-foreground">Sent {formatDate(row.created_at)}</p>
                 </div>
                 <span className="shrink-0 text-xs">
                   {row.consumed_at ? (

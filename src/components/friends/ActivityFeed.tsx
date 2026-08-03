@@ -20,8 +20,8 @@ function LoadingSkeleton() {
 function EmptyState() {
   return (
     <p className="rounded border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
-      No activity from your friends yet. When they add shows, mark episodes
-      watched, or leave ratings, it'll show up here.
+      No activity from your friends yet. When they add shows, mark episodes watched, or leave
+      ratings, it'll show up here.
     </p>
   );
 }

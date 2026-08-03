@@ -1,12 +1,6 @@
 import { useToggleHideFromActivity } from "@/api/me";
 
-export function HideFromActivityToggle({
-  showId,
-  value,
-}: {
-  showId: number;
-  value: boolean;
-}) {
+export function HideFromActivityToggle({ showId, value }: { showId: number; value: boolean }) {
   const toggle = useToggleHideFromActivity(showId);
   return (
     <label className="inline-flex items-center gap-2 text-sm">
