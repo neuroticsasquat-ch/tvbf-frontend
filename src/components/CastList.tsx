@@ -14,11 +14,14 @@ interface CastListProps {
   title: string;
   /** Must be unique on the page; it wires the heading to its section. */
   headingId: string;
+  /** Hides the heading visually but not from assistive tech. Set where a tab
+   * label already carries the same title and count, as on show pages. */
+  headingHidden?: boolean;
 }
 
 /** Renders a list of cast credits. Presentational on purpose: show cast and
  * episode guest cast carry the identical payload, so both feed this. */
-export function CastList({ entries, title, headingId }: CastListProps) {
+export function CastList({ entries, title, headingId, headingHidden = false }: CastListProps) {
   const [expanded, setExpanded] = useState(false);
 
   // 27% of shows have zero cast, and 96% of episodes have zero guest cast.
@@ -31,7 +34,7 @@ export function CastList({ entries, title, headingId }: CastListProps) {
 
   return (
     <section aria-labelledby={headingId}>
-      <h2 id={headingId} className="mb-3 text-lg font-semibold">
+      <h2 id={headingId} className={headingHidden ? "sr-only" : "mb-3 text-lg font-semibold"}>
         {title} <span className="font-normal text-muted-foreground">({entries.length})</span>
       </h2>
       <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -61,11 +64,24 @@ export function CastList({ entries, title, headingId }: CastListProps) {
 }
 
 /** Show-level cast, fetched and rendered. */
-export function ShowCastList({ showId }: { showId: number }) {
+export function ShowCastList({
+  showId,
+  headingHidden = false,
+}: {
+  showId: number;
+  headingHidden?: boolean;
+}) {
   const { data, isError, error, refetch } = useShowCast(showId);
 
   // A failed request must not look like the (very common) empty case.
   if (isError) return <ErrorState message={error.message} onRetry={() => refetch()} />;
 
-  return <CastList entries={data ?? []} title="Cast" headingId="cast-heading" />;
+  return (
+    <CastList
+      entries={data ?? []}
+      title="Cast"
+      headingId="cast-heading"
+      headingHidden={headingHidden}
+    />
+  );
 }
