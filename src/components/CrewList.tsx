@@ -40,7 +40,14 @@ function takeMembers(groups: RoleGroup[], budget: number): RoleGroup[] {
   return taken;
 }
 
-export function CrewList({ showId }: { showId: number }) {
+export function CrewList({
+  showId,
+  headingHidden = false,
+}: {
+  showId: number;
+  /** Hides the heading visually but not from assistive tech — see `CastList`. */
+  headingHidden?: boolean;
+}) {
   const { data, isError, error, refetch } = useShowCrew(showId);
   const [expanded, setExpanded] = useState(false);
   const groups = useMemo(() => groupByRole(data ?? []), [data]);
@@ -54,7 +61,7 @@ export function CrewList({ showId }: { showId: number }) {
 
   return (
     <section aria-labelledby="crew-heading">
-      <h2 id="crew-heading" className="mb-3 text-lg font-semibold">
+      <h2 id="crew-heading" className={headingHidden ? "sr-only" : "mb-3 text-lg font-semibold"}>
         Crew <span className="font-normal text-muted-foreground">({data.length})</span>
       </h2>
       <div className="space-y-4">
