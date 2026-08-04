@@ -1,3 +1,36 @@
+# Release notes
+
+## 0.2.0 — 2026-08-04
+
+### Ci
+
+- Merge main into dependency branch via PR instead of force-push
+
+### Episodes
+
+- Add guest cast section to the episode page ([NEU-952](https://linear.app/neuroticsasquatch/issue/NEU-952)) ([#154](https://github.com/neuroticsasquat-ch/music-discovery-engine/pull/154))
+
+### Feedback
+
+- Add useSubmitFeedback mutation hook + MSW handler
+- Add FeedbackDialog component
+- Expose FeedbackDialog from the account menu
+
+### General
+
+- Mask Sentry replays and upload source maps on prod build ([NEU-424](https://linear.app/neuroticsasquatch/issue/NEU-424))
+- Add cast and crew sections to the show detail page ([NEU-941](https://linear.app/neuroticsasquatch/issue/NEU-941)) ([#150](https://github.com/neuroticsasquat-ch/music-discovery-engine/pull/150))
+- Add person page and /people/:id route ([NEU-951](https://linear.app/neuroticsasquatch/issue/NEU-951)) ([#152](https://github.com/neuroticsasquat-ch/music-discovery-engine/pull/152))
+- Add a People section to search results ([NEU-953](https://linear.app/neuroticsasquatch/issue/NEU-953)) ([#153](https://github.com/neuroticsasquat-ch/music-discovery-engine/pull/153))
+
+### Shows
+
+- Combine seasons, cast and crew into one tabbed section ([NEU-956](https://linear.app/neuroticsasquatch/issue/NEU-956))
+
+### Types
+
+- Extract typed AuthedUser local for setQueryData updater
+
 # Changelog
 
 All notable changes to this project will be documented in this file.
