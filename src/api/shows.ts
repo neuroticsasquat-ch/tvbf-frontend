@@ -83,6 +83,18 @@ export function useEpisodeGuestCast(id: number) {
   });
 }
 
+/** Episode crew — director, writer, story, teleplay. Shares `CrewMember` with
+ * show crew because the API serves both through `CrewMemberOut` (NEU-963); the
+ * two differ in grain and vocabulary, not in payload shape. */
+export function useEpisodeCrew(id: number) {
+  return useQuery<CrewMember[]>({
+    queryKey: ["episode-crew", id],
+    queryFn: () => apiFetch<CrewMember[]>(`/episodes/${id}/crew`),
+    staleTime: FIVE_MINUTES,
+    enabled: Number.isFinite(id) && id > 0,
+  });
+}
+
 export function useShowCrew(id: number) {
   return useQuery<CrewMember[]>({
     queryKey: ["show-crew", id],
