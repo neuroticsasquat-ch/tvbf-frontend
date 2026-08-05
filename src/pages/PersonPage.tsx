@@ -51,14 +51,30 @@ function showYear(premiered: string | null): string | null {
   return premiered ? premiered.slice(0, 4) : null;
 }
 
-/** One credit: a link into the catalog plus a secondary line. All three credit
+/** One credit: a link into the catalog plus a secondary line. All four credit
  * kinds share this shape — only what the link points at differs. */
-function CreditRow({ to, title, detail }: { to: string; title: string; detail?: string | null }) {
+function CreditRow({
+  to,
+  title,
+  detail,
+  linkLabel,
+}: {
+  to: string;
+  title: string;
+  detail?: string | null;
+  /** Overrides the link's accessible name. Needed only where one target can
+   * appear more than once in a section: an episode-crew credit repeats the same
+   * episode per role, so the visible title alone would give a screen reader two
+   * identically-named links to the same href. The detail line disambiguates
+   * them visually but is not part of the link's name. */
+  linkLabel?: string;
+}) {
   return (
     <div className="min-w-0">
       <p className="truncate text-sm font-medium leading-tight">
         <Link
           to={to}
+          aria-label={linkLabel}
           className="rounded underline-offset-2 hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
           {title}
@@ -121,7 +137,12 @@ function Credits({ personId }: { personId: number }) {
   // A failed request must not look like the (very common) no-credits case.
   if (isError) return <ErrorState message={error.message} onRetry={() => refetch()} />;
 
-  const total = data.cast.length + data.crew.length + data.guest_cast.length;
+  // Every category counts. Episode crew is reachable by no other route
+  // upstream, so a director or writer with no cast, crew or guest credits is a
+  // real and reachable shape — omitting it here would tell them "No credits
+  // yet." while the section below rendered their credits.
+  const total =
+    data.cast.length + data.crew.length + data.guest_cast.length + data.episode_crew.length;
   if (total === 0) {
     return <p className="text-sm text-muted-foreground">No credits yet.</p>;
   }
@@ -129,7 +150,8 @@ function Credits({ personId }: { personId: number }) {
   return (
     <div className="space-y-8">
       {/* The API orders each group deliberately — cast and crew by show premiere
-          descending, guest credits by air date descending. Never re-sort here. */}
+          descending, guest and episode-crew credits by air date descending with
+          undated episodes last. Never re-sort here. */}
       <CreditSection
         id="cast"
         title="Cast"
@@ -176,6 +198,29 @@ function Credits({ personId }: { personId: number }) {
             ]
               .filter(Boolean)
               .join(" · ")}
+          />
+        )}
+      />
+      {/* Its own section rather than merged into Crew with an episode qualifier.
+          The two are different questions — "Executive Producer of Show" is a
+          standing role, "Director of Show S3E7" is one night's work — and the
+          glossary keeps `crew credit` and `episode crew credit` distinct for
+          that reason. They also point at different things: Crew links to the
+          show, this links to the episode. */}
+      <CreditSection
+        id="episode-crew"
+        title="Episode crew"
+        items={data.episode_crew}
+        renderItem={(credit) => (
+          <CreditRow
+            to={`/episodes/${credit.episode.id}`}
+            title={`${credit.show.name} — ${episodeCode(credit.episode)}`}
+            detail={[credit.episode.name, credit.role].filter(Boolean).join(" · ")}
+            // One person is credited on one episode more than once often enough
+            // to matter — Story and Teleplay on the same episode is routine — so
+            // the role goes in the accessible name. Without it a screen reader
+            // lists two identical links to the same episode.
+            linkLabel={`${credit.show.name} — ${episodeCode(credit.episode)} — ${credit.role}`}
           />
         )}
       />

@@ -49,7 +49,7 @@ export const handlers = [
   http.get(`${base}/people/300/credits`, () => HttpResponse.json(fixturePersonCredits)),
   // Every other person has no credits — plenty in the mirror have none at all.
   http.get(`${base}/people/:id/credits`, () =>
-    HttpResponse.json({ cast: [], crew: [], guest_cast: [] }),
+    HttpResponse.json({ cast: [], crew: [], guest_cast: [], episode_crew: [] }),
   ),
   http.get(`${base}/people/:id`, () =>
     HttpResponse.json({ detail: "person not found" }, { status: 404 }),
