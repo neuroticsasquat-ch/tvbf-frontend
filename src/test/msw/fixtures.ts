@@ -229,6 +229,19 @@ export const fixtureGuestCast: CastMember[] = [
   },
 ];
 
+/** Episode crew. Deliberately not in name or role alphabetical order — the API
+ * serves the episode's credit sequence and the UI must not re-sort it. Person 7
+ * appears twice under different roles, which upstream does on 36 of 1,043
+ * sampled episodes. */
+export const fixtureEpisodeCrew: CrewMember[] = [
+  {
+    person: { id: 8, name: "Di Director", image_medium: "https://example.com/di.jpg" },
+    role: "Director",
+  },
+  { person: { id: 7, name: "Cy Writer", image_medium: null }, role: "Writer" },
+  { person: { id: 7, name: "Cy Writer", image_medium: null }, role: "Story" },
+];
+
 export const fixtureCrew: CrewMember[] = [
   {
     person: { id: 4, name: "Wes Creator", image_medium: null },

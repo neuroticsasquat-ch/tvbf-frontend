@@ -3,6 +3,7 @@ import { env } from "@/env";
 import {
   fixtureCast,
   fixtureCrew,
+  fixtureEpisodeCrew,
   fixtureEpisodes,
   fixtureGenres,
   fixtureGuestCast,
@@ -40,6 +41,9 @@ export const handlers = [
   http.get(`${base}/episodes/5000/guest-cast`, () => HttpResponse.json(fixtureGuestCast)),
   // Every other episode has no guest cast — that is 96% of the catalog.
   http.get(`${base}/episodes/:id/guest-cast`, () => HttpResponse.json([])),
+  http.get(`${base}/episodes/5000/crew`, () => HttpResponse.json(fixtureEpisodeCrew)),
+  // Every other episode has no crew — 22.5% of episodes land here.
+  http.get(`${base}/episodes/:id/crew`, () => HttpResponse.json([])),
   http.get(`${base}/people`, () => HttpResponse.json(fixturePersonListPage)),
   http.get(`${base}/people/300`, () => HttpResponse.json(fixturePerson)),
   http.get(`${base}/people/300/credits`, () => HttpResponse.json(fixturePersonCredits)),
