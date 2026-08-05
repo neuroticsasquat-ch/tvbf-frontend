@@ -186,12 +186,24 @@ export interface PersonGuestCredit {
   voice: boolean;
 }
 
-/** Grouped filmography from `GET /people/{id}/credits`. All three keys are
+/** A crew credit on one episode — "Director of *Show* S1E3". Distinct from
+ * `PersonCrewCredit`, which is show-level: the glossary keeps *crew credit* and
+ * *episode crew credit* apart because they answer different questions, and the
+ * vocabularies are disjoint (Director/Writer/Story/Teleplay here, production
+ * functions like Executive Producer there). */
+export interface PersonEpisodeCrewCredit {
+  show: ShowRef;
+  episode: EpisodeRef;
+  role: string;
+}
+
+/** Grouped filmography from `GET /people/{id}/credits`. All four keys are
  * always present — an absent category is an empty array, never a missing key. */
 export interface PersonCredits {
   cast: PersonCastCredit[];
   crew: PersonCrewCredit[];
   guest_cast: PersonGuestCredit[];
+  episode_crew: PersonEpisodeCrewCredit[];
 }
 
 /** A page of person search results. Items are full `PersonOut` rows, not a
