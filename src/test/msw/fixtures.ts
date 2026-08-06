@@ -229,6 +229,19 @@ export const fixtureGuestCast: CastMember[] = [
   },
 ];
 
+/** Episode crew. Deliberately not in name or role alphabetical order — the API
+ * serves the episode's credit sequence and the UI must not re-sort it. Person 7
+ * appears twice under different roles, which upstream does on 36 of 1,043
+ * sampled episodes. */
+export const fixtureEpisodeCrew: CrewMember[] = [
+  {
+    person: { id: 8, name: "Di Director", image_medium: "https://example.com/di.jpg" },
+    role: "Director",
+  },
+  { person: { id: 7, name: "Cy Writer", image_medium: null }, role: "Writer" },
+  { person: { id: 7, name: "Cy Writer", image_medium: null }, role: "Story" },
+];
+
 export const fixtureCrew: CrewMember[] = [
   {
     person: { id: 4, name: "Wes Creator", image_medium: null },
@@ -259,7 +272,7 @@ export const fixturePerson: PersonOut = {
   image_original: "https://example.com/zoe-o.jpg",
 };
 
-/** All three credit kinds populated, in the order the API serves them. */
+/** All four credit kinds populated, in the order the API serves them. */
 export const fixturePersonCredits: PersonCredits = {
   cast: [
     {
@@ -302,6 +315,28 @@ export const fixturePersonCredits: PersonCredits = {
       character: { id: 14, name: "Herself", image_medium: null },
       self: true,
       voice: false,
+    },
+  ],
+  // Air date descending with undated last, as the API serves it. Person 300
+  // holds two roles on the same episode (900) — upstream credits one person as
+  // both Story and Teleplay often enough that a dedup here would lose real
+  // credits.
+  episode_crew: [
+    {
+      show: { id: 102, name: "Gamma Show", image_medium: null, premiered: "2018-03-01" },
+      episode: { id: 900, name: "The Reckoning", season: 2, number: 11, airdate: "2019-04-02" },
+      role: "Director",
+    },
+    {
+      show: { id: 102, name: "Gamma Show", image_medium: null, premiered: "2018-03-01" },
+      episode: { id: 900, name: "The Reckoning", season: 2, number: 11, airdate: "2019-04-02" },
+      role: "Teleplay",
+    },
+    {
+      // A special: unnumbered and undated, so it sorts last and renders "S1".
+      show: { id: 103, name: "Delta Show", image_medium: null, premiered: null },
+      episode: { id: 901, name: null, season: 1, number: null, airdate: null },
+      role: "Writer",
     },
   ],
 };

@@ -3,6 +3,7 @@ import { env } from "@/env";
 import {
   fixtureCast,
   fixtureCrew,
+  fixtureEpisodeCrew,
   fixtureEpisodes,
   fixtureGenres,
   fixtureGuestCast,
@@ -40,12 +41,15 @@ export const handlers = [
   http.get(`${base}/episodes/5000/guest-cast`, () => HttpResponse.json(fixtureGuestCast)),
   // Every other episode has no guest cast — that is 96% of the catalog.
   http.get(`${base}/episodes/:id/guest-cast`, () => HttpResponse.json([])),
+  http.get(`${base}/episodes/5000/crew`, () => HttpResponse.json(fixtureEpisodeCrew)),
+  // Every other episode has no crew — 22.5% of episodes land here.
+  http.get(`${base}/episodes/:id/crew`, () => HttpResponse.json([])),
   http.get(`${base}/people`, () => HttpResponse.json(fixturePersonListPage)),
   http.get(`${base}/people/300`, () => HttpResponse.json(fixturePerson)),
   http.get(`${base}/people/300/credits`, () => HttpResponse.json(fixturePersonCredits)),
   // Every other person has no credits — plenty in the mirror have none at all.
   http.get(`${base}/people/:id/credits`, () =>
-    HttpResponse.json({ cast: [], crew: [], guest_cast: [] }),
+    HttpResponse.json({ cast: [], crew: [], guest_cast: [], episode_crew: [] }),
   ),
   http.get(`${base}/people/:id`, () =>
     HttpResponse.json({ detail: "person not found" }, { status: 404 }),

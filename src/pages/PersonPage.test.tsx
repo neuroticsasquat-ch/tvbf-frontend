@@ -32,18 +32,96 @@ describe("PersonPage", () => {
     expect(screen.getByText("Born September 9, 1972 · Croatia")).toBeInTheDocument();
   });
 
-  it("renders all three credit sections when all three are populated", async () => {
+  it("renders all four credit sections when all four are populated", async () => {
     renderPerson();
     await screen.findByRole("heading", { level: 1, name: "Zoe Lead" });
 
     expect(await screen.findByRole("heading", { name: /^Cast/ })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: /^Crew/ })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: /^Guest appearances/ })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /^Episode crew/ })).toBeInTheDocument();
 
     // Counts come from the payload, not from what is currently visible.
     expect(screen.getByRole("heading", { name: "Cast (2)" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Crew (1)" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Guest appearances (2)" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Episode crew (3)" })).toBeInTheDocument();
+  });
+
+  it("keeps episode crew separate from show-level crew", async () => {
+    renderPerson();
+
+    // The two sections answer different questions and point at different
+    // things: a standing production role links to the show, one night's
+    // directing links to the episode. Merging them would put both destinations
+    // under one heading.
+    const crew = within(await screen.findByRole("region", { name: /^Crew/ }));
+    expect(crew.getByRole("heading", { name: "Crew (1)" })).toBeInTheDocument();
+    expect(crew.getAllByRole("link").map((a) => a.getAttribute("href"))).toEqual(["/shows/100"]);
+
+    const epCrew = within(screen.getByRole("region", { name: /^Episode crew/ }));
+    const epHrefs = epCrew.getAllByRole("link").map((a) => a.getAttribute("href"));
+    expect(epHrefs.every((h) => h?.startsWith("/episodes/"))).toBe(true);
+  });
+
+  it("renders episode crew credits with episode context and role", async () => {
+    renderPerson();
+
+    const epCrew = within(await screen.findByRole("region", { name: /^Episode crew/ }));
+
+    // Two roles on the same episode are two credits. Deduping by episode — or
+    // by person+episode — would drop one; upstream really does credit one
+    // person as both Story and Teleplay. Each link carries its role in the
+    // accessible name, so the two are distinguishable without sighted access to
+    // the detail line beneath.
+    const director = epCrew.getByRole("link", { name: "Gamma Show — S2E11 — Director" });
+    const teleplay = epCrew.getByRole("link", { name: "Gamma Show — S2E11 — Teleplay" });
+    expect(director).toHaveAttribute("href", "/episodes/900");
+    expect(teleplay).toHaveAttribute("href", "/episodes/900");
+
+    // Visually both still read as the episode, with the role on the detail line.
+    expect(director).toHaveTextContent("Gamma Show — S2E11");
+    expect(epCrew.getByText("The Reckoning · Director")).toBeInTheDocument();
+    expect(epCrew.getByText("The Reckoning · Teleplay")).toBeInTheDocument();
+
+    // A special is unnumbered upstream, so it degrades to the season alone, and
+    // an unnamed episode leaves the role as the whole detail line.
+    expect(epCrew.getByRole("link", { name: "Delta Show — S1 — Writer" })).toHaveAttribute(
+      "href",
+      "/episodes/901",
+    );
+    expect(epCrew.getByText("Writer")).toBeInTheDocument();
+  });
+
+  it("hides the episode crew section for a person who has none", async () => {
+    server.use(
+      http.get(`${base}/people/300/credits`, () =>
+        HttpResponse.json({ ...fixturePersonCredits, episode_crew: [] }),
+      ),
+    );
+    renderPerson();
+
+    expect(await screen.findByRole("heading", { name: /^Cast/ })).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: /^Episode crew/ })).not.toBeInTheDocument();
+  });
+
+  it("does not claim a director with only episode crew credits has no credits", async () => {
+    // Episode crew is reachable by no other route upstream, so this is a real
+    // shape: a working director whose entire filmography is episode-level.
+    server.use(
+      http.get(`${base}/people/300/credits`, () =>
+        HttpResponse.json({
+          cast: [],
+          crew: [],
+          guest_cast: [],
+          episode_crew: fixturePersonCredits.episode_crew,
+        }),
+      ),
+    );
+    renderPerson();
+
+    expect(await screen.findByRole("heading", { name: "Episode crew (3)" })).toBeInTheDocument();
+    expect(screen.queryByText("No credits yet.")).not.toBeInTheDocument();
   });
 
   it("links cast and crew credits to the show", async () => {
@@ -92,7 +170,7 @@ describe("PersonPage", () => {
   it("says so when a person has no credits at all", async () => {
     server.use(
       http.get(`${base}/people/300/credits`, () =>
-        HttpResponse.json({ cast: [], crew: [], guest_cast: [] }),
+        HttpResponse.json({ cast: [], crew: [], guest_cast: [], episode_crew: [] }),
       ),
     );
     renderPerson();
@@ -110,7 +188,7 @@ describe("PersonPage", () => {
     }));
     server.use(
       http.get(`${base}/people/300/credits`, () =>
-        HttpResponse.json({ cast: [], crew: [], guest_cast: many }),
+        HttpResponse.json({ cast: [], crew: [], guest_cast: many, episode_crew: [] }),
       ),
     );
     renderPerson();
