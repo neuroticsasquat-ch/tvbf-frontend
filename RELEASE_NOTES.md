@@ -1,5 +1,15 @@
 # Release notes
 
+## 0.2.1 — 2026-08-06
+
+### Episode
+
+- Add an episode crew section to the episode page ([NEU-964](https://linear.app/neuroticsasquatch/issue/NEU-964)) ([#158](https://github.com/neuroticsasquat-ch/music-discovery-engine/pull/158))
+
+### Person
+
+- Add episode crew credits to the person page ([NEU-965](https://linear.app/neuroticsasquatch/issue/NEU-965)) ([#159](https://github.com/neuroticsasquat-ch/music-discovery-engine/pull/159))
+
 ## 0.2.0 — 2026-08-04
 
 ### Ci
