@@ -293,7 +293,7 @@ describe("PersonPage credit grouping", () => {
     expect(chevron).toHaveAttribute("aria-hidden");
 
     // Collapsed, the episodes are not rendered — only the show link.
-    expect(epCrew.queryByRole("link", { name: "Gamma Show — S2E3" })).not.toBeInTheDocument();
+    expect(epCrew.queryByRole("link", { name: /Gamma Show — S2E3/ })).not.toBeInTheDocument();
 
     await userEvent.click(disclosure);
     expect(disclosure).toHaveAttribute("aria-expanded", "true");
@@ -305,10 +305,9 @@ describe("PersonPage credit grouping", () => {
       [911, "S2E2"],
       [912, "S2E1"],
     ] as const) {
-      expect(epCrew.getByRole("link", { name: `Gamma Show — ${code}` })).toHaveAttribute(
-        "href",
-        `/episodes/${id}`,
-      );
+      expect(
+        epCrew.getByRole("link", { name: new RegExp(`^Gamma Show — ${code} `) }),
+      ).toHaveAttribute("href", `/episodes/${id}`);
     }
   });
 
@@ -403,14 +402,45 @@ describe("PersonPage grouped-card accessibility", () => {
 
     // Both expanded, both contain an "S2E3" — so the episode links need the
     // show too, or they collide in a screen reader's link list.
-    expect(epCrew.getByRole("link", { name: "Gamma Show — S2E3" })).toHaveAttribute(
+    expect(epCrew.getByRole("link", { name: /^Gamma Show — S2E3 / })).toHaveAttribute(
       "href",
       "/episodes/910",
     );
-    expect(epCrew.getByRole("link", { name: "Delta Show — S2E3" })).toHaveAttribute(
+    expect(epCrew.getByRole("link", { name: /^Delta Show — S2E3 / })).toHaveAttribute(
       "href",
       "/episodes/920",
     );
+  });
+
+  it("makes the whole episode row the link, not just the episode code", async () => {
+    const gamma = { id: 102, name: "Gamma Show", image_medium: null, premiered: "2018-03-01" };
+    server.use(
+      http.get(`${base}/people/300/credits`, () =>
+        HttpResponse.json({
+          cast: [],
+          crew: [],
+          guest_cast: [],
+          episode_crew: [
+            { show: gamma, episode: ep(910, 3, "2019-04-09"), role: "Director" },
+            { show: gamma, episode: ep(911, 2, "2019-04-02"), role: "Director" },
+          ],
+        }),
+      ),
+    );
+    renderPerson();
+
+    const epCrew = within(await screen.findByRole("region", { name: /^Episode crew/ }));
+    await userEvent.click(epCrew.getByRole("button", { name: /^Gamma Show —/ }));
+
+    // The episode name and role used to sit outside the anchor, so the widest
+    // part of the row did nothing when clicked. They must be inside it.
+    const row = epCrew.getByRole("link", { name: /^Gamma Show — S2E3 / });
+    expect(row).toHaveAttribute("href", "/episodes/910");
+    expect(row).toHaveTextContent("S2E3 Episode 3 · Director");
+
+    // Nothing in the row is left outside the link.
+    const item = row.closest("li");
+    expect(item?.textContent).toBe(row.textContent);
   });
 
   it("summarises a guest group by character, not just a count", async () => {

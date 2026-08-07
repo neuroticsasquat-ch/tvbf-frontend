@@ -187,6 +187,10 @@ function EpisodeGroupCard({
           in a truncated grid cell there is no room for verb text without
           crowding out what the summary actually says.
 
+          mt-1.5 and py-0.5 keep it clear of the show link directly above. Both
+          are full-width-ish targets stacked with no gap otherwise, so aiming
+          for one and hitting the other was easy.
+
           The aria-label adds the show, which is the card's visible heading but
           sits in a sibling element and so is not part of this control's
           accessible name. Without it, a director of three episodes each of two
@@ -198,7 +202,7 @@ function EpisodeGroupCard({
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
         aria-label={`${show.name} — ${summary}`}
-        className="group flex w-full min-w-0 items-center gap-0.5 rounded text-left text-xs text-muted-foreground leading-tight hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        className="group mt-1.5 flex w-full min-w-0 items-center gap-0.5 rounded py-0.5 text-left text-xs text-muted-foreground leading-tight hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
       >
         <ChevronRight
           aria-hidden
@@ -206,29 +210,44 @@ function EpisodeGroupCard({
         />
         <span className="truncate underline-offset-2 group-hover:underline">{summary}</span>
       </button>
+      {/* Rows are full-width click targets, so they need to be tall enough and
+          separated enough not to be hit by accident. text-xs at leading-tight
+          is ~15px, under WCAG 2.5.8's 24×24 minimum and with adjacent targets
+          touching — py-1.5 takes each row to ~27px, space-y-1 puts a gap
+          between them, and the hover background shows which one is armed. */}
       {open && (
-        <ul className="mt-1 space-y-0.5 border-l border-border pl-2">
-          {entries.map((entry) => (
-            <li key={entry.episode.id} className="truncate text-xs leading-tight">
-              {/* Same reasoning one level down: inside the card "S2E3" reads
-                  fine, but two expanded cards would put two links named "S2E3"
-                  pointing at different episodes into a screen reader's link
-                  list. This is not the collision `linkLabel` used to cover —
-                  that was two links to the SAME href — it is cross-card
-                  ambiguity, and the show name resolves it. */}
-              <Link
-                to={`/episodes/${entry.episode.id}`}
-                aria-label={`${show.name} — ${episodeCode(entry.episode)}`}
-                className="rounded underline-offset-2 hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              >
-                {episodeCode(entry.episode)}
-              </Link>
-              <span className="text-muted-foreground">
-                {" "}
-                {[entry.episode.name, entry.labels.join(" · ")].filter(Boolean).join(" · ")}
-              </span>
-            </li>
-          ))}
+        <ul className="mt-1 space-y-1 border-l border-border pl-2">
+          {entries.map((entry) => {
+            const detail = [entry.episode.name, entry.labels.join(" · ")]
+              .filter(Boolean)
+              .join(" · ");
+            return (
+              <li key={entry.episode.id}>
+                {/* The whole row is the link, not just the episode code. The
+                    episode name and role are the parts most likely to be aimed
+                    at, and having them sit outside the anchor made the biggest
+                    target on the row inert.
+
+                    `block` matters: an inline anchor only covers its text, so
+                    the row would still have dead space to the right of short
+                    titles.
+
+                    aria-label prefixes the show because two expanded cards can
+                    otherwise expose rows reading the same — the visible text is
+                    included verbatim, so WCAG 2.5.3 holds. */}
+                <Link
+                  to={`/episodes/${entry.episode.id}`}
+                  aria-label={`${show.name} — ${[episodeCode(entry.episode), detail]
+                    .filter(Boolean)
+                    .join(" ")}`}
+                  className="block truncate rounded px-1 py-1.5 text-xs leading-tight underline-offset-2 hover:bg-muted hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                >
+                  {episodeCode(entry.episode)}
+                  {detail ? <span className="text-muted-foreground"> {detail}</span> : null}
+                </Link>
+              </li>
+            );
+          })}
         </ul>
       )}
     </div>
