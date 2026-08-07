@@ -1,9 +1,11 @@
 import { useState, type ReactNode } from "react";
+import { ChevronRight } from "lucide-react";
 import { Link, useParams } from "react-router";
 import { usePerson, usePersonCredits } from "@/api/people";
 import { ApiError } from "@/api/client";
 import { LoadingState } from "@/components/LoadingState";
 import { ErrorState } from "@/components/ErrorState";
+import { cn } from "@/lib/cn";
 import { NotFoundPage } from "./NotFoundPage";
 import type { EpisodeRef, PersonOut, ShowRef } from "@/api/types";
 import {
@@ -177,19 +179,32 @@ function EpisodeGroupCard({
           {show.name}
         </Link>
       </p>
-      {/* The show name is the card's visible heading but sits in a sibling
-          element, so it is not part of this control's accessible name. Without
-          it, a director of three episodes each of two shows gets two buttons
-          both announced "Director · 3 episodes". The visible text stays a
-          prefix of the accessible name, so WCAG 2.5.3 still holds. */}
+      {/* Two things this button needs that are easy to miss.
+
+          The chevron is the only thing marking it as interactive. The repo's
+          other disclosures ("Read more", "Show all 12") carry that in the verb,
+          but this one's text is a summary, and a noun phrase reads as a label —
+          in a truncated grid cell there is no room for verb text without
+          crowding out what the summary actually says.
+
+          The aria-label adds the show, which is the card's visible heading but
+          sits in a sibling element and so is not part of this control's
+          accessible name. Without it, a director of three episodes each of two
+          shows gets two buttons both announced "Director · 3 episodes". The
+          visible text stays a prefix of the accessible name, so WCAG 2.5.3
+          still holds. */}
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
         aria-label={`${show.name} — ${summary}`}
-        className="truncate rounded text-xs text-muted-foreground leading-tight underline-offset-2 hover:text-foreground hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        className="group flex w-full min-w-0 items-center gap-0.5 rounded text-left text-xs text-muted-foreground leading-tight hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
       >
-        {summary}
+        <ChevronRight
+          aria-hidden
+          className={cn("h-3 w-3 shrink-0 transition-transform", open && "rotate-90")}
+        />
+        <span className="truncate underline-offset-2 group-hover:underline">{summary}</span>
       </button>
       {open && (
         <ul className="mt-1 space-y-0.5 border-l border-border pl-2">

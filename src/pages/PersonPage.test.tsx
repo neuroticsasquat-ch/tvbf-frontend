@@ -285,6 +285,13 @@ describe("PersonPage credit grouping", () => {
     const disclosure = epCrew.getByRole("button", { name: "Gamma Show — Director · 3 episodes" });
     expect(disclosure).toHaveAttribute("aria-expanded", "false");
 
+    // A chevron marks the control as interactive — the summary is a noun
+    // phrase, so without it nothing says the card expands. It must stay
+    // aria-hidden: decorative, and it would otherwise pollute the name above.
+    const chevron = disclosure.querySelector("svg");
+    expect(chevron).not.toBeNull();
+    expect(chevron).toHaveAttribute("aria-hidden");
+
     // Collapsed, the episodes are not rendered — only the show link.
     expect(epCrew.queryByRole("link", { name: "Gamma Show — S2E3" })).not.toBeInTheDocument();
 
