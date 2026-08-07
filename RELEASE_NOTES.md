@@ -1,5 +1,13 @@
 # Release notes
 
+## 0.2.2 — 2026-08-07
+
+### Person
+
+- Group filmography credits by show ([NEU-1007](https://linear.app/neuroticsasquatch/issue/NEU-1007)) ([#162](https://github.com/neuroticsasquat-ch/music-discovery-engine/pull/162))
+- Make the whole episode row clickable and space the targets ([#163](https://github.com/neuroticsasquat-ch/music-discovery-engine/pull/163))
+- Cap the episodes listed in an expanded credit group ([#164](https://github.com/neuroticsasquat-ch/music-discovery-engine/pull/164))
+
 ## 0.2.1 — 2026-08-06
 
 ### Episode
