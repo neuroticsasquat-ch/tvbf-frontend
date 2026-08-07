@@ -22,6 +22,20 @@ import {
  * rather than the page guessing which one will be long. */
 const COLLAPSED_COUNT = 12;
 
+/** Episodes listed inside one expanded credit group before it stops and just
+ * states the remainder.
+ *
+ * Groups are genuinely unbounded: Debbie Griffin holds 8,010 episode-crew
+ * credits on Jeopardy! alone, and a game show or soap will do that to anyone
+ * who worked on it for years. Rendering all of them puts thousands of rows
+ * inside one grid cell.
+ *
+ * There is deliberately no second "show the rest" — a filmography entry is
+ * there to say what someone did on a show, and the thousandth Jeopardy! episode
+ * does not add to that. Anyone who wants the full list wants the show's episode
+ * page, which the card's title already links to. */
+const EPISODES_PER_GROUP = 10;
+
 const FALLBACK_HEADSHOT =
   "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1 1'><rect width='1' height='1' fill='%23e2e8f0'/></svg>";
 
@@ -168,6 +182,8 @@ function EpisodeGroupCard({
   entries: EpisodeEntry[];
 }) {
   const [open, setOpen] = useState(false);
+  const listed = entries.slice(0, EPISODES_PER_GROUP);
+  const remaining = entries.length - listed.length;
 
   return (
     <div className="min-w-0">
@@ -217,7 +233,7 @@ function EpisodeGroupCard({
           between them, and the hover background shows which one is armed. */}
       {open && (
         <ul className="mt-1 space-y-1 border-l border-border pl-2">
-          {entries.map((entry) => {
+          {listed.map((entry) => {
             const detail = [entry.episode.name, entry.labels.join(" · ")]
               .filter(Boolean)
               .join(" · ");
@@ -248,6 +264,14 @@ function EpisodeGroupCard({
               </li>
             );
           })}
+          {remaining > 0 && (
+            // Plain text, not a control. Expanding further would put thousands
+            // of rows in a grid cell to no benefit; the card title links to the
+            // show for anyone who wants the whole list.
+            <li className="px-1 py-1.5 text-xs text-muted-foreground leading-tight">
+              +{remaining.toLocaleString()} more
+            </li>
+          )}
         </ul>
       )}
     </div>
