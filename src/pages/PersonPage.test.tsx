@@ -443,6 +443,40 @@ describe("PersonPage grouped-card accessibility", () => {
     expect(item?.textContent).toBe(row.textContent);
   });
 
+  it("caps the episodes listed in a group and states the remainder", async () => {
+    const gamma = { id: 102, name: "Gamma Show", image_medium: null, premiered: "2018-03-01" };
+    // 25 episodes on one show. Real data goes far higher — 8,010 episode-crew
+    // credits on Jeopardy! for one person — so the list has to stop somewhere.
+    const credits = Array.from({ length: 25 }, (_, i) => ({
+      show: gamma,
+      episode: ep(1000 + i, 25 - i, "2019-04-09"),
+      role: "Director",
+    }));
+    server.use(
+      http.get(`${base}/people/300/credits`, () =>
+        HttpResponse.json({ cast: [], crew: [], guest_cast: [], episode_crew: credits }),
+      ),
+    );
+    renderPerson();
+
+    const epCrew = within(await screen.findByRole("region", { name: /^Episode crew/ }));
+    // The summary still states the true total.
+    await userEvent.click(
+      epCrew.getByRole("button", { name: "Gamma Show — Director · 25 episodes" }),
+    );
+
+    // Ten listed, fifteen accounted for in words.
+    const episodeLinks = epCrew
+      .getAllByRole("link")
+      .filter((a) => a.getAttribute("href")?.startsWith("/episodes/"));
+    expect(episodeLinks).toHaveLength(10);
+    expect(epCrew.getByText("+15 more")).toBeInTheDocument();
+
+    // Deliberately inert: the only control in the section is the disclosure
+    // itself, so there is no way to expand into thousands of rows.
+    expect(epCrew.getAllByRole("button")).toHaveLength(1);
+  });
+
   it("summarises a guest group by character, not just a count", async () => {
     const gamma = { id: 102, name: "Gamma Show", image_medium: null, premiered: "2018-03-01" };
     const character = { id: 13, name: "Guest Of The Week", image_medium: null };
