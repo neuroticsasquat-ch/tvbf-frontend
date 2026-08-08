@@ -1,12 +1,5 @@
 import { Link } from "react-router";
-import {
-  CheckCircle2,
-  ListChecks,
-  PlusCircle,
-  PlayCircle,
-  Star,
-  Trophy,
-} from "lucide-react";
+import { CheckCircle2, ListChecks, PlusCircle, PlayCircle, Star, Trophy } from "lucide-react";
 import type { FeedItem } from "@/api/types";
 import { StarRatingDisplay } from "@/components/StarRatingDisplay";
 import { formatRelativeTime } from "@/lib/relativeTime";
@@ -71,22 +64,21 @@ function Body({ item }: { item: FeedItem }) {
     case "watched_episode":
       return (
         <span>
-          <ActorLink item={item} /> watched <ShowLink item={item} />{" "}
-          <EpisodeLink item={item} />.
+          <ActorLink item={item} /> watched <ShowLink item={item} /> <EpisodeLink item={item} />.
         </span>
       );
     case "watched_episode_run":
       return (
         <span>
-          <ActorLink item={item} /> watched {item.rollup_count} episodes of{" "}
-          <ShowLink item={item} />.
+          <ActorLink item={item} /> watched {item.rollup_count} episodes of <ShowLink item={item} />
+          .
         </span>
       );
     case "watched_season":
       return (
         <span>
-          <ActorLink item={item} /> finished season {item.season_number} of{" "}
-          <ShowLink item={item} />.
+          <ActorLink item={item} /> finished season {item.season_number} of <ShowLink item={item} />
+          .
         </span>
       );
     case "watched_show":
@@ -105,8 +97,7 @@ function Body({ item }: { item: FeedItem }) {
     case "rated_episode":
       return (
         <span className="inline-flex flex-wrap items-center gap-1.5">
-          <ActorLink item={item} /> rated <ShowLink item={item} />{" "}
-          <EpisodeLink item={item} />
+          <ActorLink item={item} /> rated <ShowLink item={item} /> <EpisodeLink item={item} />
           {item.stars !== null && <StarRatingDisplay value={item.stars} size="sm" />}
         </span>
       );
@@ -115,11 +106,7 @@ function Body({ item }: { item: FeedItem }) {
 
 export function FeedItemRow({ item }: { item: FeedItem }) {
   return (
-    <li
-      data-testid="feed-row"
-      data-kind={item.kind}
-      className="flex items-start gap-3 py-2"
-    >
+    <li data-testid="feed-row" data-kind={item.kind} className="flex items-start gap-3 py-2">
       <KindIcon kind={item.kind} />
       <div className="flex-1 text-sm">
         <Body item={item} />

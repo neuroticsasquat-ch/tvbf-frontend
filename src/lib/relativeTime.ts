@@ -24,10 +24,7 @@ export function formatRelativeTime(iso: string, now: Date = new Date()): string 
   for (const { unit, seconds } of UNITS) {
     if (abs >= seconds) {
       const value = Math.round(diffSeconds / seconds);
-      return new Intl.RelativeTimeFormat(undefined, { numeric: "auto" }).format(
-        value,
-        unit,
-      );
+      return new Intl.RelativeTimeFormat(undefined, { numeric: "auto" }).format(value, unit);
     }
   }
   return "just now";

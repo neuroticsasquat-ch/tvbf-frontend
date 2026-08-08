@@ -33,8 +33,7 @@ export function EmailChangeConfirmPage() {
       } catch (e) {
         let message = "Something went wrong. Try again.";
         if (e instanceof ApiError) {
-          if (e.status === 400)
-            message = "This confirmation link is invalid or has expired.";
+          if (e.status === 400) message = "This confirmation link is invalid or has expired.";
           else if (e.status === 409)
             message =
               "That email is already in use by another account. Pick a different one and try again.";
@@ -54,9 +53,7 @@ export function EmailChangeConfirmPage() {
         </p>
       )}
 
-      {state.kind === "missing_token" && (
-        <p role="alert">No confirmation token in this link.</p>
-      )}
+      {state.kind === "missing_token" && <p role="alert">No confirmation token in this link.</p>}
 
       {state.kind === "success" && (
         <>

@@ -67,9 +67,7 @@ export function VerifyEmailPage() {
         </p>
       )}
 
-      {state.kind === "missing_token" && (
-        <p role="alert">No verification token in this link.</p>
-      )}
+      {state.kind === "missing_token" && <p role="alert">No verification token in this link.</p>}
 
       {state.kind === "success" && (
         <>
@@ -91,14 +89,10 @@ export function VerifyEmailPage() {
                 disabled={resendStatus === "sending"}
                 className="rounded bg-foreground text-background px-3 py-1 disabled:opacity-50"
               >
-                {resendStatus === "sending"
-                  ? "Sending…"
-                  : "Send a new verification email"}
+                {resendStatus === "sending" ? "Sending…" : "Send a new verification email"}
               </button>
               {resendStatus === "sent" && (
-                <p className="text-sm text-muted-foreground">
-                  Sent. Check your inbox.
-                </p>
+                <p className="text-sm text-muted-foreground">Sent. Check your inbox.</p>
               )}
               {resendStatus === "rate_limited" && (
                 <p className="text-sm text-muted-foreground">
@@ -106,9 +100,7 @@ export function VerifyEmailPage() {
                 </p>
               )}
               {resendStatus === "error" && (
-                <p className="text-sm text-red-600">
-                  Couldn't send a new email. Try again.
-                </p>
+                <p className="text-sm text-red-600">Couldn't send a new email. Try again.</p>
               )}
             </div>
           )}

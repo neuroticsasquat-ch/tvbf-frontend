@@ -32,13 +32,9 @@ export function ForgotPasswordPage() {
 
       {submitted ? (
         <div className="space-y-4">
-          <p
-            role="status"
-            aria-live="polite"
-            className="text-sm text-muted-foreground"
-          >
-            If that email belongs to an account, we sent a reset link. Check
-            your inbox — the link expires in 1 hour.
+          <p role="status" aria-live="polite" className="text-sm text-muted-foreground">
+            If that email belongs to an account, we sent a reset link. Check your inbox — the link
+            expires in 1 hour.
           </p>
           <Link to="/login" className="text-sm underline">
             Back to log in

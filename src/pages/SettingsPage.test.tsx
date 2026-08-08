@@ -85,9 +85,7 @@ describe("SettingsPage", () => {
 
     // The Save button should reappear (editor stays open) and original
     // display name stays visible nowhere else.
-    await waitFor(() =>
-      expect(screen.getByRole("button", { name: /save/i })).toBeInTheDocument(),
-    );
+    await waitFor(() => expect(screen.getByRole("button", { name: /save/i })).toBeInTheDocument());
   });
 
   it("rejects an empty name client-side without calling the API", async () => {
@@ -131,13 +129,9 @@ describe("SettingsPage", () => {
 
     await userEvent.type(screen.getByLabelText(/new email/i), "new@example.com");
     await userEvent.type(screen.getByLabelText(/current password/i), "hunter2hunter2");
-    await userEvent.click(
-      screen.getByRole("button", { name: /send confirmation link/i }),
-    );
+    await userEvent.click(screen.getByRole("button", { name: /send confirmation link/i }));
 
-    expect(
-      await screen.findByText(/we sent a confirmation link to/i),
-    ).toBeInTheDocument();
+    expect(await screen.findByText(/we sent a confirmation link to/i)).toBeInTheDocument();
     expect(screen.getByText("new@example.com")).toBeInTheDocument();
   });
 
@@ -158,15 +152,11 @@ describe("SettingsPage", () => {
     await userEvent.click(screen.getByRole("button", { name: /change email/i }));
     await userEvent.type(screen.getByLabelText(/new email/i), "new@example.com");
     await userEvent.type(screen.getByLabelText(/current password/i), "wrong");
-    await userEvent.click(
-      screen.getByRole("button", { name: /send confirmation link/i }),
-    );
+    await userEvent.click(screen.getByRole("button", { name: /send confirmation link/i }));
 
     expect(await screen.findByRole("alert")).toHaveTextContent(copy);
     // Form stays open so the user can fix and retry.
-    expect(
-      screen.getByRole("button", { name: /send confirmation link/i }),
-    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /send confirmation link/i })).toBeInTheDocument();
   });
 
   // ---------------------------------------------------------------------
@@ -221,9 +211,7 @@ describe("SettingsPage", () => {
     );
 
     renderWithProviders(<SettingsPage />, { route: "/settings" });
-    expect(
-      await screen.findByText(/couldn't load your sessions/i),
-    ).toBeInTheDocument();
+    expect(await screen.findByText(/couldn't load your sessions/i)).toBeInTheDocument();
   });
 
   // ---------------------------------------------------------------------
@@ -301,13 +289,9 @@ describe("SettingsPage", () => {
 
       renderWithProviders(<SettingsPage />, { route: "/settings" });
       await screen.findByText("Firefox on Windows");
-      await userEvent.click(
-        screen.getByRole("button", { name: /Revoke Firefox on Windows/i }),
-      );
+      await userEvent.click(screen.getByRole("button", { name: /Revoke Firefox on Windows/i }));
 
-      await waitFor(() =>
-        expect(screen.queryByText("Firefox on Windows")).not.toBeInTheDocument(),
-      );
+      await waitFor(() => expect(screen.queryByText("Firefox on Windows")).not.toBeInTheDocument());
     });
 
     it("Revoke does nothing if the user cancels the confirm prompt", async () => {
@@ -324,9 +308,7 @@ describe("SettingsPage", () => {
 
       renderWithProviders(<SettingsPage />, { route: "/settings" });
       await screen.findByText("Firefox on Windows");
-      await userEvent.click(
-        screen.getByRole("button", { name: /Revoke Firefox on Windows/i }),
-      );
+      await userEvent.click(screen.getByRole("button", { name: /Revoke Firefox on Windows/i }));
 
       expect(called).toBe(false);
       expect(screen.getByText("Firefox on Windows")).toBeInTheDocument();
@@ -369,9 +351,7 @@ describe("SettingsPage", () => {
 
       renderWithProviders(<SettingsPage />, { route: "/settings" });
       await screen.findByRole("button", { name: /log out everywhere else/i });
-      await userEvent.click(
-        screen.getByRole("button", { name: /log out everywhere else/i }),
-      );
+      await userEvent.click(screen.getByRole("button", { name: /log out everywhere else/i }));
 
       await waitFor(() => expect(callCount).toBe(1));
     });
@@ -418,9 +398,7 @@ describe("SettingsPage", () => {
       );
 
       renderWithProviders(<SettingsPage />, { route: "/settings" });
-      await userEvent.click(
-        await screen.findByRole("button", { name: /download my data/i }),
-      );
+      await userEvent.click(await screen.findByRole("button", { name: /download my data/i }));
       await waitFor(() => expect(requested).toBe(true));
     });
 
@@ -434,14 +412,10 @@ describe("SettingsPage", () => {
       );
 
       renderWithProviders(<SettingsPage />, { route: "/settings" });
-      await userEvent.click(
-        await screen.findByRole("button", { name: /download my data/i }),
-      );
+      await userEvent.click(await screen.findByRole("button", { name: /download my data/i }));
       // The button re-enables once the request finishes (success or error).
       await waitFor(() =>
-        expect(
-          screen.getByRole("button", { name: /download my data/i }),
-        ).not.toBeDisabled(),
+        expect(screen.getByRole("button", { name: /download my data/i })).not.toBeDisabled(),
       );
     });
   });

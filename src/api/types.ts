@@ -109,6 +109,114 @@ export interface ShowDetail extends ShowSummary {
   seasons: SeasonOut[];
 }
 
+export interface PersonRef {
+  id: number;
+  name: string;
+  image_medium: string | null;
+}
+
+export interface CharacterRef {
+  id: number;
+  name: string;
+  image_medium: string | null;
+}
+
+export interface CastMember {
+  person: PersonRef;
+  character: CharacterRef;
+  /** Credited as themselves (matches upstream's `self` key). */
+  self: boolean;
+  voice: boolean;
+}
+
+export interface CrewMember {
+  person: PersonRef;
+  role: string;
+}
+
+/** A person as served by `GET /people/{id}`. Richer than `PersonRef`, which is
+ * the compact form embedded in credit payloads. */
+export interface PersonOut {
+  id: number;
+  name: string;
+  country_code: string | null;
+  country_name: string | null;
+  birthday: string | null;
+  deathday: string | null;
+  gender: string | null;
+  image_medium: string | null;
+  image_original: string | null;
+}
+
+/** Compact show reference embedded in a person's filmography. */
+export interface ShowRef {
+  id: number;
+  name: string;
+  image_medium: string | null;
+  premiered: string | null;
+}
+
+/** Compact episode reference embedded in guest credits. Carries season and
+ * number so "Show — S2E11" renders without a second round trip. */
+export interface EpisodeRef {
+  id: number;
+  name: string | null;
+  season: number;
+  number: number | null;
+  airdate: string | null;
+}
+
+export interface PersonCastCredit {
+  show: ShowRef;
+  character: CharacterRef;
+  self: boolean;
+  voice: boolean;
+}
+
+export interface PersonCrewCredit {
+  show: ShowRef;
+  role: string;
+}
+
+export interface PersonGuestCredit {
+  show: ShowRef;
+  episode: EpisodeRef;
+  character: CharacterRef;
+  self: boolean;
+  voice: boolean;
+}
+
+/** A crew credit on one episode — "Director of *Show* S1E3". Distinct from
+ * `PersonCrewCredit`, which is show-level: the glossary keeps *crew credit* and
+ * *episode crew credit* apart because they answer different questions, and the
+ * vocabularies are disjoint (Director/Writer/Story/Teleplay here, production
+ * functions like Executive Producer there). */
+export interface PersonEpisodeCrewCredit {
+  show: ShowRef;
+  episode: EpisodeRef;
+  role: string;
+}
+
+/** Grouped filmography from `GET /people/{id}/credits`. All four keys are
+ * always present — an absent category is an empty array, never a missing key. */
+export interface PersonCredits {
+  cast: PersonCastCredit[];
+  crew: PersonCrewCredit[];
+  guest_cast: PersonGuestCredit[];
+  episode_crew: PersonEpisodeCrewCredit[];
+}
+
+/** A page of person search results. Items are full `PersonOut` rows, not a
+ * compact form — a person row is small, so search results render everything the
+ * person page header shows without a second fetch. */
+export interface PersonListPage {
+  items: PersonOut[];
+  page: number;
+  per_page: number;
+  total: number;
+  total_pages: number;
+}
+
 export interface ShowListPage {
   items: ShowSummary[];
   page: number;

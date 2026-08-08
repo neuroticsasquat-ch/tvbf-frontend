@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { Link, useParams } from "react-router";
-import { useShow } from "@/api/shows";
+import { Link, useParams, useSearchParams } from "react-router";
+import { useShow, useShowCast, useShowCrew } from "@/api/shows";
 import { useAuth } from "@/components/AuthContext";
 import { ApiError } from "@/api/client";
 import { LoadingState } from "@/components/LoadingState";
@@ -16,6 +16,9 @@ import { ShowFriendActivityStrip } from "@/components/friends/FriendActivity";
 import { FriendRatingsList } from "@/components/FriendRatingsList";
 import { WatchProgressBar } from "@/components/WatchProgressBar";
 import { SeasonWatchCheckbox } from "@/components/SeasonWatchCheckbox";
+import { ShowCastList } from "@/components/CastList";
+import { CrewList } from "@/components/CrewList";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useMyShows, useSeasonProgress, useShowRating } from "@/api/me";
 import { Tv } from "lucide-react";
 import { RatingBadge } from "@/components/RatingBadge";
@@ -40,6 +43,39 @@ export function ShowDetailPage() {
   const rate = useShowRating(showId);
   const [seasonFilter, setSeasonFilter] = useState<"all" | "unwatched">("all");
 
+  // Fetched here for the tab counts. ShowCastList/CrewList run the same queries
+  // and React Query dedupes on the key, so this costs no extra request.
+  const castQuery = useShowCast(showId);
+  const crewQuery = useShowCrew(showId);
+  // 44% of shows have no cast and 83% no crew. Those tabs still render, showing
+  // a zero count and disabled — the absence is information, and a fixed tab
+  // strip beats one that pops in a tab when a query resolves. A tab stays
+  // enabled while its query is in flight (nothing to report yet) and on error,
+  // where disabling would bury the ErrorState the panel renders.
+  const castCount = castQuery.data?.length ?? 0;
+  const crewCount = crewQuery.data?.length ?? 0;
+  const castEmpty = castQuery.isSuccess && castCount === 0;
+  const crewEmpty = crewQuery.isSuccess && crewCount === 0;
+
+  const [searchParams, setSearchParams] = useSearchParams();
+  const requested = searchParams.get("tab");
+  // Falls back to seasons for an unknown value, and for a tab this show has
+  // nothing to put in — a `?tab=crew` link to a crewless show should not land
+  // on a disabled tab.
+  const wanted = requested === "cast" || requested === "crew" ? requested : "seasons";
+  const tab =
+    (wanted === "cast" && castEmpty) || (wanted === "crew" && crewEmpty) ? "seasons" : wanted;
+
+  function selectTab(next: string) {
+    const params = new URLSearchParams(searchParams);
+    // Seasons is the default, so it stays out of the URL entirely.
+    if (next === "seasons") params.delete("tab");
+    else params.set("tab", next);
+    // Replace rather than push: tab switches should not stack up history
+    // entries between the user and the page they arrived from.
+    setSearchParams(params, { replace: true });
+  }
+
   if (query.isPending) return <LoadingState rows={1} />;
   if (query.isError) {
     if (query.error instanceof ApiError && query.error.status === 404) return <NotFoundPage />;
@@ -59,10 +95,7 @@ export function ShowDetailPage() {
         <div className="flex-1 space-y-2">
           <div className="flex flex-wrap items-center gap-2">
             <h1 className="text-3xl font-semibold">{show.name}</h1>
-            <RatingBadge
-              value={tvmazeToFiveStar(show.rating_average)}
-              title="TV Maze average"
-            />
+            <RatingBadge value={tvmazeToFiveStar(show.rating_average)} title="TV Maze average" />
           </div>
           <p className="text-sm text-muted-foreground">
             {yearRange(show.premiered, show.ended)}
@@ -125,122 +158,155 @@ export function ShowDetailPage() {
 
       <NextEpisodeCard showId={show.id} />
 
-      <section>
-        <div className="mb-3 flex items-center justify-between gap-2">
-          <h2 className="text-lg font-semibold">
-            Seasons{" "}
-            <span className="font-normal text-muted-foreground">({show.seasons.length})</span>
-          </h2>
-          {myEntry && progressQuery.data && (
-            <div
-              role="radiogroup"
-              aria-label="Filter seasons"
-              className="inline-flex rounded border border-border text-sm"
-            >
-              {(["all", "unwatched"] as const).map((key) => (
-                <button
-                  key={key}
-                  type="button"
-                  role="radio"
-                  aria-checked={seasonFilter === key}
-                  onClick={() => setSeasonFilter(key)}
-                  className={`px-3 py-1 capitalize ${
-                    seasonFilter === key
-                      ? "bg-foreground text-background"
-                      : "text-foreground hover:bg-accent"
-                  }`}
-                >
-                  {key}
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
-        {(() => {
-          const progressMap = new Map((progressQuery.data ?? []).map((p) => [p.season, p]));
-          const filtered =
-            seasonFilter === "unwatched" && myEntry
-              ? show.seasons.filter((s) => {
+      <Tabs value={tab} onValueChange={selectTab}>
+        <TabsList>
+          <TabsTrigger value="seasons">
+            Seasons <TabCount value={show.seasons.length} />
+          </TabsTrigger>
+          <TabsTrigger value="cast" disabled={castEmpty}>
+            Cast {castQuery.isSuccess && <TabCount value={castCount} />}
+          </TabsTrigger>
+          <TabsTrigger value="crew" disabled={crewEmpty}>
+            Crew {crewQuery.isSuccess && <TabCount value={crewCount} />}
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="seasons">
+          <div className="mb-3 flex items-center justify-end gap-2">
+            {/* The tab label carries the visible title and count; this stays for
+              the document outline and screen readers. */}
+            <h2 className="sr-only">
+              Seasons{" "}
+              <span className="font-normal text-muted-foreground">({show.seasons.length})</span>
+            </h2>
+            {myEntry && progressQuery.data && (
+              <div
+                role="radiogroup"
+                aria-label="Filter seasons"
+                className="inline-flex rounded border border-border text-sm"
+              >
+                {(["all", "unwatched"] as const).map((key) => (
+                  <button
+                    key={key}
+                    type="button"
+                    role="radio"
+                    aria-checked={seasonFilter === key}
+                    onClick={() => setSeasonFilter(key)}
+                    className={`px-3 py-1 capitalize ${
+                      seasonFilter === key
+                        ? "bg-foreground text-background"
+                        : "text-foreground hover:bg-accent"
+                    }`}
+                  >
+                    {key}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+          {(() => {
+            const progressMap = new Map((progressQuery.data ?? []).map((p) => [p.season, p]));
+            const filtered =
+              seasonFilter === "unwatched" && myEntry
+                ? show.seasons.filter((s) => {
+                    const p = progressMap.get(s.number);
+                    return p ? p.aired > p.watched : false;
+                  })
+                : show.seasons;
+            if (show.seasons.length === 0) {
+              return <p className="text-sm text-muted-foreground">No seasons available.</p>;
+            }
+            if (filtered.length === 0) {
+              return <p className="text-sm text-muted-foreground">No unwatched seasons.</p>;
+            }
+            return (
+              <ul className="space-y-3">
+                {filtered.map((s) => {
                   const p = progressMap.get(s.number);
-                  return p ? p.aired > p.watched : false;
-                })
-              : show.seasons;
-          if (show.seasons.length === 0) {
-            return <p className="text-sm text-muted-foreground">No seasons available.</p>;
-          }
-          if (filtered.length === 0) {
-            return <p className="text-sm text-muted-foreground">No unwatched seasons.</p>;
-          }
-          return (
-            <ul className="space-y-3">
-              {filtered.map((s) => {
-                const p = progressMap.get(s.number);
-                const aired = p?.aired ?? 0;
-                const watched = p?.watched ?? 0;
-                const upcoming =
-                  (s.episode_order ?? 0) > aired ? (s.episode_order ?? 0) - aired : 0;
-                const year = s.premiere_date ? s.premiere_date.slice(0, 4) : null;
-                const title = s.name && s.name !== `Season ${s.number}` ? s.name : null;
-                const thumbnail = s.image_medium ?? show.image_medium;
-                return (
-                  <li key={s.id} className="border border-border rounded p-3 hover:bg-accent">
-                    <div className="flex items-center gap-4">
-                      <Link
-                        to={`/shows/${show.id}/episodes?season=${s.number}`}
-                        className="flex flex-1 min-w-0 items-center gap-4"
-                      >
-                        {thumbnail ? (
-                          <img
-                            src={thumbnail}
-                            alt=""
-                            className="w-20 aspect-[210/295] object-cover rounded shrink-0"
-                            loading="lazy"
-                          />
-                        ) : (
-                          <div
-                            aria-hidden
-                            className="w-20 aspect-[210/295] rounded shrink-0 bg-muted text-muted-foreground flex items-center justify-center"
-                          >
-                            <Tv className="h-6 w-6" />
+                  const aired = p?.aired ?? 0;
+                  const watched = p?.watched ?? 0;
+                  const upcoming =
+                    (s.episode_order ?? 0) > aired ? (s.episode_order ?? 0) - aired : 0;
+                  const year = s.premiere_date ? s.premiere_date.slice(0, 4) : null;
+                  const title = s.name && s.name !== `Season ${s.number}` ? s.name : null;
+                  const thumbnail = s.image_medium ?? show.image_medium;
+                  return (
+                    <li key={s.id} className="border border-border rounded p-3 hover:bg-accent">
+                      <div className="flex items-center gap-4">
+                        <Link
+                          to={`/shows/${show.id}/episodes?season=${s.number}`}
+                          className="flex flex-1 min-w-0 items-center gap-4"
+                        >
+                          {thumbnail ? (
+                            <img
+                              src={thumbnail}
+                              alt=""
+                              className="w-20 aspect-[210/295] object-cover rounded shrink-0"
+                              loading="lazy"
+                            />
+                          ) : (
+                            <div
+                              aria-hidden
+                              className="w-20 aspect-[210/295] rounded shrink-0 bg-muted text-muted-foreground flex items-center justify-center"
+                            >
+                              <Tv className="h-6 w-6" />
+                            </div>
+                          )}
+                          <div className="flex-1 min-w-0">
+                            <p className="text-base text-foreground leading-tight truncate">
+                              Season {s.number}
+                              {title && (
+                                <>
+                                  {" — "}
+                                  <span className="font-semibold">{title}</span>
+                                </>
+                              )}
+                              {year && <span className="text-muted-foreground"> — {year}</span>}
+                            </p>
+                            <p className="text-xs text-muted-foreground leading-tight">
+                              {s.episode_order ?? "?"} episodes
+                            </p>
+                            {myEntry && p && aired > 0 && (
+                              <WatchProgressBar
+                                watched={watched}
+                                aired={aired}
+                                upcoming={upcoming}
+                              />
+                            )}
+                          </div>
+                        </Link>
+                        {myEntry && aired > 0 && (
+                          <div className="ml-auto shrink-0">
+                            <SeasonWatchCheckbox
+                              showId={show.id}
+                              season={s.number}
+                              aired={aired}
+                              watched={watched}
+                            />
                           </div>
                         )}
-                        <div className="flex-1 min-w-0">
-                          <p className="text-base text-foreground leading-tight truncate">
-                            Season {s.number}
-                            {title && (
-                              <>
-                                {" — "}
-                                <span className="font-semibold">{title}</span>
-                              </>
-                            )}
-                            {year && <span className="text-muted-foreground"> — {year}</span>}
-                          </p>
-                          <p className="text-xs text-muted-foreground leading-tight">
-                            {s.episode_order ?? "?"} episodes
-                          </p>
-                          {myEntry && p && aired > 0 && (
-                            <WatchProgressBar watched={watched} aired={aired} upcoming={upcoming} />
-                          )}
-                        </div>
-                      </Link>
-                      {myEntry && aired > 0 && (
-                        <div className="ml-auto shrink-0">
-                          <SeasonWatchCheckbox
-                            showId={show.id}
-                            season={s.number}
-                            aired={aired}
-                            watched={watched}
-                          />
-                        </div>
-                      )}
-                    </div>
-                  </li>
-                );
-              })}
-            </ul>
-          );
-        })()}
-      </section>
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
+            );
+          })()}
+        </TabsContent>
+
+        <TabsContent value="cast">
+          <ShowCastList showId={show.id} headingHidden />
+        </TabsContent>
+
+        <TabsContent value="crew">
+          <CrewList showId={show.id} headingHidden />
+        </TabsContent>
+      </Tabs>
     </article>
   );
+}
+
+/** The count beside a tab label. Muted so the label stays the thing you read. */
+function TabCount({ value }: { value: number }) {
+  return <span className="font-normal text-muted-foreground">({value})</span>;
 }

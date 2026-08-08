@@ -102,9 +102,7 @@ export function FeedbackDialog({ open, onOpenChange }: Props) {
           <Button
             type="button"
             onClick={submit}
-            disabled={
-              mutation.isPending || subject.trim().length === 0 || body.trim().length === 0
-            }
+            disabled={mutation.isPending || subject.trim().length === 0 || body.trim().length === 0}
           >
             {mutation.isPending ? "Sending…" : "Send"}
           </Button>
