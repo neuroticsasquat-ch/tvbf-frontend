@@ -24,7 +24,8 @@ describe("ShowDetailPage", () => {
     await waitFor(() =>
       expect(screen.getByRole("heading", { name: "Fixture Show" })).toBeInTheDocument(),
     );
-    expect(screen.getByText(/Running/i)).toBeInTheDocument();
+    // Status renders raw, so this is TMDB's string verbatim (NEU-1031 D1).
+    expect(screen.getByText(/Returning Series/i)).toBeInTheDocument();
     expect(screen.getByText(/Drama/i)).toBeInTheDocument();
     expect(screen.getAllByRole("link", { name: /Season \d/i }).length).toBeGreaterThan(0);
   });

@@ -51,7 +51,7 @@ describe("buildShowsQuery", () => {
   it("serializes scalars, repeats arrays, and keeps sort", () => {
     const filters: ShowFilters = {
       search: "the",
-      status: "Running",
+      status: "Returning Series",
       genre: ["Drama", "Comedy"],
       network: [10, 11],
       language: "English",
@@ -62,7 +62,7 @@ describe("buildShowsQuery", () => {
     };
     const q = new URLSearchParams(buildShowsQuery(filters));
     expect(q.get("search")).toBe("the");
-    expect(q.get("status")).toBe("Running");
+    expect(q.get("status")).toBe("Returning Series");
     expect(q.getAll("genre")).toEqual(["Drama", "Comedy"]);
     expect(q.getAll("network")).toEqual(["10", "11"]);
     expect(q.get("language")).toBe("English");

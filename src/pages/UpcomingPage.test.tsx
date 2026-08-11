@@ -75,7 +75,7 @@ describe("UpcomingPage", () => {
               id: 21,
               name: "Brand New",
               type: null,
-              status: "In Development",
+              status: "Planned",
               language: null,
               premiered: null,
               ended: null,
