@@ -8,11 +8,16 @@ interface Props {
   person: PersonRef;
   /** Secondary line under the name — the character played, or the crew role. */
   detail?: string | null;
+  /** A short quantity appended to the secondary line, e.g. "12 episodes". It
+   * shares that line rather than claiming a third, which would outgrow the
+   * headshot beside it, and it is the half that survives truncation — a long
+   * character name gives way to it, not the other way round. */
+  meta?: string | null;
 }
 
 /** Headshot + name for one person, with an optional secondary line. The name
  * links to the person page, so every credit list picks the link up for free. */
-export function PersonChip({ person, detail }: Props) {
+export function PersonChip({ person, detail, meta }: Props) {
   return (
     <div className="flex min-w-0 items-center gap-2">
       <img
@@ -30,8 +35,20 @@ export function PersonChip({ person, detail }: Props) {
             {person.name}
           </Link>
         </p>
-        {detail ? (
-          <p className="truncate text-xs text-muted-foreground leading-tight">{detail}</p>
+        {detail || meta ? (
+          // `items-center`, not `items-baseline`: a truncating child is an
+          // overflow container, whose baseline is synthesized from its border
+          // box rather than its text, so baseline alignment visibly misaligns
+          // the two halves.
+          <p className="flex items-center gap-1 text-xs text-muted-foreground leading-tight">
+            {detail ? <span className="min-w-0 truncate">{detail}</span> : null}
+            {detail && meta ? (
+              <span aria-hidden="true" className="shrink-0">
+                ·
+              </span>
+            ) : null}
+            {meta ? <span className="shrink-0 tabular-nums">{meta}</span> : null}
+          </p>
         ) : null}
       </div>
     </div>

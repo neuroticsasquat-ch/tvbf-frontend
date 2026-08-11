@@ -127,6 +127,12 @@ export interface CastMember {
   /** Credited as themselves (matches upstream's `self` key). */
   self: boolean;
   voice: boolean;
+  /** Episodes this person appeared in as this character, and the key the API
+   * orders show cast by (NEU-1039). Optional because it is absent at two
+   * grains: the credits routes still read `tvmaze`, which only ever had
+   * billing order, until they repoint to `catalog` (NEU-1047); and episode
+   * guest cast is a per-episode row, so it carries no count at all. */
+  episode_count?: number | null;
 }
 
 export interface CrewMember {
