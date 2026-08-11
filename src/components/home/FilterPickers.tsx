@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { BookmarkCheck, Eye, Star, Tv, Tag, User, X } from "lucide-react";
 import { useGenres } from "@/api/shows";
 import { FilterSheet } from "@/components/home/FilterSheet";
@@ -209,6 +210,21 @@ export function GenreFilter({
   const { data } = useGenres();
   const options = genreOptions(data);
   const label = options.find((o) => o.key === value)?.label ?? "All";
+
+  // The genre filter is persisted with `usePersistedString`, which — unlike
+  // `usePersistedSort` — validates nothing: a stored value is restored
+  // verbatim and filters every list to empty while the picker still reads as a
+  // valid choice (NEU-1031 D3). The genre vocabulary is not static (TMDB's 16
+  // replace TV Maze's 28 at cutover, sharing 7), so the check has to be
+  // against the list the API actually served rather than a constant. `data`
+  // being undefined means "not loaded yet", not "not a genre" — hence the
+  // guard, without which every mount would clear the filter before the genres
+  // arrive.
+  useEffect(() => {
+    if (!data) return;
+    if (value !== "all" && !data.some((g) => g.name === value)) onChange("all");
+  }, [data, value, onChange]);
+
   return (
     <FilterSheet
       title="Genre"
