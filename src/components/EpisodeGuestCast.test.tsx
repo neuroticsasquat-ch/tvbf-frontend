@@ -28,6 +28,17 @@ describe("EpisodeGuestCast", () => {
     expect(screen.getByText("Radio Announcer (voice)")).toBeInTheDocument();
   });
 
+  it("shows no episode count — a guest credit is already per-episode", async () => {
+    // Permanent, not a stopgap: `catalog` records guest cast at episode grain
+    // with no count to carry, so this stays true after the credits routes move
+    // to it (NEU-1047). Asserted on the rendered surface rather than left to
+    // the fixture, which a later edit could unpin in silence.
+    renderWithProviders(<EpisodeGuestCast episodeId={5000} />);
+
+    expect(await screen.findByText("The Stranger")).toBeInTheDocument();
+    expect(screen.queryByText(/\d+ episodes?$/)).not.toBeInTheDocument();
+  });
+
   it("links each guest to their person page", async () => {
     renderWithProviders(<EpisodeGuestCast episodeId={5000} />);
 
