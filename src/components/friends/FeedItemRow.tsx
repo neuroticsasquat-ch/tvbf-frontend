@@ -75,6 +75,12 @@ function Body({ item }: { item: FeedItem }) {
         </span>
       );
     case "watched_season":
+      // NEU-1129 could not reach this one: `seasonLabel` needs the season's
+      // name and `FeedItem` carries only `season_number`, so a friend finishing
+      // the specials season still reads "finished season 0". Fixing it means
+      // adding `season_name` to the feed payload (backend) — deliberately not a
+      // `season_number === 0` special case here, which is the inference that
+      // ticket rejects.
       return (
         <span>
           <ActorLink item={item} /> finished season {item.season_number} of <ShowLink item={item} />
