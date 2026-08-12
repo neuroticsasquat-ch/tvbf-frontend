@@ -66,9 +66,7 @@ export function EpisodesPage() {
       ? seasonsList[seasonIdx + 1].number
       : undefined;
   const currentSeasonData = seasonsList.find((s) => s.number === currentSeason);
-  const currentSeasonLabel = currentSeasonData
-    ? seasonLabel(currentSeasonData)
-    : seasonLabel({ number: currentSeason });
+  const currentSeasonLabel = seasonLabel(currentSeasonData ?? { number: currentSeason });
   const seasonImage = currentSeasonData?.image_medium ?? showQuery.data.image_medium;
   const goToSeason = (n: number) => {
     const next = new URLSearchParams(params);

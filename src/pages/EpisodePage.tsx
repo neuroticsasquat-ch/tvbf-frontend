@@ -51,10 +51,6 @@ export function EpisodePage() {
   const idx = ep ? seasonEpisodes.findIndex((e) => e.id === ep.id) : -1;
   const seasonsList = show?.seasons ?? [];
   const seasonIdx = ep ? seasonsList.findIndex((s) => s.number === ep.season) : -1;
-  // The season row carries the name; until the show query resolves, fall back
-  // to the number the episode itself knows.
-  const currentSeasonLabel =
-    seasonIdx >= 0 ? seasonLabel(seasonsList[seasonIdx]) : seasonLabel({ number: ep?.season ?? 0 });
   const prevSeasonNumber =
     idx === 0 && seasonIdx > 0 ? seasonsList[seasonIdx - 1].number : undefined;
   const nextSeasonNumber =
@@ -85,6 +81,12 @@ export function EpisodePage() {
     );
   }
   if (!ep) return <LoadingState rows={1} />;
+
+  // The season row carries the name; until the show query resolves, fall back to
+  // the number the episode itself knows. Computed after the `ep` guard so the
+  // fallback can use a real season number — a placeholder here would print
+  // "Season 0", the one string this ticket exists to remove.
+  const currentSeasonLabel = seasonLabel(seasonsList[seasonIdx] ?? { number: ep.season });
 
   const prevInSeason = idx > 0 ? seasonEpisodes[idx - 1] : undefined;
   const nextInSeason =
