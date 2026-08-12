@@ -445,6 +445,11 @@ export interface FeedItem {
   show: FeedShowMini | null;
   episode: FeedEpisodeMini | null;
   season_number: number | null;
+  /** The season's own name, paired with `season_number` and set only for a
+   * `watched_season` roll-up (NEU-1132). Null wherever `season_number` is, and
+   * null when upstream never named the season — `seasonLabel` falls back to the
+   * number for both. */
+  season_name: string | null;
   rollup_count: number | null;
   stars: number | null;
   occurred_at: string;
