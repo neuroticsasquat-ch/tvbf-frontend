@@ -3,6 +3,7 @@ import { ChevronLeft, ChevronRight, Layers, Tv } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Link, useParams, useSearchParams } from "react-router";
 import { useShow, useShowEpisodes } from "@/api/shows";
+import { seasonLabel } from "@/lib/season";
 import { ApiError } from "@/api/client";
 import { useAuth } from "@/components/AuthContext";
 import { useWatchedEpisodes } from "@/api/me";
@@ -65,6 +66,9 @@ export function EpisodesPage() {
       ? seasonsList[seasonIdx + 1].number
       : undefined;
   const currentSeasonData = seasonsList.find((s) => s.number === currentSeason);
+  const currentSeasonLabel = currentSeasonData
+    ? seasonLabel(currentSeasonData)
+    : seasonLabel({ number: currentSeason });
   const seasonImage = currentSeasonData?.image_medium ?? showQuery.data.image_medium;
   const goToSeason = (n: number) => {
     const next = new URLSearchParams(params);
@@ -102,12 +106,12 @@ export function EpisodesPage() {
           <h1 className="text-2xl font-semibold">
             <FilterSheet
               title={showQuery.data.name}
-              triggerLabel={`Season ${currentSeason}`}
+              triggerLabel={currentSeasonLabel}
               triggerIcon={<Layers className="h-5 w-5 text-muted-foreground" aria-hidden />}
-              ariaLabel={`Select season (current: Season ${currentSeason})`}
+              ariaLabel={`Select season (current: ${currentSeasonLabel})`}
               options={seasonsList.map((s) => ({
                 key: String(s.number),
-                label: `Season ${s.number}`,
+                label: seasonLabel(s),
               }))}
               value={String(currentSeason)}
               onChange={(v) => goToSeason(Number(v))}

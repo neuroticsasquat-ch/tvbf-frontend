@@ -16,6 +16,7 @@ import { Button } from "@/components/ui/button";
 import { RatingBadge } from "@/components/RatingBadge";
 import { StarRatingInput } from "@/components/StarRatingInput";
 import { tvmazeToFiveStar } from "@/lib/rating";
+import { seasonLabel } from "@/lib/season";
 import { useEpisodeRating } from "@/api/me";
 import { useAuth } from "@/components/AuthContext";
 
@@ -50,6 +51,10 @@ export function EpisodePage() {
   const idx = ep ? seasonEpisodes.findIndex((e) => e.id === ep.id) : -1;
   const seasonsList = show?.seasons ?? [];
   const seasonIdx = ep ? seasonsList.findIndex((s) => s.number === ep.season) : -1;
+  // The season row carries the name; until the show query resolves, fall back
+  // to the number the episode itself knows.
+  const currentSeasonLabel =
+    seasonIdx >= 0 ? seasonLabel(seasonsList[seasonIdx]) : seasonLabel({ number: ep?.season ?? 0 });
   const prevSeasonNumber =
     idx === 0 && seasonIdx > 0 ? seasonsList[seasonIdx - 1].number : undefined;
   const nextSeasonNumber =
@@ -109,16 +114,16 @@ export function EpisodePage() {
           ) : null}
           <Link
             to={`/shows/${ep.show_id}/episodes?season=${ep.season}`}
-            aria-label={`Back to season ${ep.season}`}
+            aria-label={`Back to ${currentSeasonLabel}`}
             className="inline-flex items-center gap-1 rounded border border-border bg-background px-2 py-1 text-sm hover:bg-accent"
           >
             <ChevronLeft className="h-4 w-4 shrink-0" aria-hidden />
-            Season {ep.season}
+            {currentSeasonLabel}
           </Link>
         </div>
         <h1 className="text-2xl font-semibold">
           <FilterSheet
-            title={`Season ${ep.season}`}
+            title={currentSeasonLabel}
             triggerLabel={
               <span className="flex flex-col gap-0.5">
                 <span className="text-sm font-normal text-muted-foreground leading-tight">

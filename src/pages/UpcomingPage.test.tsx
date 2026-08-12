@@ -125,12 +125,15 @@ describe("UpcomingPage", () => {
     await waitFor(() => expect(showsCalls.length).toBeGreaterThan(0));
   });
 
-  it("Seasons tab renders rows with season number, name, premiere date, and TBA fallback", async () => {
+  it("Seasons tab labels a season by its name, falling back to the number", async () => {
     renderWithProviders(<UpcomingPage />);
     fireEvent.click(await screen.findByRole("tab", { name: /seasons/i }));
 
     await waitFor(() => expect(screen.getByText("Severance")).toBeInTheDocument());
-    expect(screen.getByText(/season 2 — block 2/i)).toBeInTheDocument();
+    // NEU-1129: the name replaces the number rather than being appended to it,
+    // which is what lets season 0 read "Specials" instead of "Season 0 — Specials".
+    expect(screen.getByText(/^block 2$/i)).toBeInTheDocument();
+    expect(screen.queryByText(/season 2 — block 2/i)).not.toBeInTheDocument();
     // Lost row: null season_name and null premiere_date → just "Season 3" + "TBA".
     expect(screen.getByText(/^season 3$/i)).toBeInTheDocument();
     expect(screen.getByText(/^TBA$/)).toBeInTheDocument();
