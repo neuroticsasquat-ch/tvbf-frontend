@@ -21,8 +21,11 @@ function ShowLink({ item }: { item: FeedItem }) {
   );
 }
 
-function episodeLabel(ep: { season: number; number: number }) {
-  return `S${ep.season}E${ep.number}`;
+// A copied TV Maze special carries no episode number (NEU-1062), so the `E`
+// segment is dropped rather than filled with a placeholder — `0` is a number no
+// episode has, and "Special" is a label the API never sent.
+function episodeLabel(ep: { season: number; number: number | null }) {
+  return ep.number === null ? `S${ep.season}` : `S${ep.season}E${ep.number}`;
 }
 
 function EpisodeLink({ item }: { item: FeedItem }) {
