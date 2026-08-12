@@ -433,7 +433,9 @@ export interface FeedEpisodeMini {
   id: number;
   name: string | null;
   season: number;
-  number: number;
+  /** Null for a copied TV Maze special, which has no real episode number
+   * (NEU-1062). `FeedItemRow` drops the `E` segment rather than inventing one. */
+  number: number | null;
 }
 
 export interface FeedItem {

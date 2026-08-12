@@ -84,12 +84,20 @@ describe("FriendsFeedPage", () => {
         stars: 3,
         episode: { id: 100, name: null, season: 2, number: 5 },
       }),
+      // A copied TV Maze special has no real episode number (NEU-1062), so the
+      // feed sends `number: null` and the label drops the `E` segment entirely
+      // rather than inventing one (NEU-1131).
+      item({
+        id: "h",
+        kind: "watched_episode",
+        episode: { id: 101, name: "A Christmas Special", season: 1, number: null },
+      }),
     ];
     server.use(
       http.get(`${env.apiBaseUrl}/me/feed`, () => HttpResponse.json({ items, next_cursor: null })),
     );
     renderWithProviders(<FriendsFeedPage />);
-    await waitFor(() => expect(screen.getAllByTestId("feed-row")).toHaveLength(7));
+    await waitFor(() => expect(screen.getAllByTestId("feed-row")).toHaveLength(8));
 
     const text = screen.getByRole("region", { name: /^friends$/i }).textContent ?? "";
     expect(text).toContain("Alice added Severance to My Shows.");
@@ -97,6 +105,9 @@ describe("FriendsFeedPage", () => {
     expect(text).toContain("Alice watched 5 episodes of Severance.");
     expect(text).toContain("Alice finished season 2 of Severance.");
     expect(text).toContain("Alice finished Severance.");
+    expect(text).toContain("Alice watched Severance S1.");
+    expect(text).not.toContain("Enull");
+    expect(text).not.toContain("E0");
     // rated_show / rated_episode use StarRatingDisplay; check it rendered.
     expect(screen.getByLabelText("4.5 out of 5")).toBeInTheDocument();
     expect(screen.getByLabelText("3.0 out of 5")).toBeInTheDocument();
