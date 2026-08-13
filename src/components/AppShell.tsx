@@ -241,26 +241,48 @@ export function AppShell() {
       )}
 
       <footer className="border-t border-border">
-        <div className="mx-auto max-w-6xl px-4 py-4 text-xs text-muted-foreground">
-          TV data and images provided by{" "}
+        <div className="mx-auto flex max-w-6xl flex-col gap-2 px-4 py-4 text-xs text-muted-foreground sm:flex-row sm:items-center sm:gap-3">
           <a
-            href="https://www.tvmaze.com"
+            href="https://www.themoviedb.org"
             target="_blank"
             rel="noreferrer noopener"
-            className="underline hover:text-foreground"
+            className="shrink-0"
           >
-            TVmaze
+            {/* Approved TMDB mark, bundled locally and deliberately sized below
+                the header wordmark — TMDB requires it be less prominent than the
+                mark that primarily describes the application, and forbids
+                altering its colour, aspect ratio or orientation. */}
+            <img
+              src="/tmdb-logo.svg"
+              alt="The Movie Database (TMDB)"
+              width={123}
+              height={16}
+              className="h-4 w-auto"
+            />
           </a>
-          , licensed under{" "}
-          <a
-            href="https://creativecommons.org/licenses/by-sa/4.0/"
-            target="_blank"
-            rel="noreferrer noopener"
-            className="underline hover:text-foreground"
-          >
-            CC BY-SA 4.0
-          </a>
-          .
+          <p>
+            {/* TMDB requires this sentence verbatim (NEU-1049). Do not reword. */}
+            This product uses the TMDB API but is not endorsed or certified by TMDB. Some TV data is
+            provided by{" "}
+            <a
+              href="https://www.tvmaze.com"
+              target="_blank"
+              rel="noreferrer noopener"
+              className="underline hover:text-foreground"
+            >
+              TVmaze
+            </a>
+            , licensed under{" "}
+            <a
+              href="https://creativecommons.org/licenses/by-sa/4.0/"
+              target="_blank"
+              rel="noreferrer noopener"
+              className="underline hover:text-foreground"
+            >
+              CC BY-SA 4.0
+            </a>
+            .
+          </p>
         </div>
       </footer>
 
