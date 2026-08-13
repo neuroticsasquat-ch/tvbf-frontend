@@ -19,8 +19,42 @@ describe("ShowCastList", () => {
     renderWithProviders(<ShowCastList showId={100} />);
     await screen.findByRole("heading", { name: /Cast/ });
 
-    // Alphabetical would be Adam, Mia, Zoe — the API's billing order is not.
+    // Alphabetical would be Adam, Mia, Zoe — the API's descending
+    // `episode_count` order (42, 12, 1) is not.
     expect(renderedNames()).toEqual(["Zoe Lead", "Adam Second", "Mia Third"]);
+  });
+
+  it("surfaces the episode count, singular on one", async () => {
+    renderWithProviders(<ShowCastList showId={100} />);
+
+    expect(await screen.findByText("42 episodes")).toBeInTheDocument();
+    expect(screen.getByText("12 episodes")).toBeInTheDocument();
+    expect(screen.getByText("1 episode")).toBeInTheDocument();
+  });
+
+  it("renders the character alone when the credit carries no count", async () => {
+    // The state of every credit until the API's credits routes read `catalog`
+    // (NEU-1047), and permanently the state of episode guest cast.
+    const uncounted = fixtureCast.map((entry) => ({
+      person: entry.person,
+      character: entry.character,
+      self: entry.self,
+      voice: entry.voice,
+    }));
+    server.use(http.get(`${base}/shows/100/cast`, () => HttpResponse.json(uncounted)));
+    renderWithProviders(<ShowCastList showId={100} />);
+
+    expect(await screen.findByText("Captain Alpha")).toBeInTheDocument();
+    expect(screen.queryByText(/\d+ episodes?$/)).not.toBeInTheDocument();
+  });
+
+  it("prints no count for a zero, which means missing rather than none", async () => {
+    const zeroed = fixtureCast.map((entry) => ({ ...entry, episode_count: 0 }));
+    server.use(http.get(`${base}/shows/100/cast`, () => HttpResponse.json(zeroed)));
+    renderWithProviders(<ShowCastList showId={100} />);
+
+    expect(await screen.findByText("Captain Alpha")).toBeInTheDocument();
+    expect(screen.queryByText("0 episodes")).not.toBeInTheDocument();
   });
 
   it("shows the character name and marks voice roles", async () => {

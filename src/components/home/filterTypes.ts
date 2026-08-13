@@ -1,7 +1,8 @@
 import type { ShowSummary } from "@/api/types";
 
 export type WatchState = "all" | "watching" | "not_started" | "caught_up" | "finished";
-export type ShowStatusFilter = "all" | "running" | "ended" | "upcoming" | "tbd";
+export type ShowStatusFilter =
+  "all" | "returning_series" | "ended" | "canceled" | "in_production" | "planned";
 export type InMyShowsFilter = "all" | "in" | "not_in";
 
 export const WATCH_STATES: { key: WatchState; label: string }[] = [
@@ -29,14 +30,41 @@ export const IN_MY_SHOWS_KEYS = IN_MY_SHOWS_FILTERS.map((f) => f.key);
 export const RATED_FILTER_KEYS = ["all", "rated"] as const;
 export type RatedFilter = (typeof RATED_FILTER_KEYS)[number];
 
+/** The catalog status a filter key selects, verbatim as TMDB stores it
+ * (NEU-1031 D1: we store TMDB's string and do not translate it). This is both
+ * the `?status=` value the browse API exact-matches and the string
+ * `matchesStatus` compares client-side — one table so the two cannot drift.
+ *
+ * The five values are the complete vocabulary, confirmed against 754 resolved
+ * shows in NEU-1032's sweep. TV Maze's `To Be Determined` has no counterpart
+ * and is gone: it scattered across all five rather than mapping to any one. */
+export const SHOW_STATUS_API_VALUE: Record<ShowStatusFilter, string | undefined> = {
+  all: undefined,
+  returning_series: "Returning Series",
+  ended: "Ended",
+  canceled: "Canceled",
+  in_production: "In Production",
+  planned: "Planned",
+};
+
 export const SHOW_STATUSES: { key: ShowStatusFilter; label: string }[] = [
   { key: "all", label: "All" },
-  { key: "running", label: "Running" },
+  { key: "returning_series", label: "Returning Series" },
   { key: "ended", label: "Ended" },
-  { key: "upcoming", label: "In Development" },
-  { key: "tbd", label: "To Be Determined" },
+  { key: "canceled", label: "Canceled" },
+  { key: "in_production", label: "In Production" },
+  { key: "planned", label: "Planned" },
 ];
 export const SHOW_STATUS_KEYS = SHOW_STATUSES.map((s) => s.key);
+
+/** Whether a show is over. TMDB splits what TV Maze called `Ended` into
+ * `Ended` and `Canceled`, so a straight `status === "Ended"` port would read
+ * every canceled show as still running — breaking "finished" for exactly the
+ * shows most likely to be finished (NEU-1031 D1). Every over-ness test goes
+ * through here. */
+export function isEndedStatus(status: string | null | undefined): boolean {
+  return status === "Ended" || status === "Canceled";
+}
 
 type WatchStateInput = {
   watched_episode_count: number;
@@ -50,7 +78,7 @@ export function watchStateOf(entry: WatchStateInput): Exclude<WatchState, "all">
   if (watched === 0) return "not_started";
   if (aired > 0 && watched >= aired) {
     // Caught up. "Finished" requires the show to be over (NEU-101 decision 2).
-    return entry.show.status === "Ended" ? "finished" : "caught_up";
+    return isEndedStatus(entry.show.status) ? "finished" : "caught_up";
   }
   return "watching";
 }
@@ -64,13 +92,10 @@ export function libraryStatusFor(entry: WatchStateInput): "caught_up" | "finishe
 
 export function matchesStatus(show: ShowSummary, filter: ShowStatusFilter): boolean {
   if (filter === "all") return true;
-  const showStatus = (show.status ?? "").toLowerCase();
-  // "Upcoming" maps to TVMaze's "In Development" status (not yet airing).
-  // "To Be Determined" is intentionally excluded — it covers shows already
-  // airing whose renewal/cancellation is unsettled, not pre-air shows.
-  if (filter === "upcoming") return showStatus === "in development";
-  if (filter === "tbd") return showStatus === "to be determined";
-  return showStatus === filter;
+  // Exact match, not a case-folded one: the catalog stores TMDB's string
+  // verbatim and the browse API matches it exactly, so the client-side filter
+  // has to agree with the server-side one character for character.
+  return show.status === SHOW_STATUS_API_VALUE[filter];
 }
 
 export function matchesGenre(show: ShowSummary, genre: string): boolean {

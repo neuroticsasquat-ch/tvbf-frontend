@@ -10,7 +10,7 @@ function makeShow(overrides: Partial<ShowSummary> = {}): ShowSummary {
     id: 1,
     name: "Test Show",
     type: null,
-    status: "Running",
+    status: "Returning Series",
     language: null,
     premiered: "2020-01-01",
     ended: null,

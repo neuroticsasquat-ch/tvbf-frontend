@@ -250,16 +250,19 @@ function EpisodeGroupCard({
 
                     aria-label prefixes the show because two expanded cards can
                     otherwise expose rows reading the same — the visible text is
-                    included verbatim, so WCAG 2.5.3 holds. */}
+                    included verbatim, so WCAG 2.5.3 holds. That is why the
+                    separator below and the `join` here are one decision: change
+                    one alone and the accessible name stops containing the
+                    visible string. */}
                 <Link
                   to={`/episodes/${entry.episode.id}`}
                   aria-label={`${show.name} — ${[episodeCode(entry.episode), detail]
                     .filter(Boolean)
-                    .join(" ")}`}
+                    .join(" · ")}`}
                   className="block truncate rounded px-1 py-1.5 text-xs leading-tight underline-offset-2 hover:bg-muted hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 >
                   {episodeCode(entry.episode)}
-                  {detail ? <span className="text-muted-foreground"> {detail}</span> : null}
+                  {detail ? <span className="text-muted-foreground"> · {detail}</span> : null}
                 </Link>
               </li>
             );

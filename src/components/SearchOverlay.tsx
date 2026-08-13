@@ -17,7 +17,11 @@ import {
   GenreFilter,
   ShowStatusFilterPicker,
 } from "@/components/home/FilterPickers";
-import { SHOW_STATUS_KEYS, type ShowStatusFilter } from "@/components/home/filterTypes";
+import {
+  SHOW_STATUS_API_VALUE,
+  SHOW_STATUS_KEYS,
+  type ShowStatusFilter,
+} from "@/components/home/filterTypes";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import { usePersistedSort } from "@/hooks/usePersistedSort";
 import { usePersistedString } from "@/hooks/usePersistedString";
@@ -30,14 +34,6 @@ const SEARCH_SORTS: { key: SortKey; label: string }[] = [
   { key: "name", label: "Show Title" },
 ];
 const SEARCH_SORT_KEYS = SEARCH_SORTS.map((s) => s.key);
-
-const STATUS_API_VALUE: Record<ShowStatusFilter, string | undefined> = {
-  all: undefined,
-  running: "Running",
-  ended: "Ended",
-  upcoming: "In Development",
-  tbd: "To Be Determined",
-};
 
 const PER_PAGE = 50;
 /** People are a secondary axis of the same search, so the section is deliberately
@@ -144,7 +140,7 @@ export function SearchOverlay({ search }: { search: string }) {
   const showsQuery = useShows(
     {
       search: query || undefined,
-      status: STATUS_API_VALUE[status],
+      status: SHOW_STATUS_API_VALUE[status],
       genre: genre === "all" ? undefined : [genre],
       sort,
       page,
