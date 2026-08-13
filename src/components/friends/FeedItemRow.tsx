@@ -26,8 +26,23 @@ function ShowLink({ item }: { item: FeedItem }) {
 // A copied TV Maze special carries no episode number (NEU-1062), so the `E`
 // segment is dropped rather than filled with a placeholder — `0` is a number no
 // episode has, and "Special" is a label the API never sent.
-function episodeLabel(ep: { season: number; number: number | null }) {
-  return ep.number === null ? `S${ep.season}` : `S${ep.season}E${ep.number}`;
+//
+// Dropping it left the label with nothing to distinguish one special from
+// another: every special in a season read as a bare "S1" (NEU-1134). So the
+// episode's own name stands in for the missing segment — `S1 · A Christmas
+// Special` — and **only** there. A numbered episode keeps `S2E5` exactly as
+// before, which is what holds every other feed row byte-identical; the mild
+// inconsistency between the two shapes is the price of that, and appending the
+// name everywhere is a design change rather than this fix.
+//
+// `name` is nullable too, and TMDB does leave specials unnamed, so a special
+// with no name falls back to the bare `S{season}` rather than trailing a
+// separator with nothing after it. Whitespace counts as no name, the same rule
+// `seasonLabel` applies one grain up.
+function episodeLabel(ep: { season: number; number: number | null; name: string | null }) {
+  if (ep.number !== null) return `S${ep.season}E${ep.number}`;
+  const name = ep.name?.trim();
+  return name ? `S${ep.season} · ${name}` : `S${ep.season}`;
 }
 
 function EpisodeLink({ item }: { item: FeedItem }) {
