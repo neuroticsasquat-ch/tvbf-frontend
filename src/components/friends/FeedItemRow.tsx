@@ -1,8 +1,10 @@
+import type { ReactNode } from "react";
 import { Link } from "react-router";
 import { CheckCircle2, ListChecks, PlusCircle, PlayCircle, Star, Trophy } from "lucide-react";
 import type { FeedItem } from "@/api/types";
 import { StarRatingDisplay } from "@/components/StarRatingDisplay";
 import { formatRelativeTime } from "@/lib/relativeTime";
+import { seasonLabel } from "@/lib/season";
 
 function ActorLink({ item }: { item: FeedItem }) {
   return (
@@ -56,7 +58,7 @@ function KindIcon({ kind }: { kind: FeedItem["kind"] }) {
   }
 }
 
-function Body({ item }: { item: FeedItem }) {
+function renderBody(item: FeedItem): ReactNode {
   switch (item.kind) {
     case "added_show":
       return (
@@ -78,16 +80,26 @@ function Body({ item }: { item: FeedItem }) {
         </span>
       );
     case "watched_season":
-      // NEU-1129 could not reach this one: `seasonLabel` needs the season's
-      // name and `FeedItem` carries only `season_number`, so a friend finishing
-      // the specials season still reads "finished season 0". Fixing it means
-      // adding `season_name` to the feed payload (backend) — deliberately not a
-      // `season_number === 0` special case here, which is the inference that
-      // ticket rejects.
+      // NEU-1132 added `season_name`, so this site finally routes through
+      // `seasonLabel` like every other season label in the SPA (NEU-1129) —
+      // still no `season_number === 0` special case, because the label is
+      // upstream's to state rather than ours to infer.
+      //
+      // The label carries its own capital ("Specials", "Season 2"), so the
+      // sentence reads "finished Specials of X" rather than "finished season
+      // {n} of X". Lowercasing it here would turn TMDB's "Specials" into
+      // "specials".
+      //
+      // A `watched_season` item with no season number cannot be described at
+      // all, so it renders no row rather than a headless sentence. The backend
+      // always writes the column for this verb; `season_number` is nullable
+      // because it is one field across every kind.
+      if (item.season_number === null) return null;
       return (
         <span>
-          <ActorLink item={item} /> finished season {item.season_number} of <ShowLink item={item} />
-          .
+          <ActorLink item={item} /> finished{" "}
+          {seasonLabel({ number: item.season_number, name: item.season_name })} of{" "}
+          <ShowLink item={item} />.
         </span>
       );
     case "watched_show":
@@ -114,12 +126,22 @@ function Body({ item }: { item: FeedItem }) {
 }
 
 export function FeedItemRow({ item }: { item: FeedItem }) {
+  // An item with no describable body is dropped whole — an icon and a timestamp
+  // with no sentence reads as a rendering bug rather than as activity.
+  //
+  // `ActivityFeed` picks its empty state off the raw payload length, so a page
+  // of *only* dropped items would render a bare list rather than "no activity".
+  // Left alone deliberately: that needs a whole page of `watched_season` events
+  // carrying no season number, which the backend cannot emit, and closing it
+  // means either restating "is this describable" inside `ActivityFeed` or
+  // exporting this function purely to use as a predicate — both worse than the
+  // residue.
+  const body = renderBody(item);
+  if (body === null) return null;
   return (
     <li data-testid="feed-row" data-kind={item.kind} className="flex items-start gap-3 py-2">
       <KindIcon kind={item.kind} />
-      <div className="flex-1 text-sm">
-        <Body item={item} />
-      </div>
+      <div className="flex-1 text-sm">{body}</div>
       <time
         dateTime={item.occurred_at}
         title={item.occurred_at}

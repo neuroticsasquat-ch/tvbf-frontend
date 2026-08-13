@@ -13,6 +13,7 @@ function item(overrides: Partial<FeedItem> & { id: string; kind: FeedItem["kind"
     show: { id: 5, name: "Severance" },
     episode: null,
     season_number: null,
+    season_name: null,
     rollup_count: null,
     stars: null,
     occurred_at: "2026-05-15T12:00:00Z",
@@ -75,7 +76,7 @@ describe("FriendsFeedPage", () => {
         episode: { id: 99, name: "Pilot", season: 2, number: 5 },
       }),
       item({ id: "c", kind: "watched_episode_run", rollup_count: 5 }),
-      item({ id: "d", kind: "watched_season", season_number: 2 }),
+      item({ id: "d", kind: "watched_season", season_number: 2, season_name: "Season 2" }),
       item({ id: "e", kind: "watched_show" }),
       item({ id: "f", kind: "rated_show", stars: 4.5 }),
       item({
@@ -103,7 +104,7 @@ describe("FriendsFeedPage", () => {
     expect(text).toContain("Alice added Severance to My Shows.");
     expect(text).toContain("Alice watched Severance S2E5.");
     expect(text).toContain("Alice watched 5 episodes of Severance.");
-    expect(text).toContain("Alice finished season 2 of Severance.");
+    expect(text).toContain("Alice finished Season 2 of Severance.");
     expect(text).toContain("Alice finished Severance.");
     expect(text).toContain("Alice watched Severance S1.");
     expect(text).not.toContain("Enull");
@@ -111,6 +112,57 @@ describe("FriendsFeedPage", () => {
     // rated_show / rated_episode use StarRatingDisplay; check it rendered.
     expect(screen.getByLabelText("4.5 out of 5")).toBeInTheDocument();
     expect(screen.getByLabelText("3.0 out of 5")).toBeInTheDocument();
+  });
+
+  // NEU-1133: the roll-up label comes from the server, via `seasonLabel`.
+  async function renderFeed(items: FeedItem[]) {
+    server.use(
+      http.get(`${env.apiBaseUrl}/me/feed`, () => HttpResponse.json({ items, next_cursor: null })),
+    );
+    renderWithProviders(<FriendsFeedPage />);
+    await waitFor(() => expect(screen.getByRole("region", { name: /^friends$/i })).toBeVisible());
+    return () => screen.getByRole("region", { name: /^friends$/i }).textContent ?? "";
+  }
+
+  it('labels a specials-season roll-up by name rather than "season 0"', async () => {
+    const feedText = await renderFeed([
+      item({ id: "s", kind: "watched_season", season_number: 0, season_name: "Specials" }),
+    ]);
+    await waitFor(() => expect(screen.getAllByTestId("feed-row")).toHaveLength(1));
+    expect(feedText()).toContain("Alice finished Specials of Severance.");
+    expect(feedText()).not.toContain("season 0");
+    expect(feedText()).not.toContain("Season 0");
+  });
+
+  it("falls back to the number when the season has no upstream name", async () => {
+    // The 5 season-0 rows production has no name for must read "Season 0" —
+    // not a label the SPA invented (NEU-1129).
+    const feedText = await renderFeed([
+      item({ id: "s", kind: "watched_season", season_number: 0, season_name: null }),
+      item({ id: "t", kind: "watched_season", season_number: 3, season_name: null }),
+    ]);
+    await waitFor(() => expect(screen.getAllByTestId("feed-row")).toHaveLength(2));
+    expect(feedText()).toContain("Alice finished Season 0 of Severance.");
+    expect(feedText()).toContain("Alice finished Season 3 of Severance.");
+  });
+
+  it("prefers a season's own name over the number for a regular season", async () => {
+    const feedText = await renderFeed([
+      item({ id: "s", kind: "watched_season", season_number: 4, season_name: "The Final Season" }),
+    ]);
+    await waitFor(() => expect(screen.getAllByTestId("feed-row")).toHaveLength(1));
+    expect(feedText()).toContain("Alice finished The Final Season of Severance.");
+  });
+
+  it("renders no row for a season roll-up carrying no season number", async () => {
+    // Undescribable: an icon and a timestamp with no sentence reads as a
+    // rendering bug. The backend always writes the column for this verb.
+    await renderFeed([
+      item({ id: "s", kind: "watched_season", season_number: null }),
+      item({ id: "t", kind: "added_show" }),
+    ]);
+    await waitFor(() => expect(screen.getAllByTestId("feed-row")).toHaveLength(1));
+    expect(screen.getByTestId("feed-row")).toHaveAttribute("data-kind", "added_show");
   });
 
   it("fetches the next page when the sentinel intersects", async () => {
