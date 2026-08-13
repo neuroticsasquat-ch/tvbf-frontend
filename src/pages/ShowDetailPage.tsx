@@ -24,6 +24,7 @@ import { Tv } from "lucide-react";
 import { RatingBadge } from "@/components/RatingBadge";
 import { StarRatingInput } from "@/components/StarRatingInput";
 import { tvmazeToFiveStar } from "@/lib/rating";
+import { seasonLabel } from "@/lib/season";
 
 function yearRange(premiered: string | null, ended: string | null) {
   if (!premiered) return "—";
@@ -228,7 +229,6 @@ export function ShowDetailPage() {
                   const upcoming =
                     (s.episode_order ?? 0) > aired ? (s.episode_order ?? 0) - aired : 0;
                   const year = s.premiere_date ? s.premiere_date.slice(0, 4) : null;
-                  const title = s.name && s.name !== `Season ${s.number}` ? s.name : null;
                   const thumbnail = s.image_medium ?? show.image_medium;
                   return (
                     <li key={s.id} className="border border-border rounded p-3 hover:bg-accent">
@@ -254,13 +254,7 @@ export function ShowDetailPage() {
                           )}
                           <div className="flex-1 min-w-0">
                             <p className="text-base text-foreground leading-tight truncate">
-                              Season {s.number}
-                              {title && (
-                                <>
-                                  {" — "}
-                                  <span className="font-semibold">{title}</span>
-                                </>
-                              )}
+                              {seasonLabel(s)}
                               {year && <span className="text-muted-foreground"> — {year}</span>}
                             </p>
                             <p className="text-xs text-muted-foreground leading-tight">

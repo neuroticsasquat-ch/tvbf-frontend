@@ -94,7 +94,7 @@ describe("SearchOverlay", () => {
     await screen.findByRole("link", { name: /Fixture Show/i });
 
     await user.click(screen.getByRole("button", { name: /filter by show status/i }));
-    await user.click(await screen.findByRole("button", { name: "Running" }));
+    await user.click(await screen.findByRole("button", { name: "Returning Series" }));
 
     expect(await screen.findByRole("heading", { name: /^Shows/ })).toBeInTheDocument();
     expect(screen.getByText(/No shows match these filters/i)).toBeInTheDocument();

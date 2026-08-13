@@ -13,6 +13,7 @@ function item(overrides: Partial<FeedItem> & { id: string; kind: FeedItem["kind"
     show: { id: 5, name: "Severance" },
     episode: null,
     season_number: null,
+    season_name: null,
     rollup_count: null,
     stars: null,
     occurred_at: "2026-05-15T12:00:00Z",
@@ -75,7 +76,7 @@ describe("FriendsFeedPage", () => {
         episode: { id: 99, name: "Pilot", season: 2, number: 5 },
       }),
       item({ id: "c", kind: "watched_episode_run", rollup_count: 5 }),
-      item({ id: "d", kind: "watched_season", season_number: 2 }),
+      item({ id: "d", kind: "watched_season", season_number: 2, season_name: "Season 2" }),
       item({ id: "e", kind: "watched_show" }),
       item({ id: "f", kind: "rated_show", stars: 4.5 }),
       item({
@@ -84,22 +85,85 @@ describe("FriendsFeedPage", () => {
         stars: 3,
         episode: { id: 100, name: null, season: 2, number: 5 },
       }),
+      // A copied TV Maze special has no real episode number (NEU-1062), so the
+      // feed sends `number: null` and the label drops the `E` segment entirely
+      // rather than inventing one (NEU-1131).
+      item({
+        id: "h",
+        kind: "watched_episode",
+        episode: { id: 101, name: "A Christmas Special", season: 1, number: null },
+      }),
     ];
     server.use(
       http.get(`${env.apiBaseUrl}/me/feed`, () => HttpResponse.json({ items, next_cursor: null })),
     );
     renderWithProviders(<FriendsFeedPage />);
-    await waitFor(() => expect(screen.getAllByTestId("feed-row")).toHaveLength(7));
+    await waitFor(() => expect(screen.getAllByTestId("feed-row")).toHaveLength(8));
 
     const text = screen.getByRole("region", { name: /^friends$/i }).textContent ?? "";
     expect(text).toContain("Alice added Severance to My Shows.");
     expect(text).toContain("Alice watched Severance S2E5.");
     expect(text).toContain("Alice watched 5 episodes of Severance.");
-    expect(text).toContain("Alice finished season 2 of Severance.");
+    expect(text).toContain("Alice finished Season 2 of Severance.");
     expect(text).toContain("Alice finished Severance.");
+    // NEU-1134: the name stands in for the segment NEU-1131 dropped.
+    expect(text).toContain("Alice watched Severance S1 · A Christmas Special.");
+    expect(text).not.toContain("Enull");
+    expect(text).not.toContain("E0");
     // rated_show / rated_episode use StarRatingDisplay; check it rendered.
     expect(screen.getByLabelText("4.5 out of 5")).toBeInTheDocument();
     expect(screen.getByLabelText("3.0 out of 5")).toBeInTheDocument();
+  });
+
+  // NEU-1133: the roll-up label comes from the server, via `seasonLabel`.
+  async function renderFeed(items: FeedItem[]) {
+    server.use(
+      http.get(`${env.apiBaseUrl}/me/feed`, () => HttpResponse.json({ items, next_cursor: null })),
+    );
+    renderWithProviders(<FriendsFeedPage />);
+    await waitFor(() => expect(screen.getByRole("region", { name: /^friends$/i })).toBeVisible());
+    return () => screen.getByRole("region", { name: /^friends$/i }).textContent ?? "";
+  }
+
+  it('labels a specials-season roll-up by name rather than "season 0"', async () => {
+    const feedText = await renderFeed([
+      item({ id: "s", kind: "watched_season", season_number: 0, season_name: "Specials" }),
+    ]);
+    await waitFor(() => expect(screen.getAllByTestId("feed-row")).toHaveLength(1));
+    expect(feedText()).toContain("Alice finished Specials of Severance.");
+    expect(feedText()).not.toContain("season 0");
+    expect(feedText()).not.toContain("Season 0");
+  });
+
+  it("falls back to the number when the season has no upstream name", async () => {
+    // The 5 season-0 rows production has no name for must read "Season 0" —
+    // not a label the SPA invented (NEU-1129).
+    const feedText = await renderFeed([
+      item({ id: "s", kind: "watched_season", season_number: 0, season_name: null }),
+      item({ id: "t", kind: "watched_season", season_number: 3, season_name: null }),
+    ]);
+    await waitFor(() => expect(screen.getAllByTestId("feed-row")).toHaveLength(2));
+    expect(feedText()).toContain("Alice finished Season 0 of Severance.");
+    expect(feedText()).toContain("Alice finished Season 3 of Severance.");
+  });
+
+  it("prefers a season's own name over the number for a regular season", async () => {
+    const feedText = await renderFeed([
+      item({ id: "s", kind: "watched_season", season_number: 4, season_name: "The Final Season" }),
+    ]);
+    await waitFor(() => expect(screen.getAllByTestId("feed-row")).toHaveLength(1));
+    expect(feedText()).toContain("Alice finished The Final Season of Severance.");
+  });
+
+  it("renders no row for a season roll-up carrying no season number", async () => {
+    // Undescribable: an icon and a timestamp with no sentence reads as a
+    // rendering bug. The backend always writes the column for this verb.
+    await renderFeed([
+      item({ id: "s", kind: "watched_season", season_number: null }),
+      item({ id: "t", kind: "added_show" }),
+    ]);
+    await waitFor(() => expect(screen.getAllByTestId("feed-row")).toHaveLength(1));
+    expect(screen.getByTestId("feed-row")).toHaveAttribute("data-kind", "added_show");
   });
 
   it("fetches the next page when the sentinel intersects", async () => {
@@ -230,5 +294,65 @@ describe("FriendsFeedPage", () => {
       "aria-selected",
       "true",
     );
+  });
+  // NEU-1134: a special has no episode number, so its name carries the label.
+  async function feedText(items: FeedItem[]) {
+    server.use(
+      http.get(`${env.apiBaseUrl}/me/feed`, () => HttpResponse.json({ items, next_cursor: null })),
+    );
+    renderWithProviders(<FriendsFeedPage />);
+    await waitFor(() => expect(screen.getAllByTestId("feed-row")).toHaveLength(items.length));
+    return screen.getByRole("region", { name: /^friends$/i }).textContent ?? "";
+  }
+
+  it("names a numberless episode on a rated_episode row too, not just watched_episode", async () => {
+    // The two kinds share one `EpisodeLink`, and the acceptance criterion is
+    // that they cannot diverge — asserted rather than left to the structure.
+    const special = { id: 101, name: "A Christmas Special", season: 1, number: null };
+    const text = await feedText([
+      item({ id: "w", kind: "watched_episode", episode: special }),
+      item({ id: "r", kind: "rated_episode", episode: special, stars: 4 }),
+    ]);
+    expect(text).toContain("Alice watched Severance S1 · A Christmas Special.");
+    expect(text).toContain("Alice rated Severance S1 · A Christmas Special");
+  });
+
+  it("renders a bare season label when a numberless episode has no name", async () => {
+    const text = await feedText([
+      item({
+        id: "n",
+        kind: "watched_episode",
+        episode: { id: 102, name: null, season: 1, number: null },
+      }),
+    ]);
+    expect(text).toContain("Alice watched Severance S1.");
+    expect(text).not.toContain("·");
+  });
+
+  it("treats a whitespace-only episode name as no name", async () => {
+    const text = await feedText([
+      item({
+        id: "b",
+        kind: "watched_episode",
+        episode: { id: 103, name: "   ", season: 1, number: null },
+      }),
+    ]);
+    expect(text).toContain("Alice watched Severance S1.");
+    expect(text).not.toContain("·");
+  });
+
+  it("leaves a numbered episode's label untouched", async () => {
+    // Every existing feed row stays byte-identical: the name is added exactly
+    // where the label went contentless, and nowhere else.
+    const text = await feedText([
+      item({
+        id: "p",
+        kind: "watched_episode",
+        episode: { id: 104, name: "Pilot", season: 2, number: 5 },
+      }),
+    ]);
+    expect(text).toContain("Alice watched Severance S2E5.");
+    expect(text).not.toContain("Pilot");
+    expect(text).not.toContain("·");
   });
 });

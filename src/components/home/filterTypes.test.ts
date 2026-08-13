@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { libraryStatusFor, matchesStatus, watchStateOf } from "./filterTypes";
+import {
+  SHOW_STATUSES,
+  SHOW_STATUS_API_VALUE,
+  isEndedStatus,
+  libraryStatusFor,
+  matchesStatus,
+  watchStateOf,
+} from "./filterTypes";
 import type { ShowSummary } from "@/api/types";
 
 function showWith(status: string | null): ShowSummary {
@@ -22,47 +29,93 @@ function showWith(status: string | null): ShowSummary {
   };
 }
 
+describe("SHOW_STATUSES", () => {
+  it("offers exactly TMDB's five statuses plus All", () => {
+    expect(SHOW_STATUSES.map((s) => s.label)).toEqual([
+      "All",
+      "Returning Series",
+      "Ended",
+      "Canceled",
+      "In Production",
+      "Planned",
+    ]);
+  });
+
+  it("drops TV Maze's vocabulary, so a persisted key from it no longer validates", () => {
+    // `usePersistedSort` checks the stored value against SHOW_STATUS_KEYS and
+    // falls back to the default when it misses — which is what lands a user
+    // holding `running` / `upcoming` / `tbd` on "All" rather than on an empty
+    // list (NEU-1031 D3). `ended` deliberately survives: it means the same
+    // thing in both vocabularies.
+    const keys: string[] = SHOW_STATUSES.map((s) => s.key);
+    expect(keys).not.toContain("running");
+    expect(keys).not.toContain("upcoming");
+    expect(keys).not.toContain("tbd");
+    expect(keys).toContain("ended");
+  });
+
+  it("every non-'all' key maps to the catalog string TMDB stores", () => {
+    for (const { key } of SHOW_STATUSES) {
+      if (key === "all") expect(SHOW_STATUS_API_VALUE[key]).toBeUndefined();
+      else expect(SHOW_STATUS_API_VALUE[key]).toBeTruthy();
+    }
+  });
+});
+
 describe("matchesStatus", () => {
   it("'all' matches everything including unknown statuses", () => {
-    expect(matchesStatus(showWith("Running"), "all")).toBe(true);
+    expect(matchesStatus(showWith("Returning Series"), "all")).toBe(true);
     expect(matchesStatus(showWith(null), "all")).toBe(true);
   });
 
-  it("'running' matches Running case-insensitively", () => {
-    expect(matchesStatus(showWith("Running"), "running")).toBe(true);
-    expect(matchesStatus(showWith("Ended"), "running")).toBe(false);
-  });
-
-  it("'ended' matches Ended", () => {
+  it("matches each of TMDB's five statuses on its own key", () => {
+    expect(matchesStatus(showWith("Returning Series"), "returning_series")).toBe(true);
     expect(matchesStatus(showWith("Ended"), "ended")).toBe(true);
+    expect(matchesStatus(showWith("Canceled"), "canceled")).toBe(true);
+    expect(matchesStatus(showWith("In Production"), "in_production")).toBe(true);
+    expect(matchesStatus(showWith("Planned"), "planned")).toBe(true);
   });
 
-  it("'upcoming' matches In Development", () => {
-    expect(matchesStatus(showWith("In Development"), "upcoming")).toBe(true);
+  it("keeps Ended and Canceled distinct — the split TV Maze could not express", () => {
+    expect(matchesStatus(showWith("Canceled"), "ended")).toBe(false);
+    expect(matchesStatus(showWith("Ended"), "canceled")).toBe(false);
   });
 
-  it("'upcoming' does NOT match To Be Determined", () => {
-    expect(matchesStatus(showWith("To Be Determined"), "upcoming")).toBe(false);
+  it("keeps In Production and Planned distinct", () => {
+    expect(matchesStatus(showWith("Planned"), "in_production")).toBe(false);
+    expect(matchesStatus(showWith("In Production"), "planned")).toBe(false);
   });
 
-  it("'tbd' matches To Be Determined", () => {
-    expect(matchesStatus(showWith("To Be Determined"), "tbd")).toBe(true);
+  it("does not match a TV Maze status left over from before cutover", () => {
+    expect(matchesStatus(showWith("Running"), "returning_series")).toBe(false);
+    expect(matchesStatus(showWith("In Development"), "planned")).toBe(false);
   });
 
-  it("'tbd' does NOT match In Development, Running, or Ended", () => {
-    expect(matchesStatus(showWith("In Development"), "tbd")).toBe(false);
-    expect(matchesStatus(showWith("Running"), "tbd")).toBe(false);
-    expect(matchesStatus(showWith("Ended"), "tbd")).toBe(false);
-  });
-
-  it("'upcoming' does NOT match Running or Ended", () => {
-    expect(matchesStatus(showWith("Running"), "upcoming")).toBe(false);
-    expect(matchesStatus(showWith("Ended"), "upcoming")).toBe(false);
+  it("matches exactly, not case-insensitively — the API compares verbatim", () => {
+    expect(matchesStatus(showWith("returning series"), "returning_series")).toBe(false);
   });
 
   it("returns false when show.status is null and a specific filter is set", () => {
-    expect(matchesStatus(showWith(null), "running")).toBe(false);
-    expect(matchesStatus(showWith(null), "upcoming")).toBe(false);
+    expect(matchesStatus(showWith(null), "returning_series")).toBe(false);
+    expect(matchesStatus(showWith(null), "planned")).toBe(false);
+  });
+});
+
+describe("isEndedStatus", () => {
+  it("is true for both statuses that mean the show is over", () => {
+    expect(isEndedStatus("Ended")).toBe(true);
+    expect(isEndedStatus("Canceled")).toBe(true);
+  });
+
+  it("is false for the three that mean it is not", () => {
+    expect(isEndedStatus("Returning Series")).toBe(false);
+    expect(isEndedStatus("In Production")).toBe(false);
+    expect(isEndedStatus("Planned")).toBe(false);
+  });
+
+  it("is false for null and undefined", () => {
+    expect(isEndedStatus(null)).toBe(false);
+    expect(isEndedStatus(undefined)).toBe(false);
   });
 });
 
@@ -83,21 +136,26 @@ describe("watchStateOf", () => {
     expect(watchStateOf(entry({ watched: 3, aired: 10 }))).toBe("watching");
   });
 
-  it("caught_up when all aired watched and show is Running", () => {
-    expect(watchStateOf(entry({ watched: 10, aired: 10, status: "Running" }))).toBe("caught_up");
+  it("caught_up when all aired watched and show is Returning Series", () => {
+    expect(watchStateOf(entry({ watched: 10, aired: 10, status: "Returning Series" }))).toBe(
+      "caught_up",
+    );
   });
 
-  it("caught_up when show status is In Development / TBD", () => {
-    expect(watchStateOf(entry({ watched: 10, aired: 10, status: "In Development" }))).toBe(
+  it("caught_up when show is In Production / Planned", () => {
+    expect(watchStateOf(entry({ watched: 10, aired: 10, status: "In Production" }))).toBe(
       "caught_up",
     );
-    expect(watchStateOf(entry({ watched: 10, aired: 10, status: "To Be Determined" }))).toBe(
-      "caught_up",
-    );
+    expect(watchStateOf(entry({ watched: 10, aired: 10, status: "Planned" }))).toBe("caught_up");
   });
 
   it("finished when all aired watched and show is Ended", () => {
     expect(watchStateOf(entry({ watched: 10, aired: 10, status: "Ended" }))).toBe("finished");
+  });
+
+  it("finished when the show was Canceled, not merely caught_up", () => {
+    // The regression a straight `status === "Ended"` port would have shipped.
+    expect(watchStateOf(entry({ watched: 10, aired: 10, status: "Canceled" }))).toBe("finished");
   });
 
   it("watching when aired is zero", () => {
@@ -117,12 +175,15 @@ describe("libraryStatusFor", () => {
     };
   }
 
-  it("returns 'finished' for Ended + caught up", () => {
+  it("returns 'finished' for Ended or Canceled + caught up", () => {
     expect(libraryStatusFor(entry({ watched: 5, aired: 5, status: "Ended" }))).toBe("finished");
+    expect(libraryStatusFor(entry({ watched: 5, aired: 5, status: "Canceled" }))).toBe("finished");
   });
 
-  it("returns 'caught_up' for Running + caught up", () => {
-    expect(libraryStatusFor(entry({ watched: 5, aired: 5, status: "Running" }))).toBe("caught_up");
+  it("returns 'caught_up' for Returning Series + caught up", () => {
+    expect(libraryStatusFor(entry({ watched: 5, aired: 5, status: "Returning Series" }))).toBe(
+      "caught_up",
+    );
   });
 
   it("returns null for partial progress", () => {

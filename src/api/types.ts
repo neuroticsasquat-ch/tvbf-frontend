@@ -127,6 +127,12 @@ export interface CastMember {
   /** Credited as themselves (matches upstream's `self` key). */
   self: boolean;
   voice: boolean;
+  /** Episodes this person appeared in as this character, and the key the API
+   * orders show cast by (NEU-1039). Optional because it is absent at two
+   * grains: the credits routes still read `tvmaze`, which only ever had
+   * billing order, until they repoint to `catalog` (NEU-1047); and episode
+   * guest cast is a per-episode row, so it carries no count at all. */
+  episode_count?: number | null;
 }
 
 export interface CrewMember {
@@ -427,7 +433,11 @@ export interface FeedEpisodeMini {
   id: number;
   name: string | null;
   season: number;
-  number: number;
+  /** Null for a copied TV Maze special, which has no real episode number
+   * (NEU-1062). `FeedItemRow` drops the `E` segment rather than inventing one,
+   * and puts `name` in its place so one special is still tellable from another
+   * (NEU-1134). */
+  number: number | null;
 }
 
 export interface FeedItem {
@@ -437,6 +447,11 @@ export interface FeedItem {
   show: FeedShowMini | null;
   episode: FeedEpisodeMini | null;
   season_number: number | null;
+  /** The season's own name, paired with `season_number` and set only for a
+   * `watched_season` roll-up (NEU-1132). Null wherever `season_number` is, and
+   * null when upstream never named the season — `seasonLabel` falls back to the
+   * number for both. */
+  season_name: string | null;
   rollup_count: number | null;
   stars: number | null;
   occurred_at: string;
