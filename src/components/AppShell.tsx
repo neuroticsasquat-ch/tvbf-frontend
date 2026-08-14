@@ -262,27 +262,11 @@ export function AppShell() {
             />
           </a>
           <p>
-            {/* TMDB requires this sentence verbatim (NEU-1049). Do not reword. */}
-            This product uses the TMDB API but is not endorsed or certified by TMDB. Some legacy
-            title data is &copy;{" "}
-            <a
-              href="https://www.tvmaze.com"
-              target="_blank"
-              rel="noreferrer noopener"
-              className="underline hover:text-foreground"
-            >
-              TVmaze
-            </a>
-            , licensed under{" "}
-            <a
-              href="https://creativecommons.org/licenses/by-sa/4.0/"
-              target="_blank"
-              rel="noreferrer noopener"
-              className="underline hover:text-foreground"
-            >
-              CC BY-SA 4.0
-            </a>
-            .
+            {/* TMDB requires this sentence verbatim (NEU-1049). Do not reword.
+                A TVmaze CC BY-SA credit sat after it until NEU-1147: it was a
+                licence condition while the catalog still served TV Maze-derived
+                rows, and NEU-1146 retired the last of those. */}
+            This product uses the TMDB API but is not endorsed or certified by TMDB.
           </p>
         </div>
 

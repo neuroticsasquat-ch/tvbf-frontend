@@ -23,21 +23,15 @@ describe("AppShell footer attribution", () => {
     expect(logo.closest("a")).toHaveAttribute("href", "https://www.themoviedb.org");
   });
 
-  // The credit is a CC BY-SA 4.0 condition, not a courtesy: production still
-  // serves 782,161 episodes and 18,341 seasons whose data came from TV Maze —
-  // the rows the migration deliberately kept because TMDB had no counterpart to
-  // map them onto, 189 of them carrying watch history. It comes out when that
-  // residue is mapped away, and not before.
-  it("keeps the TVmaze CC BY-SA credit while TV Maze-derived data is still served", () => {
+  // The inverse of the test that stood here until NEU-1147. The TVmaze CC BY-SA
+  // credit was a licence condition while the catalog served TV Maze-derived
+  // rows; NEU-1146 retired the last of them, so the credit is now a claim about
+  // a source this product does not use. Asserting its *absence* is what keeps it
+  // from drifting back in.
+  it("no longer credits TVmaze, the catalog being sole-sourced from TMDB", () => {
     const inFooter = footer();
-    expect(inFooter.getByRole("link", { name: "TVmaze" })).toHaveAttribute(
-      "href",
-      "https://www.tvmaze.com",
-    );
-    expect(inFooter.getByRole("link", { name: "CC BY-SA 4.0" })).toHaveAttribute(
-      "href",
-      "https://creativecommons.org/licenses/by-sa/4.0/",
-    );
+    expect(inFooter.queryByRole("link", { name: "TVmaze" })).not.toBeInTheDocument();
+    expect(inFooter.queryByRole("link", { name: "CC BY-SA 4.0" })).not.toBeInTheDocument();
   });
 });
 
