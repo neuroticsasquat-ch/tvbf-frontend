@@ -242,7 +242,7 @@ export function AppShell() {
       )}
 
       <footer className="border-t border-border">
-        <div className="mx-auto flex max-w-6xl flex-col gap-2 px-4 py-4 text-xs text-muted-foreground sm:flex-row sm:items-center sm:gap-3">
+        <div className="mx-auto flex max-w-6xl flex-col gap-2 px-4 pt-4 pb-2 text-xs text-muted-foreground sm:flex-row sm:items-center sm:gap-3">
           <a
             href="https://www.themoviedb.org"
             target="_blank"
@@ -263,10 +263,46 @@ export function AppShell() {
           </a>
           <p>
             {/* TMDB requires this sentence verbatim (NEU-1049). Do not reword.
-                A TVmaze CC BY-SA credit sat after it until NEU-1147: it was a
-                licence condition while the catalog still served TV Maze-derived
-                rows, and NEU-1146 retired the last of those. */}
+                The TVmaze credit that used to trail this sentence is now its own
+                line below, so neither attribution reads as a qualifier on the
+                other. */}
             This product uses the TMDB API but is not endorsed or certified by TMDB.
+          </p>
+        </div>
+
+        {/* The TVmaze CC BY-SA credit, on its own line rather than trailing the
+            TMDB sentence. It was removed in NEU-1147 once NEU-1146 retired the
+            last TV Maze-derived catalog rows, and returns because NEU-1145
+            re-admitted a TV Maze-derived value: the per-season airdate offset
+            that makes `air_date` mean the date a US Eastern viewer saw.
+
+            The wording is deliberately not the one NEU-1147 removed. That read
+            "Some legacy title data is (c) TVmaze", which is now false — no TV
+            Maze title, date or numbering is stored. What we hold is one integer
+            per (show, season) derived from their airdates, so the credit says
+            *derived*: CC BY-SA asks that a modification be indicated, and
+            claiming their data verbatim would be the inaccurate half of that. */}
+        <div className="mx-auto max-w-6xl px-4 pb-4 text-xs text-muted-foreground">
+          <p>
+            Airdate corrections are derived from data provided by{" "}
+            <a
+              href="https://www.tvmaze.com"
+              target="_blank"
+              rel="noreferrer noopener"
+              className="underline hover:text-foreground"
+            >
+              TVmaze
+            </a>
+            , licensed under{" "}
+            <a
+              href="https://creativecommons.org/licenses/by-sa/4.0/"
+              target="_blank"
+              rel="noreferrer noopener"
+              className="underline hover:text-foreground"
+            >
+              CC BY-SA 4.0
+            </a>
+            .
           </p>
         </div>
 
