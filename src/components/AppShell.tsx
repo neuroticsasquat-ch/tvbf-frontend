@@ -15,6 +15,7 @@ import { ChangePasswordDialog } from "./ChangePasswordDialog";
 import { DeleteAccountDialog } from "./DeleteAccountDialog";
 import { FeedbackDialog } from "./feedback/FeedbackDialog";
 import { SearchOverlay } from "./SearchOverlay";
+import { SasquatchMark } from "./SasquatchMark";
 import { UnverifiedEmailBanner } from "./UnverifiedEmailBanner";
 import { cn } from "@/lib/cn";
 
@@ -195,10 +196,10 @@ export function AppShell() {
           <Link
             to="/"
             className="inline-flex shrink-0 items-center gap-2 text-lg font-semibold hover:underline"
-            aria-label="TV Binge Friend home"
+            aria-label="TV BingeFriend home"
           >
             <TvIcon className="h-5 w-5" aria-hidden />
-            TV Binge Friend
+            TV BingeFriend
           </Link>
           {user && (
             <>
@@ -262,8 +263,8 @@ export function AppShell() {
           </a>
           <p>
             {/* TMDB requires this sentence verbatim (NEU-1049). Do not reword. */}
-            This product uses the TMDB API but is not endorsed or certified by TMDB. Some TV data is
-            provided by{" "}
+            This product uses the TMDB API but is not endorsed or certified by TMDB. Some legacy
+            title data is &copy;{" "}
             <a
               href="https://www.tvmaze.com"
               target="_blank"
@@ -283,6 +284,28 @@ export function AppShell() {
             </a>
             .
           </p>
+        </div>
+
+        {/* The publisher line, on its own row below the copyright. Copyright
+            names the *product*, not the legal entity — the entity belongs in
+            Terms and Privacy, not here — and it keeps the product's own casing
+            rather than backlotter's lowercase house style. */}
+        <div className="mx-auto flex max-w-6xl flex-col items-center gap-1 px-4 pb-4 text-xs text-muted-foreground">
+          <span>&copy; {new Date().getFullYear()} TV BingeFriend.</span>
+          <a
+            href="https://neuroticsasquat.ch"
+            target="_blank"
+            rel="noreferrer noopener"
+            className="inline-flex items-center gap-1.5 hover:text-foreground"
+          >
+            {/* The mark leads the sentence. Deliberately larger than the text it
+                sits beside but still well short of the header wordmark, which is
+                the comparison TMDB's terms actually care about. */}
+            <SasquatchMark className="h-5 w-auto shrink-0" />
+            <span>
+              A <span className="underline">neuroticsasquat.ch</span> release.
+            </span>
+          </a>
         </div>
       </footer>
 

@@ -1,51 +1,64 @@
 @import "tailwindcss";
 @plugin "tailwindcss-animate";
 
+/* `dark:` always matches, because the app is always dark.
+ *
+ * Tailwind v4 defaults this variant to `@media (prefers-color-scheme: dark)`,
+ * which is wrong here in a way that only shows up on someone else's machine:
+ * the five components using it write light base classes with `dark:` overrides
+ * (`bg-amber-50 … dark:bg-amber-950/50`), so a viewer whose OS is set to light
+ * got a light amber banner sitting on a permanently dark page. Redefining the
+ * variant to match unconditionally makes those overrides the only styling that
+ * ever applies, which is what the components were written to expect.
+ *
+ * If a light theme is ever added, this is the line to delete first. */
+@custom-variant dark (&);
+
+/* One palette, because the app is dark-only by decision.
+ *
+ * This used to be a light `@theme` followed by a dark one nested inside
+ * `@media (prefers-color-scheme: dark)`. That never worked: Tailwind v4 hoists
+ * every `@theme` to `:root` and drops the media wrapper, so the compiled sheet
+ * carried no `prefers-color-scheme` rule at all and the dark values — merely
+ * being second — won unconditionally. The app has therefore always been
+ * dark-only; the light palette above them was dead code that read like a
+ * supported theme.
+ *
+ * The values below are exactly the ones that were already winning, so this is a
+ * no-op at render time. If a light theme is ever wanted, it needs a real
+ * mechanism — a `.dark` class or `[data-theme]` toggled on the root, with the
+ * two palettes as ordinary selectors — not a nested `@theme`.
+ */
 @theme {
-  --color-background: hsl(0 0% 100%);
-  --color-foreground: hsl(222 47% 11%);
-  --color-card: hsl(0 0% 100%);
-  --color-card-foreground: hsl(222 47% 11%);
-  --color-popover: hsl(0 0% 100%);
-  --color-popover-foreground: hsl(222 47% 11%);
-  --color-primary: hsl(222 47% 11%);
-  --color-primary-foreground: hsl(210 40% 98%);
-  --color-secondary: hsl(210 40% 96%);
-  --color-secondary-foreground: hsl(222 47% 11%);
-  --color-muted: hsl(210 40% 96%);
-  --color-muted-foreground: hsl(215 16% 47%);
-  --color-accent: hsl(210 40% 96%);
-  --color-accent-foreground: hsl(222 47% 11%);
-  --color-destructive: hsl(0 84% 60%);
+  --color-background: hsl(222 47% 11%);
+  --color-foreground: hsl(210 40% 98%);
+  --color-card: hsl(222 47% 11%);
+  --color-card-foreground: hsl(210 40% 98%);
+  --color-popover: hsl(222 47% 11%);
+  --color-popover-foreground: hsl(210 40% 98%);
+  --color-primary: hsl(210 40% 98%);
+  --color-primary-foreground: hsl(222 47% 11%);
+  --color-secondary: hsl(217 33% 17%);
+  --color-secondary-foreground: hsl(210 40% 98%);
+  --color-muted: hsl(217 33% 17%);
+  --color-muted-foreground: hsl(215 20% 65%);
+  --color-accent: hsl(217 33% 17%);
+  --color-accent-foreground: hsl(210 40% 98%);
+  --color-destructive: hsl(0 63% 31%);
   --color-destructive-foreground: hsl(210 40% 98%);
-  --color-border: hsl(214 32% 91%);
-  --color-input: hsl(214 32% 91%);
-  --color-ring: hsl(222 47% 11%);
+  --color-border: hsl(217 33% 17%);
+  --color-input: hsl(217 33% 17%);
+  --color-ring: hsl(213 27% 84%);
+  /* Declared once, in the light block that no longer exists. Keeping it here is
+     the one thing the collapse could have silently dropped. */
   --radius: 0.5rem;
 }
 
-@media (prefers-color-scheme: dark) {
-  @theme {
-    --color-background: hsl(222 47% 11%);
-    --color-foreground: hsl(210 40% 98%);
-    --color-card: hsl(222 47% 11%);
-    --color-card-foreground: hsl(210 40% 98%);
-    --color-popover: hsl(222 47% 11%);
-    --color-popover-foreground: hsl(210 40% 98%);
-    --color-primary: hsl(210 40% 98%);
-    --color-primary-foreground: hsl(222 47% 11%);
-    --color-secondary: hsl(217 33% 17%);
-    --color-secondary-foreground: hsl(210 40% 98%);
-    --color-muted: hsl(217 33% 17%);
-    --color-muted-foreground: hsl(215 20% 65%);
-    --color-accent: hsl(217 33% 17%);
-    --color-accent-foreground: hsl(210 40% 98%);
-    --color-destructive: hsl(0 63% 31%);
-    --color-destructive-foreground: hsl(210 40% 98%);
-    --color-border: hsl(217 33% 17%);
-    --color-input: hsl(217 33% 17%);
-    --color-ring: hsl(213 27% 84%);
-  }
+:root {
+  /* Tell the UA the page is dark. Without this it assumes light and renders
+     scrollbars, autofill highlights, and native select/date popups in light
+     chrome against a dark page — the parts CSS variables cannot reach. */
+  color-scheme: dark;
 }
 
 body {
