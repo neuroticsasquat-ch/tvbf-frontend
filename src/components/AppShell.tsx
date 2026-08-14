@@ -242,35 +242,47 @@ export function AppShell() {
       )}
 
       <footer className="border-t border-border">
-        <div className="mx-auto flex max-w-6xl flex-col gap-2 px-4 pt-4 pb-2 text-xs text-muted-foreground sm:flex-row sm:items-center sm:gap-3">
-          <a
-            href="https://www.themoviedb.org"
-            target="_blank"
-            rel="noreferrer noopener"
-            className="shrink-0"
-          >
-            {/* Approved TMDB mark, bundled locally and deliberately sized below
+        {/* Two blocks, side by side once there is room for them and stacked
+            when there is not. `lg` rather than `sm` or `md` is where they part:
+            the attribution block's own widest line is the TVmaze sentence, and
+            below ~1024px putting the publisher beside it wraps that sentence
+            into three lines to save one — a worse trade than stacking.
+
+            Stacked, everything centres, which is why the attribution block
+            carries `text-center` and the TMDB row centres its logo over its
+            sentence. Side by side, the attribution goes back to the left edge
+            and the publisher to the right, meeting in the middle. */}
+        <div className="mx-auto flex max-w-6xl flex-col items-center gap-4 px-4 py-4 text-xs text-muted-foreground lg:flex-row lg:items-center lg:justify-between lg:gap-8">
+          <div className="flex flex-col items-center gap-2 text-center lg:items-start lg:text-left">
+            <div className="flex flex-col items-center gap-2 sm:flex-row sm:items-center sm:gap-3">
+              <a
+                href="https://www.themoviedb.org"
+                target="_blank"
+                rel="noreferrer noopener"
+                className="shrink-0"
+              >
+                {/* Approved TMDB mark, bundled locally and deliberately sized below
                 the header wordmark — TMDB requires it be less prominent than the
                 mark that primarily describes the application, and forbids
                 altering its colour, aspect ratio or orientation. */}
-            <img
-              src="/tmdb-logo.svg"
-              alt="The Movie Database (TMDB)"
-              width={123}
-              height={16}
-              className="h-4 w-auto"
-            />
-          </a>
-          <p>
-            {/* TMDB requires this sentence verbatim (NEU-1049). Do not reword.
+                <img
+                  src="/tmdb-logo.svg"
+                  alt="The Movie Database (TMDB)"
+                  width={123}
+                  height={16}
+                  className="h-4 w-auto"
+                />
+              </a>
+              <p>
+                {/* TMDB requires this sentence verbatim (NEU-1049). Do not reword.
                 The TVmaze credit that used to trail this sentence is now its own
                 line below, so neither attribution reads as a qualifier on the
                 other. */}
-            This product uses the TMDB API but is not endorsed or certified by TMDB.
-          </p>
-        </div>
+                This product uses the TMDB API but is not endorsed or certified by TMDB.
+              </p>
+            </div>
 
-        {/* The TVmaze CC BY-SA credit, on its own line rather than trailing the
+            {/* The TVmaze CC BY-SA credit, on its own line rather than trailing the
             TMDB sentence. It was removed in NEU-1147 once NEU-1146 retired the
             last TV Maze-derived catalog rows, and returns because NEU-1145
             re-admitted a TV Maze-derived value: the per-season airdate offset
@@ -282,50 +294,52 @@ export function AppShell() {
             per (show, season) derived from their airdates, so the credit says
             *derived*: CC BY-SA asks that a modification be indicated, and
             claiming their data verbatim would be the inaccurate half of that. */}
-        <div className="mx-auto max-w-6xl px-4 pb-4 text-xs text-muted-foreground">
-          <p>
-            Airdate corrections are derived from data provided by{" "}
-            <a
-              href="https://www.tvmaze.com"
-              target="_blank"
-              rel="noreferrer noopener"
-              className="underline hover:text-foreground"
-            >
-              TVmaze
-            </a>
-            , licensed under{" "}
-            <a
-              href="https://creativecommons.org/licenses/by-sa/4.0/"
-              target="_blank"
-              rel="noreferrer noopener"
-              className="underline hover:text-foreground"
-            >
-              CC BY-SA 4.0
-            </a>
-            .
-          </p>
-        </div>
+            <p>
+              Airdate corrections are derived from data provided by{" "}
+              <a
+                href="https://www.tvmaze.com"
+                target="_blank"
+                rel="noreferrer noopener"
+                className="underline hover:text-foreground"
+              >
+                TVmaze
+              </a>
+              , licensed under{" "}
+              <a
+                href="https://creativecommons.org/licenses/by-sa/4.0/"
+                target="_blank"
+                rel="noreferrer noopener"
+                className="underline hover:text-foreground"
+              >
+                CC BY-SA 4.0
+              </a>
+              .
+            </p>
+          </div>
 
-        {/* The publisher line, on its own row below the copyright. Copyright
+          {/* The publisher block: the release line sits under the copyright, and
+            the pair sits under the attribution until `lg`, where it moves to the
+            right edge and the two blocks share a vertical centre. Copyright
             names the *product*, not the legal entity — the entity belongs in
             Terms and Privacy, not here — and it keeps the product's own casing
             rather than backlotter's lowercase house style. */}
-        <div className="mx-auto flex max-w-6xl flex-col items-center gap-1 px-4 pb-4 text-xs text-muted-foreground">
-          <span>&copy; {new Date().getFullYear()} TV BingeFriend.</span>
-          <a
-            href="https://neuroticsasquat.ch"
-            target="_blank"
-            rel="noreferrer noopener"
-            className="inline-flex items-center gap-1.5 hover:text-foreground"
-          >
-            {/* The mark leads the sentence. Deliberately larger than the text it
+          <div className="flex shrink-0 flex-col items-center gap-1 lg:items-end lg:text-right">
+            <span>&copy; {new Date().getFullYear()} TV BingeFriend.</span>
+            <a
+              href="https://neuroticsasquat.ch"
+              target="_blank"
+              rel="noreferrer noopener"
+              className="inline-flex items-center gap-1.5 hover:text-foreground"
+            >
+              {/* The mark leads the sentence. Deliberately larger than the text it
                 sits beside but still well short of the header wordmark, which is
                 the comparison TMDB's terms actually care about. */}
-            <SasquatchMark className="h-5 w-auto shrink-0" />
-            <span>
-              A <span className="underline">neuroticsasquat.ch</span> release.
-            </span>
-          </a>
+              <SasquatchMark className="h-5 w-auto shrink-0" />
+              <span>
+                A <span className="underline">neuroticsasquat.ch</span> release.
+              </span>
+            </a>
+          </div>
         </div>
       </footer>
 
