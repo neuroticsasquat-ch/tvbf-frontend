@@ -8,12 +8,9 @@
  * whatever `color` the footer sets, so the mark needs no second asset and no
  * palette of its own.
  *
- * That matters more than it looks: the app renders dark today only because
- * `globals.css` nests `@theme` inside `@media (prefers-color-scheme: dark)`,
- * which Tailwind v4 flattens into `:root` rather than emitting as an override —
- * the compiled sheet carries no `prefers-color-scheme` rule at all, so the light
- * palette declared above it never applies. Whenever that is fixed, a hard-coded
- * fill here would have become a bug; `currentColor` simply follows.
+ * The app is dark-only by decision, so a hard-coded light fill would work
+ * today. `currentColor` is still the right call: it costs nothing, and it is
+ * what keeps the mark correct if the footer's own colour ever changes.
  *
  * The path data is copied verbatim from `neuroticsasquat.ch/img/sasquatch.svg`;
  * the site is the source of truth for the mark, so re-copy rather than redraw.
