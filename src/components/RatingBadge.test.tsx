@@ -19,8 +19,8 @@ describe("RatingBadge", () => {
   });
 
   it("renders formatted value when present", () => {
-    render(<RatingBadge value={4.2} title="TV Maze average" />);
+    render(<RatingBadge value={4.2} title="TMDB average" />);
     expect(screen.getByText("4.2")).toBeInTheDocument();
-    expect(screen.getByText("4.2").parentElement).toHaveAttribute("title", "TV Maze average");
+    expect(screen.getByText("4.2").parentElement).toHaveAttribute("title", "TMDB average");
   });
 });

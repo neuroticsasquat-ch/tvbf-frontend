@@ -15,7 +15,7 @@ import { FilterSheet } from "@/components/home/FilterSheet";
 import { Button } from "@/components/ui/button";
 import { RatingBadge } from "@/components/RatingBadge";
 import { StarRatingInput } from "@/components/StarRatingInput";
-import { tvmazeToFiveStar } from "@/lib/rating";
+import { tenPointToFiveStar } from "@/lib/rating";
 import { seasonLabel } from "@/lib/season";
 import { useEpisodeRating } from "@/api/me";
 import { useAuth } from "@/components/AuthContext";
@@ -153,7 +153,7 @@ export function EpisodePage() {
             {ep.airdate ? <span>{formatAirdate(ep.airdate)}</span> : null}
             {ep.airdate && ep.runtime ? <span aria-hidden>·</span> : null}
             {ep.runtime ? <span>{ep.runtime} min</span> : null}
-            <RatingBadge value={tvmazeToFiveStar(ep.rating_average)} title="TV Maze average" />
+            <RatingBadge value={tenPointToFiveStar(ep.rating_average)} title="TMDB average" />
           </p>
         )}
         {user ? (

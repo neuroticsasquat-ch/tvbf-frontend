@@ -129,9 +129,10 @@ export interface CastMember {
   voice: boolean;
   /** Episodes this person appeared in as this character, and the key the API
    * orders show cast by (NEU-1039). Optional because it is absent at two
-   * grains: the credits routes still read `tvmaze`, which only ever had
-   * billing order, until they repoint to `catalog` (NEU-1047); and episode
-   * guest cast is a per-episode row, so it carries no count at all. */
+   * grains: the credits routes read `catalog` since NEU-1047 and order show
+   * cast by this count, but a show mirrored before the credit writers merged
+   * carries none; and episode guest cast is a per-episode row, so it has no
+   * count at all. */
   episode_count?: number | null;
 }
 

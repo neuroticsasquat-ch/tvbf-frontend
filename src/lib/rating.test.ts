@@ -1,25 +1,25 @@
 import { describe, expect, it } from "vitest";
-import { formatStars, tvmazeToFiveStar } from "./rating";
+import { formatStars, tenPointToFiveStar } from "./rating";
 
-describe("tvmazeToFiveStar", () => {
+describe("tenPointToFiveStar", () => {
   it("returns null for null", () => {
-    expect(tvmazeToFiveStar(null)).toBeNull();
+    expect(tenPointToFiveStar(null)).toBeNull();
   });
 
   it("returns null for undefined", () => {
-    expect(tvmazeToFiveStar(undefined)).toBeNull();
+    expect(tenPointToFiveStar(undefined)).toBeNull();
   });
 
   it("converts 10 to 5", () => {
-    expect(tvmazeToFiveStar(10)).toBe(5);
+    expect(tenPointToFiveStar(10)).toBe(5);
   });
 
   it("converts 0 to 0", () => {
-    expect(tvmazeToFiveStar(0)).toBe(0);
+    expect(tenPointToFiveStar(0)).toBe(0);
   });
 
   it("rounds 4.7 to one decimal (~2.4)", () => {
-    expect(tvmazeToFiveStar(4.7)).toBeCloseTo(2.4, 5);
+    expect(tenPointToFiveStar(4.7)).toBeCloseTo(2.4, 5);
   });
 });
 

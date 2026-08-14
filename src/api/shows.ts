@@ -52,9 +52,9 @@ export function useEpisode(id: number) {
   });
 }
 
-/** Ordering is the API's, never this client's. Today that is TV Maze billing
- * order; once the credits routes read `catalog` (NEU-1047) it becomes
- * descending `episode_count`, the real count billing order only proxied for. */
+/** Ordering is the API's, never this client's. Since NEU-1047 that is
+ * descending `episode_count` — the real count that TV Maze's billing order only
+ * ever proxied for. */
 export function useShowCast(id: number) {
   return useQuery<CastMember[]>({
     queryKey: ["show-cast", id],

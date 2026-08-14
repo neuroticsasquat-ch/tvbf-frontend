@@ -37,9 +37,8 @@ export function CastList({ entries, title, headingId, headingHidden = false }: C
   // than an empty header.
   if (entries.length === 0) return null;
 
-  // Never re-sort here. Show cast arrives in TV Maze billing order today and
-  // in descending `episode_count` once the credits routes read `catalog`
-  // (NEU-1047); guest cast arrives in the episode's own credit sequence. A
+  // Never re-sort here. Show cast arrives in descending `episode_count` since
+  // NEU-1047, and guest cast in the episode's own credit sequence. A
   // client-side sort on `episode_count` would not just duplicate the server's
   // job, it would silently reshuffle the guest cast, which carries no count.
   const visible = expanded ? entries : entries.slice(0, COLLAPSED_COUNT);
