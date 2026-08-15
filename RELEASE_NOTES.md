@@ -1,5 +1,33 @@
 # Release notes
 
+## 0.3.0 — 2026-08-14
+
+### Footer
+
+- Swap attribution from TV Maze to TMDB ([NEU-1049](https://linear.app/neuroticsasquatch/issue/NEU-1049)) ([#176](https://github.com/neuroticsasquat-ch/music-discovery-engine/pull/176))
+- Remove the TVmaze CC BY-SA credit ([NEU-1147](https://linear.app/neuroticsasquatch/issue/NEU-1147))
+- Restore the TVmaze CC BY-SA credit on its own line
+- Pair the attribution and publisher blocks on wide viewports
+
+### Friends
+
+- Label a specials-season roll-up by name ([NEU-1133](https://linear.app/neuroticsasquatch/issue/NEU-1133))
+- Name a special beside its bare "S1" in the feed ([NEU-1134](https://linear.app/neuroticsasquatch/issue/NEU-1134))
+
+### Friends-feed
+
+- Render a special's null episode number without "Enull" ([NEU-1131](https://linear.app/neuroticsasquatch/issue/NEU-1131))
+
+### General
+
+- Adopt TMDB's status vocabulary in the show filter ([NEU-1037](https://linear.app/neuroticsasquatch/issue/NEU-1037))
+- Surface episode counts on cast credits ([NEU-1041](https://linear.app/neuroticsasquatch/issue/NEU-1041))
+- Label the specials season by name rather than "Season 0" ([NEU-1129](https://linear.app/neuroticsasquatch/issue/NEU-1129))
+
+### Person
+
+- Unify the episode row separator with the friends feed
+
 ## 0.2.2 — 2026-08-07
 
 ### Person

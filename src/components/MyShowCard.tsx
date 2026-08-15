@@ -3,6 +3,7 @@ import { Check } from "lucide-react";
 import type { MyShowEntry } from "@/api/types";
 import { RatingBadge } from "@/components/RatingBadge";
 import { WatchProgressBar } from "@/components/WatchProgressBar";
+import { isEndedStatus } from "@/components/home/filterTypes";
 
 const FALLBACK_POSTER =
   "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 3 4'><rect width='3' height='4' fill='%23e2e8f0'/></svg>";
@@ -25,7 +26,7 @@ export function MyShowCard({
   const isFinished =
     entry.aired_episode_count > 0 &&
     entry.watched_episode_count >= entry.aired_episode_count &&
-    (entry.show.status ?? "") === "Ended";
+    isEndedStatus(entry.show.status);
 
   return (
     <Link

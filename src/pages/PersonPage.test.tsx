@@ -436,7 +436,11 @@ describe("PersonPage grouped-card accessibility", () => {
     // part of the row did nothing when clicked. They must be inside it.
     const row = epCrew.getByRole("link", { name: /^Gamma Show — S2E3 / });
     expect(row).toHaveAttribute("href", "/episodes/910");
-    expect(row).toHaveTextContent("S2E3 Episode 3 · Director");
+    // One separator between every part of the row, matching the friends feed
+    // (NEU-1134) rather than a space here and a middot there.
+    expect(row).toHaveTextContent("S2E3 · Episode 3 · Director");
+    // The accessible name must still contain the visible string verbatim.
+    expect(row).toHaveAccessibleName("Gamma Show — S2E3 · Episode 3 · Director");
 
     // Nothing in the row is left outside the link.
     const item = row.closest("li");

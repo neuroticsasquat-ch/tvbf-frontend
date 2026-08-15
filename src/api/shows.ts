@@ -52,7 +52,9 @@ export function useEpisode(id: number) {
   });
 }
 
-/** Cast is served in billing order by the API — never re-sort it client-side. */
+/** Ordering is the API's, never this client's. Since NEU-1047 that is
+ * descending `episode_count` — the real count that TV Maze's billing order only
+ * ever proxied for. */
 export function useShowCast(id: number) {
   return useQuery<CastMember[]>({
     queryKey: ["show-cast", id],

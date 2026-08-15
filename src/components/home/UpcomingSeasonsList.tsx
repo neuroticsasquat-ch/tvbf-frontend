@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import { Link } from "react-router";
 import { ArrowDown, ArrowUp, Tv } from "lucide-react";
 import { useUpcomingSeasons } from "@/api/me";
+import { seasonLabel } from "@/lib/season";
 import type { UpcomingSort } from "@/api/types";
 import { usePersistedSort } from "@/hooks/usePersistedSort";
 import { usePersistedString } from "@/hooks/usePersistedString";
@@ -131,8 +132,7 @@ export function UpcomingSeasonsList() {
                     {entry.show.name}
                   </p>
                   <p className="text-xs text-muted-foreground leading-tight">
-                    Season {entry.season_number}
-                    {entry.season_name ? ` — ${entry.season_name}` : ""}
+                    {seasonLabel({ number: entry.season_number, name: entry.season_name })}
                   </p>
                   <p className="text-xs text-muted-foreground leading-tight">
                     {formatPremiere(entry.premiere_date)}

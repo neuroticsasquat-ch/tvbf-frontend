@@ -2,7 +2,7 @@ import { Link } from "react-router";
 
 import type { ShowSummary } from "@/api/types";
 import { RatingBadge } from "@/components/RatingBadge";
-import { tvmazeToFiveStar } from "@/lib/rating";
+import { tenPointToFiveStar } from "@/lib/rating";
 
 const FALLBACK_POSTER =
   "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 3 4'><rect width='3' height='4' fill='%23e2e8f0'/></svg>";
@@ -12,7 +12,7 @@ function year(dateStr: string | null): string {
 }
 
 export function ShowCard({ show }: { show: ShowSummary }) {
-  const aggregate = tvmazeToFiveStar(show.rating_average);
+  const aggregate = tenPointToFiveStar(show.rating_average);
   return (
     <Link
       to={`/shows/${show.id}`}
@@ -39,7 +39,7 @@ export function ShowCard({ show }: { show: ShowSummary }) {
           {aggregate != null && (
             <RatingBadge
               value={aggregate}
-              title="TV Maze average"
+              title="TMDB average"
               className="shrink-0 text-[10px] py-0 px-1"
             />
           )}

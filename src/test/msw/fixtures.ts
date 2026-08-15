@@ -39,7 +39,7 @@ export const fixtureShow: ShowDetail = {
   id: 100,
   name: "Fixture Show",
   type: "Scripted",
-  status: "Running",
+  status: "Returning Series",
   language: "English",
   premiered: "2020-01-01",
   ended: null,
@@ -92,7 +92,7 @@ export const fixtureShowListPage: ShowListPage = {
       id: 100,
       name: "Fixture Show",
       type: "Scripted",
-      status: "Running",
+      status: "Returning Series",
       language: "English",
       premiered: "2020-01-01",
       ended: null,
@@ -188,32 +188,37 @@ export const fixtureSeason2Episodes: EpisodeOut[] = [
 
 export const _seasonPlaceholder: SeasonOut[] = [];
 
-// Deliberately NOT alphabetical: billing order comes from the API's
-// `sort_order`, and the tests assert the rendered order matches it rather than
-// a client-side sort.
+// Deliberately NOT alphabetical: the API orders show cast by descending
+// `episode_count`, and the tests assert the rendered order matches the response
+// rather than any client-side sort. The last entry is credited on a single
+// episode, which is what pins the singular label.
 export const fixtureCast: CastMember[] = [
   {
     person: { id: 1, name: "Zoe Lead", image_medium: "https://example.com/zoe.jpg" },
     character: { id: 11, name: "Captain Alpha", image_medium: null },
     self: false,
     voice: false,
+    episode_count: 42,
   },
   {
     person: { id: 2, name: "Adam Second", image_medium: null },
     character: { id: 12, name: "Doctor Beta", image_medium: null },
     self: false,
     voice: true,
+    episode_count: 12,
   },
   {
     person: { id: 3, name: "Mia Third", image_medium: "https://example.com/mia.jpg" },
     character: { id: 13, name: "Mia Third", image_medium: null },
     self: true,
     voice: false,
+    episode_count: 1,
   },
 ];
 
 /** Guest cast is the same payload as show cast — distinct people so a test can
- * tell the two sections apart. */
+ * tell the two sections apart. No `episode_count`: a guest credit is already
+ * per-episode, so upstream sends no count at that grain. */
 export const fixtureGuestCast: CastMember[] = [
   {
     person: { id: 6, name: "Gus Guest", image_medium: "https://example.com/gus.jpg" },

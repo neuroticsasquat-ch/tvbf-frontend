@@ -8,6 +8,14 @@ import { PersonChip } from "@/components/PersonChip";
  * The Simpsons has 1,420 entries — so the full list is opt-in. */
 const COLLAPSED_COUNT = 12;
 
+/** "12 episodes" for a credit that carries a count, nothing for one that
+ * doesn't. Zero reads as missing data rather than as a fact worth printing, and
+ * a negative count is not a thing the API can mean. */
+function episodeCountLabel(count: number | null | undefined): string | undefined {
+  if (typeof count !== "number" || count < 1) return undefined;
+  return `${count} ${count === 1 ? "episode" : "episodes"}`;
+}
+
 interface CastListProps {
   entries: CastMember[];
   /** Section heading — "Cast" for a show, "Guest cast" for an episode. */
@@ -29,7 +37,10 @@ export function CastList({ entries, title, headingId, headingHidden = false }: C
   // than an empty header.
   if (entries.length === 0) return null;
 
-  // The API returns billing order (`sort_order`). Never re-sort here.
+  // Never re-sort here. Show cast arrives in descending `episode_count` since
+  // NEU-1047, and guest cast in the episode's own credit sequence. A
+  // client-side sort on `episode_count` would not just duplicate the server's
+  // job, it would silently reshuffle the guest cast, which carries no count.
   const visible = expanded ? entries : entries.slice(0, COLLAPSED_COUNT);
 
   return (
@@ -45,6 +56,7 @@ export function CastList({ entries, title, headingId, headingHidden = false }: C
             <PersonChip
               person={entry.person}
               detail={entry.voice ? `${entry.character.name} (voice)` : entry.character.name}
+              meta={episodeCountLabel(entry.episode_count)}
             />
           </li>
         ))}

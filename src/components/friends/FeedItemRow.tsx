@@ -1,8 +1,10 @@
+import type { ReactNode } from "react";
 import { Link } from "react-router";
 import { CheckCircle2, ListChecks, PlusCircle, PlayCircle, Star, Trophy } from "lucide-react";
 import type { FeedItem } from "@/api/types";
 import { StarRatingDisplay } from "@/components/StarRatingDisplay";
 import { formatRelativeTime } from "@/lib/relativeTime";
+import { seasonLabel } from "@/lib/season";
 
 function ActorLink({ item }: { item: FeedItem }) {
   return (
@@ -21,8 +23,26 @@ function ShowLink({ item }: { item: FeedItem }) {
   );
 }
 
-function episodeLabel(ep: { season: number; number: number }) {
-  return `S${ep.season}E${ep.number}`;
+// A copied TV Maze special carries no episode number (NEU-1062), so the `E`
+// segment is dropped rather than filled with a placeholder — `0` is a number no
+// episode has, and "Special" is a label the API never sent.
+//
+// Dropping it left the label with nothing to distinguish one special from
+// another: every special in a season read as a bare "S1" (NEU-1134). So the
+// episode's own name stands in for the missing segment — `S1 · A Christmas
+// Special` — and **only** there. A numbered episode keeps `S2E5` exactly as
+// before, which is what holds every other feed row byte-identical; the mild
+// inconsistency between the two shapes is the price of that, and appending the
+// name everywhere is a design change rather than this fix.
+//
+// `name` is nullable too, and TMDB does leave specials unnamed, so a special
+// with no name falls back to the bare `S{season}` rather than trailing a
+// separator with nothing after it. Whitespace counts as no name, the same rule
+// `seasonLabel` applies one grain up.
+function episodeLabel(ep: { season: number; number: number | null; name: string | null }) {
+  if (ep.number !== null) return `S${ep.season}E${ep.number}`;
+  const name = ep.name?.trim();
+  return name ? `S${ep.season} · ${name}` : `S${ep.season}`;
 }
 
 function EpisodeLink({ item }: { item: FeedItem }) {
@@ -53,7 +73,7 @@ function KindIcon({ kind }: { kind: FeedItem["kind"] }) {
   }
 }
 
-function Body({ item }: { item: FeedItem }) {
+function renderBody(item: FeedItem): ReactNode {
   switch (item.kind) {
     case "added_show":
       return (
@@ -75,10 +95,26 @@ function Body({ item }: { item: FeedItem }) {
         </span>
       );
     case "watched_season":
+      // NEU-1132 added `season_name`, so this site finally routes through
+      // `seasonLabel` like every other season label in the SPA (NEU-1129) —
+      // still no `season_number === 0` special case, because the label is
+      // upstream's to state rather than ours to infer.
+      //
+      // The label carries its own capital ("Specials", "Season 2"), so the
+      // sentence reads "finished Specials of X" rather than "finished season
+      // {n} of X". Lowercasing it here would turn TMDB's "Specials" into
+      // "specials".
+      //
+      // A `watched_season` item with no season number cannot be described at
+      // all, so it renders no row rather than a headless sentence. The backend
+      // always writes the column for this verb; `season_number` is nullable
+      // because it is one field across every kind.
+      if (item.season_number === null) return null;
       return (
         <span>
-          <ActorLink item={item} /> finished season {item.season_number} of <ShowLink item={item} />
-          .
+          <ActorLink item={item} /> finished{" "}
+          {seasonLabel({ number: item.season_number, name: item.season_name })} of{" "}
+          <ShowLink item={item} />.
         </span>
       );
     case "watched_show":
@@ -105,12 +141,22 @@ function Body({ item }: { item: FeedItem }) {
 }
 
 export function FeedItemRow({ item }: { item: FeedItem }) {
+  // An item with no describable body is dropped whole — an icon and a timestamp
+  // with no sentence reads as a rendering bug rather than as activity.
+  //
+  // `ActivityFeed` picks its empty state off the raw payload length, so a page
+  // of *only* dropped items would render a bare list rather than "no activity".
+  // Left alone deliberately: that needs a whole page of `watched_season` events
+  // carrying no season number, which the backend cannot emit, and closing it
+  // means either restating "is this describable" inside `ActivityFeed` or
+  // exporting this function purely to use as a predicate — both worse than the
+  // residue.
+  const body = renderBody(item);
+  if (body === null) return null;
   return (
     <li data-testid="feed-row" data-kind={item.kind} className="flex items-start gap-3 py-2">
       <KindIcon kind={item.kind} />
-      <div className="flex-1 text-sm">
-        <Body item={item} />
-      </div>
+      <div className="flex-1 text-sm">{body}</div>
       <time
         dateTime={item.occurred_at}
         title={item.occurred_at}

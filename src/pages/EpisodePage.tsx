@@ -15,7 +15,8 @@ import { FilterSheet } from "@/components/home/FilterSheet";
 import { Button } from "@/components/ui/button";
 import { RatingBadge } from "@/components/RatingBadge";
 import { StarRatingInput } from "@/components/StarRatingInput";
-import { tvmazeToFiveStar } from "@/lib/rating";
+import { tenPointToFiveStar } from "@/lib/rating";
+import { seasonLabel } from "@/lib/season";
 import { useEpisodeRating } from "@/api/me";
 import { useAuth } from "@/components/AuthContext";
 
@@ -81,6 +82,12 @@ export function EpisodePage() {
   }
   if (!ep) return <LoadingState rows={1} />;
 
+  // The season row carries the name; until the show query resolves, fall back to
+  // the number the episode itself knows. Computed after the `ep` guard so the
+  // fallback can use a real season number — a placeholder here would print
+  // "Season 0", the one string this ticket exists to remove.
+  const currentSeasonLabel = seasonLabel(seasonsList[seasonIdx] ?? { number: ep.season });
+
   const prevInSeason = idx > 0 ? seasonEpisodes[idx - 1] : undefined;
   const nextInSeason =
     idx >= 0 && idx < seasonEpisodes.length - 1 ? seasonEpisodes[idx + 1] : undefined;
@@ -109,16 +116,16 @@ export function EpisodePage() {
           ) : null}
           <Link
             to={`/shows/${ep.show_id}/episodes?season=${ep.season}`}
-            aria-label={`Back to season ${ep.season}`}
+            aria-label={`Back to ${currentSeasonLabel}`}
             className="inline-flex items-center gap-1 rounded border border-border bg-background px-2 py-1 text-sm hover:bg-accent"
           >
             <ChevronLeft className="h-4 w-4 shrink-0" aria-hidden />
-            Season {ep.season}
+            {currentSeasonLabel}
           </Link>
         </div>
         <h1 className="text-2xl font-semibold">
           <FilterSheet
-            title={`Season ${ep.season}`}
+            title={currentSeasonLabel}
             triggerLabel={
               <span className="flex flex-col gap-0.5">
                 <span className="text-sm font-normal text-muted-foreground leading-tight">
@@ -146,7 +153,7 @@ export function EpisodePage() {
             {ep.airdate ? <span>{formatAirdate(ep.airdate)}</span> : null}
             {ep.airdate && ep.runtime ? <span aria-hidden>·</span> : null}
             {ep.runtime ? <span>{ep.runtime} min</span> : null}
-            <RatingBadge value={tvmazeToFiveStar(ep.rating_average)} title="TV Maze average" />
+            <RatingBadge value={tenPointToFiveStar(ep.rating_average)} title="TMDB average" />
           </p>
         )}
         {user ? (

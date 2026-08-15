@@ -73,7 +73,7 @@ export function VerifyEmailPage() {
         <>
           <p>Your email is verified. Thanks!</p>
           <Link to="/" className="inline-block underline">
-            Back to TV Binge Friend
+            Back to TV BingeFriend
           </Link>
         </>
       )}
