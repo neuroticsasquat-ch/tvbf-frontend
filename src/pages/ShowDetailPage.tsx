@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useParams, useSearchParams } from "react-router";
-import { useShow, useShowCast, useShowCrew } from "@/api/shows";
+import { useShow, useShowCast, useShowCrew, useSimilarShows } from "@/api/shows";
 import { useAuth } from "@/components/AuthContext";
 import { ApiError } from "@/api/client";
 import { LoadingState } from "@/components/LoadingState";
@@ -49,6 +49,7 @@ export function ShowDetailPage() {
   // and React Query dedupes on the key, so this costs no extra request.
   const castQuery = useShowCast(showId);
   const crewQuery = useShowCrew(showId);
+  const similarQuery = useSimilarShows(showId);
   // 44% of shows have no cast and 83% no crew. Those tabs still render, showing
   // a zero count and disabled — the absence is information, and a fixed tab
   // strip beats one that pops in a tab when a query resolves. A tab stays
@@ -58,15 +59,26 @@ export function ShowDetailPage() {
   const crewCount = crewQuery.data?.length ?? 0;
   const castEmpty = castQuery.isSuccess && castCount === 0;
   const crewEmpty = crewQuery.isSuccess && crewCount === 0;
+  // Similar joins them on the same terms. Roughly 8% of the long tail has no
+  // recommendations at all, which is why it is a disabled tab rather than one
+  // that appears and disappears — a tab strip that changes width when a query
+  // resolves moves the other tabs under the reader's cursor.
+  const similarCount = similarQuery.data?.length ?? 0;
+  const similarEmpty = similarQuery.isSuccess && similarCount === 0;
 
   const [searchParams, setSearchParams] = useSearchParams();
   const requested = searchParams.get("tab");
   // Falls back to seasons for an unknown value, and for a tab this show has
   // nothing to put in — a `?tab=crew` link to a crewless show should not land
   // on a disabled tab.
-  const wanted = requested === "cast" || requested === "crew" ? requested : "seasons";
+  const wanted =
+    requested === "cast" || requested === "crew" || requested === "similar" ? requested : "seasons";
   const tab =
-    (wanted === "cast" && castEmpty) || (wanted === "crew" && crewEmpty) ? "seasons" : wanted;
+    (wanted === "cast" && castEmpty) ||
+    (wanted === "crew" && crewEmpty) ||
+    (wanted === "similar" && similarEmpty)
+      ? "seasons"
+      : wanted;
 
   function selectTab(next: string) {
     const params = new URLSearchParams(searchParams);
@@ -170,6 +182,9 @@ export function ShowDetailPage() {
           </TabsTrigger>
           <TabsTrigger value="crew" disabled={crewEmpty}>
             Crew {crewQuery.isSuccess && <TabCount value={crewCount} />}
+          </TabsTrigger>
+          <TabsTrigger value="similar" disabled={similarEmpty}>
+            Similar {similarQuery.isSuccess && <TabCount value={similarCount} />}
           </TabsTrigger>
         </TabsList>
 
@@ -296,12 +311,11 @@ export function ShowDetailPage() {
         <TabsContent value="crew">
           <CrewList showId={show.id} headingHidden />
         </TabsContent>
-      </Tabs>
 
-      {/* Below the tabs rather than inside them: a fourth tab that is absent on
-        the shows with no recommendations would shift the tab strip, where an
-        absent section only ends the page earlier (NEU-1054). */}
-      <SimilarShows showId={show.id} />
+        <TabsContent value="similar">
+          <SimilarShows showId={show.id} />
+        </TabsContent>
+      </Tabs>
     </article>
   );
 }
