@@ -50,8 +50,10 @@ function serveRows(shows: ShowSummary[]) {
   return serveSimilar(() => HttpResponse.json(shows));
 }
 
+/** The panel itself. The heading is `sr-only` — the tab label carries the
+ * visible title — so it is found by role, not by sight. */
 async function findSection(): Promise<HTMLElement> {
-  const heading = await screen.findByRole("heading", { level: 2, name: "More like this" });
+  const heading = await screen.findByRole("heading", { level: 2, name: "Similar" });
   const section = heading.closest("section");
   if (!section) throw new Error("the heading is not inside a section");
   return section;
@@ -89,7 +91,7 @@ describe("SimilarShows", () => {
     const { container } = renderWithProviders(<SimilarShows showId={SHOW_ID} />);
 
     await waitFor(() => expect(request.called()).toBe(true));
-    expect(screen.queryByRole("heading", { name: "More like this" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Similar" })).not.toBeInTheDocument();
     // No empty state, no "no similar shows found", no spinner, no error.
     expect(screen.queryByText(/no shows/i)).not.toBeInTheDocument();
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
@@ -105,7 +107,7 @@ describe("SimilarShows", () => {
     const { container } = renderWithProviders(<SimilarShows showId={SHOW_ID} />);
 
     await waitFor(() => expect(request.called()).toBe(true));
-    expect(screen.queryByRole("heading", { name: "More like this" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Similar" })).not.toBeInTheDocument();
     expect(container).toBeEmptyDOMElement();
   });
 
@@ -114,7 +116,7 @@ describe("SimilarShows", () => {
     const { container } = renderWithProviders(<SimilarShows showId={SHOW_ID} />);
 
     await waitFor(() => expect(request.called()).toBe(true));
-    expect(screen.queryByRole("heading", { name: "More like this" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Similar" })).not.toBeInTheDocument();
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
     await waitFor(() => expect(container).toBeEmptyDOMElement());
   });

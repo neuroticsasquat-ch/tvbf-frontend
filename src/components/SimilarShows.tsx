@@ -1,7 +1,7 @@
 import { useSimilarShows } from "@/api/shows";
 import { ShowGrid } from "@/components/ShowGrid";
 
-/** The "More like this" section of a show page (NEU-1054).
+/** The "Similar" tab of a show page (NEU-1054).
  *
  * Renders nothing at all when there is nothing to show — no empty state, no
  * "no similar shows found", no spinner, no error. A show with no
@@ -12,9 +12,10 @@ import { ShowGrid } from "@/components/ShowGrid";
  * The same rule covers the in-flight and failed requests: `data` is undefined
  * until the list resolves, so the heading never appears and then disappears.
  *
- * It sits below the seasons/cast/crew tabs rather than inside them as a fourth
- * tab: a tab that is sometimes absent shifts the tab strip under the reader's
- * cursor, where a section that is sometimes absent only ends the page earlier.
+ * It is a tab beside seasons, cast and crew rather than a section below them.
+ * The tab strip does not shift under the reader's cursor as a result: the tab
+ * is always rendered, and is *disabled* when the show has nothing to put in
+ * it, exactly as the cast and crew tabs already are.
  *
  * `ShowCard` / `ShowGrid` are reused unchanged — the route serves the same
  * `ShowSummary` browse serves — so a card links through to the show page,
@@ -28,8 +29,10 @@ export function SimilarShows({ showId }: { showId: number }) {
 
   return (
     <section aria-labelledby="similar-shows-heading">
-      <h2 id="similar-shows-heading" className="mb-3 text-lg font-semibold">
-        More like this
+      {/* The tab label carries the visible title and count; this stays for the
+        document outline and screen readers, matching the seasons panel. */}
+      <h2 id="similar-shows-heading" className="sr-only">
+        Similar
       </h2>
       <ShowGrid shows={shows} />
     </section>
