@@ -498,9 +498,12 @@ export function fetchRecommendations(): Promise<RecommendationsResponse> {
  */
 export function useRecommendations() {
   return useQuery<RecommendationsResponse>({
+    // `staleTime: 0`, matching `useFeed`: the route answers `Cache-Control:
+    // no-store` because it is per-user content the weekly pass replaces out
+    // from under any cache (NEU-1112 contract §1).
     queryKey: ["me-recommendations"],
     queryFn: fetchRecommendations,
-    staleTime: FIVE_MINUTES,
+    staleTime: 0,
   });
 }
 

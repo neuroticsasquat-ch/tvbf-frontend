@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { screen, waitFor } from "@testing-library/react";
+import { screen, waitFor, within } from "@testing-library/react";
 import { http, HttpResponse } from "msw";
 import { env } from "@/env";
 import { server } from "@/test/msw/server";
@@ -48,6 +48,15 @@ function serveRows(recommendations: Recommendation[]) {
   return serveRecommendations(() => HttpResponse.json({ recommendations }));
 }
 
+/** The "Recommended for you" section itself, so assertions stay scoped to it
+ * once Discovery's trending / most anticipated sections share this page. */
+async function findSection(): Promise<HTMLElement> {
+  const heading = await screen.findByRole("heading", { level: 2, name: "Recommended for you" });
+  const section = heading.closest("section");
+  if (!section) throw new Error("the heading is not inside a section");
+  return section;
+}
+
 describe("DiscoverPage", () => {
   it("renders the page heading", () => {
     renderWithProviders(<DiscoverPage />);
@@ -67,15 +76,28 @@ describe("DiscoverPage", () => {
     ]);
     renderWithProviders(<DiscoverPage />);
 
-    expect(
-      await screen.findByRole("heading", { level: 2, name: "Recommended for you" }),
-    ).toBeInTheDocument();
-    const links = screen.getAllByRole("link");
+    const section = await findSection();
+    const links = within(section).getAllByRole("link");
     expect(links.map((a) => a.getAttribute("href"))).toEqual(["/shows/1", "/shows/2"]);
     expect(
       screen.getByText("Slow-burn workplace dread, like the thrillers you finished."),
     ).toBeInTheDocument();
     expect(screen.getByText("Grief handled with the same restraint.")).toBeInTheDocument();
+  });
+
+  it("renders every row the server sent, without slicing", async () => {
+    // The cap is the server's, applied *after* the adult / deleted_upstream_at
+    // filters (NEU-1112 contract §4) — a client that re-sliced to 12 would show
+    // fewer than twelve the first time a tombstone landed.
+    serveRows(
+      Array.from({ length: 13 }, (_, i) =>
+        makeRecommendation({ id: i + 1, name: `Show ${i + 1}`, rank: i + 1 }),
+      ),
+    );
+    renderWithProviders(<DiscoverPage />);
+
+    const section = await findSection();
+    expect(within(section).getAllByRole("link")).toHaveLength(13);
   });
 
   it("renders the reason as plain text, never as markup", async () => {

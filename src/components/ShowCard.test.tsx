@@ -50,8 +50,11 @@ describe("ShowCard", () => {
   });
 
   it("renders no reason line when none is given", () => {
-    const { container } = renderWithProviders(<ShowCard show={makeShow()} />);
-    expect(container.querySelectorAll("p[title]")).toHaveLength(0);
+    renderWithProviders(<ShowCard show={makeShow({ premiered: "2021-09-29" })} />);
+    // The card's own lines survive; nothing else does.
+    expect(screen.getByText("Kastanjemanden")).toBeInTheDocument();
+    expect(screen.getByText("2021")).toBeInTheDocument();
+    expect(screen.queryByText("<em>Bleak</em> and funny.")).not.toBeInTheDocument();
   });
 
   it("hides rating badges when both are null", () => {
