@@ -18,6 +18,7 @@ import { WatchProgressBar } from "@/components/WatchProgressBar";
 import { SeasonWatchCheckbox } from "@/components/SeasonWatchCheckbox";
 import { ShowCastList } from "@/components/CastList";
 import { CrewList } from "@/components/CrewList";
+import { SimilarShows } from "@/components/SimilarShows";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useMyShows, useSeasonProgress, useShowRating } from "@/api/me";
 import { Tv } from "lucide-react";
@@ -296,6 +297,11 @@ export function ShowDetailPage() {
           <CrewList showId={show.id} headingHidden />
         </TabsContent>
       </Tabs>
+
+      {/* Below the tabs rather than inside them: a fourth tab that is absent on
+        the shows with no recommendations would shift the tab strip, where an
+        absent section only ends the page earlier (NEU-1054). */}
+      <SimilarShows showId={show.id} />
     </article>
   );
 }

@@ -8,6 +8,7 @@ import type {
   ShowDetail,
   ShowFilters,
   ShowListPage,
+  ShowSummary,
 } from "./types";
 
 const FIVE_MINUTES = 5 * 60 * 1000;
@@ -38,6 +39,32 @@ export function useShow(id: number) {
   return useQuery<ShowDetail>({
     queryKey: ["show", id],
     queryFn: () => apiFetch<ShowDetail>(`/shows/${id}`),
+    staleTime: FIVE_MINUTES,
+    enabled: Number.isFinite(id) && id > 0,
+  });
+}
+
+/** TMDB's "More like this" for one show (NEU-1053).
+ *
+ * The list arrives ready to render: capped at 12 and filtered for `adult` /
+ * `deleted_upstream_at` on the server, in TMDB's own rank order. So this client
+ * never slices it and never re-sorts it — the cap is applied *after* the
+ * filters, so a client re-slicing a pre-filtered list would show fewer than
+ * twelve the first time a tombstone landed, and the rank order is the only
+ * ordering in the payload that carries information.
+ *
+ * `genres`, `network` and `my_rating` come back empty by design — `ShowCard`
+ * renders none of them, and filling them would cost the route the shared cache
+ * it keeps by carrying no per-user field.
+ *
+ * A show with no recommendations answers `200 []` (roughly 8% of the long
+ * tail); an unknown show 404s, which this never sees — the section only mounts
+ * under a show that already resolved.
+ */
+export function useSimilarShows(id: number) {
+  return useQuery<ShowSummary[]>({
+    queryKey: ["show-similar", id],
+    queryFn: () => apiFetch<ShowSummary[]>(`/shows/${id}/similar`),
     staleTime: FIVE_MINUTES,
     enabled: Number.isFinite(id) && id > 0,
   });

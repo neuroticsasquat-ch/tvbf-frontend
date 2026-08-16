@@ -42,6 +42,10 @@ export const handlers = [
   // Every other show has no credits — the empty case is 27% of the catalog.
   http.get(`${base}/shows/:id/cast`, () => HttpResponse.json([])),
   http.get(`${base}/shows/:id/crew`, () => HttpResponse.json([])),
+  // A show with no recommendations is 200 [] and renders no section at all —
+  // roughly 8% of the long tail (NEU-1054). Tests that want the section serve
+  // their own rows.
+  http.get(`${base}/shows/:id/similar`, () => HttpResponse.json([])),
   http.get(`${base}/episodes/5000/guest-cast`, () => HttpResponse.json(fixtureGuestCast)),
   // Every other episode has no guest cast — that is 96% of the catalog.
   http.get(`${base}/episodes/:id/guest-cast`, () => HttpResponse.json([])),
