@@ -34,6 +34,10 @@ export const handlers = [
   // stale one gives, so nothing downstream can tell them apart (NEU-1056
   // contract §3). Tests that want the tab populated serve their own rows.
   http.get(`${base}/trending`, () => HttpResponse.json({ captured_at: null, shows: [] })),
+  // A bare array, never an object: nothing is stored, so there is no
+  // `captured_at` to wrap the list in (NEU-1059 contract §2). Tests that want
+  // the tab populated serve their own rows.
+  http.get(`${base}/anticipated`, () => HttpResponse.json([])),
   http.get(`${base}/genres`, () => HttpResponse.json(fixtureGenres)),
   http.get(`${base}/networks`, () => HttpResponse.json(fixtureNetworks)),
   http.get(`${base}/shows`, () => HttpResponse.json(fixtureShowListPage)),
