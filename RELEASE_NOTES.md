@@ -1,5 +1,12 @@
 # Release notes
 
+## 0.3.1 — 2026-08-16
+
+### Discover
+
+- Add the /discover route, nav item, and page shell ([NEU-1113](https://linear.app/neuroticsasquatch/issue/NEU-1113)) ([#185](https://github.com/neuroticsasquat-ch/music-discovery-engine/pull/185))
+- Render the "Recommended for you" section ([NEU-1114](https://linear.app/neuroticsasquatch/issue/NEU-1114)) ([#186](https://github.com/neuroticsasquat-ch/music-discovery-engine/pull/186))
+
 ## 0.3.0 — 2026-08-14
 
 ### Footer
