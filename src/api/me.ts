@@ -155,6 +155,9 @@ function invalidateAll(qc: ReturnType<typeof useQueryClient>) {
   qc.invalidateQueries({ queryKey: ["season-progress"] });
   // Friend engagement may include the caller in the future; keep honest.
   qc.invalidateQueries({ queryKey: ["friend-activity"] });
+  // `GET /trending` carries a per-user `in_my_shows` mark, so adding or
+  // removing a show changes that body (NEU-1057).
+  qc.invalidateQueries({ queryKey: ["trending"] });
 }
 
 function placeholderMyShowEntry(showId: number): MyShowEntry {

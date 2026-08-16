@@ -9,6 +9,7 @@ import type {
   ShowFilters,
   ShowListPage,
   ShowSummary,
+  TrendingSnapshot,
 } from "./types";
 
 const FIVE_MINUTES = 5 * 60 * 1000;
@@ -67,6 +68,30 @@ export function useSimilarShows(id: number) {
     queryFn: () => apiFetch<ShowSummary[]>(`/shows/${id}/similar`),
     staleTime: FIVE_MINUTES,
     enabled: Number.isFinite(id) && id > 0,
+  });
+}
+
+/** TMDB's trending list for the week (NEU-1056).
+ *
+ * The list arrives ready to render, in TMDB's own rank order, so this client
+ * never slices it and never re-sorts it — the rank is a position rather than a
+ * number the payload carries, and it is the only ordering here that means
+ * anything.
+ *
+ * **The staleness rule is not re-implemented here, and must never be.** A
+ * snapshot past seven days comes back as the same `{captured_at: null, shows:
+ * []}` an empty table gives, so there is nothing to check and nothing to say —
+ * the surface renders no content, and the user is never shown the word "stale"
+ * (contract §3, §4).
+ *
+ * `staleTime: 0` matching `useRecommendations`: the route answers
+ * `Cache-Control: no-store` because `in_my_shows` makes the body per-user.
+ */
+export function useTrending() {
+  return useQuery<TrendingSnapshot>({
+    queryKey: ["trending"],
+    queryFn: () => apiFetch<TrendingSnapshot>("/trending"),
+    staleTime: 0,
   });
 }
 

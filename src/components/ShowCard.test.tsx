@@ -57,6 +57,17 @@ describe("ShowCard", () => {
     expect(screen.queryByText("<em>Bleak</em> and funny.")).not.toBeInTheDocument();
   });
 
+  it("marks a show the viewer already tracks, naming the mark once", () => {
+    renderWithProviders(<ShowCard show={makeShow()} inMyShows />);
+    expect(screen.getByRole("img", { name: "In My Shows" })).toBeInTheDocument();
+    expect(screen.getByTitle("In My Shows")).toBeInTheDocument();
+  });
+
+  it("renders no mark when the card carries no in-My-Shows flag", () => {
+    renderWithProviders(<ShowCard show={makeShow()} />);
+    expect(screen.queryByTitle("In My Shows")).not.toBeInTheDocument();
+  });
+
   it("hides rating badges when both are null", () => {
     renderWithProviders(<ShowCard show={makeShow()} />);
     expect(screen.queryByTitle("TMDB average")).not.toBeInTheDocument();
