@@ -1,10 +1,11 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { screen, waitFor, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { http, HttpResponse } from "msw";
 import { env } from "@/env";
 import { server } from "@/test/msw/server";
 import { renderWithProviders } from "@/test/renderWithProviders";
-import type { Recommendation, TrendingShow } from "@/api/types";
+import type { AnticipatedShow, Recommendation, TrendingShow } from "@/api/types";
 import { DiscoverPage } from "./DiscoverPage";
 
 function makeRecommendation(overrides: Partial<Recommendation> = {}): Recommendation {
@@ -85,6 +86,32 @@ function serveTrending(shows: TrendingShow[]) {
       HttpResponse.json({ captured_at: shows.length ? "2026-08-16T04:00:11.481Z" : null, shows }),
     ),
   );
+}
+
+function makeAnticipatedShow(overrides: Partial<AnticipatedShow> = {}): AnticipatedShow {
+  return {
+    id: 800,
+    name: "Neuromancer",
+    type: null,
+    status: "Planned",
+    language: "en",
+    premiered: "2027-02-18",
+    ended: null,
+    image_medium: null,
+    image_original: null,
+    network: null,
+    web_channel: null,
+    genres: [],
+    matched_aka: null,
+    rating_average: null,
+    my_rating: null,
+    in_my_shows: false,
+    ...overrides,
+  };
+}
+
+function serveAnticipated(shows: AnticipatedShow[]) {
+  server.use(http.get(`${env.apiBaseUrl}/anticipated`, () => HttpResponse.json(shows)));
 }
 
 describe("DiscoverPage", () => {
@@ -185,13 +212,67 @@ describe("DiscoverPage", () => {
   it("falls back to the default tab when the persisted value names no tab", () => {
     // `usePersistedString` does not validate, so a value that outlives the tab
     // it named must not leave the page with nothing selected.
-    window.localStorage.setItem("tvbf:str:discover-tab", "most-anticipated");
+    window.localStorage.setItem("tvbf:str:discover-tab", "coming-soon");
     renderWithProviders(<DiscoverPage />);
 
     expect(screen.getByRole("tab", { name: "Trending" })).toHaveAttribute("aria-selected", "true");
     // Healed, not merely ignored — otherwise the value would come back to life
     // the day a tab is added by that name.
     expect(window.localStorage.getItem("tvbf:str:discover-tab")).toBe("trending");
+  });
+
+  it("renders the Most Anticipated tab beside Trending", () => {
+    serveTrending([makeTrendingShow()]);
+    serveAnticipated([makeAnticipatedShow()]);
+    renderWithProviders(<DiscoverPage />);
+
+    expect(screen.getByRole("tab", { name: "Most Anticipated" })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Trending" })).toHaveAttribute("aria-selected", "true");
+  });
+
+  it("restores Most Anticipated when it is the persisted tab", async () => {
+    window.localStorage.setItem("tvbf:str:discover-tab", "most-anticipated");
+    serveAnticipated([makeAnticipatedShow({ name: "Neuromancer", premiered: "2027-02-18" })]);
+    renderWithProviders(<DiscoverPage />);
+
+    expect(screen.getByRole("tab", { name: "Most Anticipated" })).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
+    expect(await screen.findByRole("link", { name: /Neuromancer/ })).toBeInTheDocument();
+    // The date, not the year: an anticipated list without dates is a
+    // popularity list.
+    expect(screen.getByText("Feb 18, 2027")).toBeInTheDocument();
+  });
+
+  it("persists the tab when the user switches to Most Anticipated", async () => {
+    serveTrending([makeTrendingShow()]);
+    serveAnticipated([makeAnticipatedShow()]);
+    renderWithProviders(<DiscoverPage />);
+
+    await userEvent.click(screen.getByRole("tab", { name: "Most Anticipated" }));
+
+    await waitFor(() =>
+      expect(window.localStorage.getItem("tvbf:str:discover-tab")).toBe("most-anticipated"),
+    );
+    expect(await screen.findByRole("link", { name: /Neuromancer/ })).toBeInTheDocument();
+  });
+
+  it("renders the tab with no content, and no error, when most anticipated is empty", async () => {
+    window.localStorage.setItem("tvbf:str:discover-tab", "most-anticipated");
+    let called = false;
+    server.use(
+      http.get(`${env.apiBaseUrl}/anticipated`, () => {
+        called = true;
+        return HttpResponse.json([]);
+      }),
+    );
+    renderWithProviders(<DiscoverPage />);
+
+    await waitFor(() => expect(called).toBe(true));
+    expect(screen.getByRole("tab", { name: "Most Anticipated" })).toBeInTheDocument();
+    expect(screen.queryByText(/no shows/i)).not.toBeInTheDocument();
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
 
   it("renders the tab with no content, and no error, when trending is empty", async () => {

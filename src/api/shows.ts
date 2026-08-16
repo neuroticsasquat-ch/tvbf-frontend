@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { apiFetch, buildShowsQuery } from "./client";
 import type {
+  AnticipatedShow,
   CastMember,
   CrewMember,
   EpisodeOut,
@@ -91,6 +92,31 @@ export function useTrending() {
   return useQuery<TrendingSnapshot>({
     queryKey: ["trending"],
     queryFn: () => apiFetch<TrendingSnapshot>("/trending"),
+    staleTime: 0,
+  });
+}
+
+/** The shows premiering soonest that most people are waiting for (NEU-1059).
+ *
+ * A **live query** rather than a snapshot, which is what removes three rules
+ * `useTrending` needs: a show cannot linger after it premieres
+ * (`first_air_date >= current_date` is evaluated on the read), there is no run
+ * to fail, and there is no staleness cutoff — nothing is stored, so the
+ * payload carries no timestamp to measure and this client must not invent one
+ * (contract §3).
+ *
+ * The list arrives ready to render — popularity order, server-side window and
+ * length — so this client never slices it and never re-sorts it. Empty is
+ * `200 []` and the surface renders no content at all (contract §4).
+ *
+ * `staleTime: 0` matching `useTrending`: the route answers `no-store` because
+ * `in_my_shows` makes the body per-user *and* user-mutable, so a cached body
+ * would revert a My Shows toggle.
+ */
+export function useAnticipated() {
+  return useQuery<AnticipatedShow[]>({
+    queryKey: ["anticipated"],
+    queryFn: () => apiFetch<AnticipatedShow[]>("/anticipated"),
     staleTime: 0,
   });
 }

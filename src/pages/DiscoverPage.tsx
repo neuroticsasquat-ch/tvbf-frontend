@@ -1,14 +1,16 @@
 import { useEffect } from "react";
 
+import { Anticipated } from "@/components/discover/Anticipated";
 import { RecommendedForYou } from "@/components/discover/RecommendedForYou";
 import { Trending } from "@/components/discover/Trending";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { usePersistedString } from "@/hooks/usePersistedString";
 
-/** The tabs holding TMDB Discovery's browsing surfaces. Most Anticipated joins
- * Trending here (NEU-1060); adding it is one entry in this list and one
+/** The tabs holding TMDB Discovery's browsing surfaces. Trending leads because
+ * it is a claim about right now; Most Anticipated (NEU-1060) is the same
+ * catalog seen forwards. A further surface is one entry here and one
  * `TabsContent`. */
-const DISCOVER_TABS = ["trending"] as const;
+const DISCOVER_TABS = ["trending", "most-anticipated"] as const;
 type DiscoverTab = (typeof DISCOVER_TABS)[number];
 const DEFAULT_TAB: DiscoverTab = "trending";
 
@@ -26,9 +28,9 @@ function isDiscoverTab(value: string): value is DiscoverTab {
  * it is per-user, it renders nothing when there is nothing to show, and a tab
  * that is empty for a user below the generation floor would be a nav entry
  * leading nowhere. TMDB Discovery's browsing surfaces are tabs — Trending
- * today (NEU-1057), Most Anticipated next (NEU-1060) — because they are
- * alternative views of the whole catalog rather than additive sections, and
- * they earn one nav slot between them rather than one each.
+ * (NEU-1057) and Most Anticipated (NEU-1060) — because they are alternative
+ * views of the whole catalog rather than additive sections, and they earn one
+ * nav slot between them rather than one each.
  *
  * Tab selection persists across visits, because a user who prefers one of them
  * prefers it every time.
@@ -50,9 +52,13 @@ export function DiscoverPage() {
       <Tabs value={tab} onValueChange={setStored}>
         <TabsList>
           <TabsTrigger value="trending">Trending</TabsTrigger>
+          <TabsTrigger value="most-anticipated">Most Anticipated</TabsTrigger>
         </TabsList>
         <TabsContent value="trending">
           <Trending />
+        </TabsContent>
+        <TabsContent value="most-anticipated">
+          <Anticipated />
         </TabsContent>
       </Tabs>
     </section>
