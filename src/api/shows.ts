@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { apiFetch, buildShowsQuery } from "./client";
 import type {
+  AnticipatedShow,
   CastMember,
   CrewMember,
   EpisodeOut,
@@ -8,6 +9,8 @@ import type {
   ShowDetail,
   ShowFilters,
   ShowListPage,
+  ShowSummary,
+  TrendingSnapshot,
 } from "./types";
 
 const FIVE_MINUTES = 5 * 60 * 1000;
@@ -40,6 +43,81 @@ export function useShow(id: number) {
     queryFn: () => apiFetch<ShowDetail>(`/shows/${id}`),
     staleTime: FIVE_MINUTES,
     enabled: Number.isFinite(id) && id > 0,
+  });
+}
+
+/** TMDB's "More like this" for one show (NEU-1053).
+ *
+ * The list arrives ready to render: capped at 12 and filtered for `adult` /
+ * `deleted_upstream_at` on the server, in TMDB's own rank order. So this client
+ * never slices it and never re-sorts it — the cap is applied *after* the
+ * filters, so a client re-slicing a pre-filtered list would show fewer than
+ * twelve the first time a tombstone landed, and the rank order is the only
+ * ordering in the payload that carries information.
+ *
+ * `genres`, `network` and `my_rating` come back empty by design — `ShowCard`
+ * renders none of them, and filling them would cost the route the shared cache
+ * it keeps by carrying no per-user field.
+ *
+ * A show with no recommendations answers `200 []` (roughly 8% of the long
+ * tail); an unknown show 404s, which this never sees — the section only mounts
+ * under a show that already resolved.
+ */
+export function useSimilarShows(id: number) {
+  return useQuery<ShowSummary[]>({
+    queryKey: ["show-similar", id],
+    queryFn: () => apiFetch<ShowSummary[]>(`/shows/${id}/similar`),
+    staleTime: FIVE_MINUTES,
+    enabled: Number.isFinite(id) && id > 0,
+  });
+}
+
+/** TMDB's trending list for the week (NEU-1056).
+ *
+ * The list arrives ready to render, in TMDB's own rank order, so this client
+ * never slices it and never re-sorts it — the rank is a position rather than a
+ * number the payload carries, and it is the only ordering here that means
+ * anything.
+ *
+ * **The staleness rule is not re-implemented here, and must never be.** A
+ * snapshot past seven days comes back as the same `{captured_at: null, shows:
+ * []}` an empty table gives, so there is nothing to check and nothing to say —
+ * the surface renders no content, and the user is never shown the word "stale"
+ * (contract §3, §4).
+ *
+ * `staleTime: 0` matching `useRecommendations`: the route answers
+ * `Cache-Control: no-store` because `in_my_shows` makes the body per-user.
+ */
+export function useTrending() {
+  return useQuery<TrendingSnapshot>({
+    queryKey: ["trending"],
+    queryFn: () => apiFetch<TrendingSnapshot>("/trending"),
+    staleTime: 0,
+  });
+}
+
+/** The shows premiering soonest that most people are waiting for (NEU-1059).
+ *
+ * A **live query** rather than a snapshot, which is what removes three rules
+ * `useTrending` needs: a show cannot linger after it premieres
+ * (`first_air_date >= current_date` is evaluated on the read), there is no run
+ * to fail, and there is no staleness cutoff — nothing is stored, so the
+ * payload carries no timestamp to measure and this client must not invent one
+ * (contract §3).
+ *
+ * The list arrives ready to render — popularity order, server-side window and
+ * length — so this client never slices it and never re-sorts it. Empty is
+ * `200 []` and the surface renders no content at all (contract §4).
+ *
+ * `staleTime: 0` matching `useTrending`: the route answers `no-store` because
+ * `in_my_shows` makes the body per-user *and* user-mutable, so a cached body
+ * would revert a My Shows toggle.
+ */
+export function useAnticipated() {
+  return useQuery<AnticipatedShow[]>({
+    queryKey: ["anticipated"],
+    queryFn: () => apiFetch<AnticipatedShow[]>("/anticipated"),
+    staleTime: 0,
   });
 }
 

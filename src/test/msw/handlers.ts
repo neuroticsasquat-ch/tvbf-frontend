@@ -30,6 +30,14 @@ export const handlers = [
   // the section distinguishes "nothing to show" from "the request failed" by
   // status code (NEU-1112 contract §3).
   http.get(`${base}/me/recommendations`, () => HttpResponse.json({ recommendations: [] })),
+  // An empty snapshot is a 200 with a null `captured_at` — the same body a
+  // stale one gives, so nothing downstream can tell them apart (NEU-1056
+  // contract §3). Tests that want the tab populated serve their own rows.
+  http.get(`${base}/trending`, () => HttpResponse.json({ captured_at: null, shows: [] })),
+  // A bare array, never an object: nothing is stored, so there is no
+  // `captured_at` to wrap the list in (NEU-1059 contract §2). Tests that want
+  // the tab populated serve their own rows.
+  http.get(`${base}/anticipated`, () => HttpResponse.json([])),
   http.get(`${base}/genres`, () => HttpResponse.json(fixtureGenres)),
   http.get(`${base}/networks`, () => HttpResponse.json(fixtureNetworks)),
   http.get(`${base}/shows`, () => HttpResponse.json(fixtureShowListPage)),
@@ -42,6 +50,10 @@ export const handlers = [
   // Every other show has no credits — the empty case is 27% of the catalog.
   http.get(`${base}/shows/:id/cast`, () => HttpResponse.json([])),
   http.get(`${base}/shows/:id/crew`, () => HttpResponse.json([])),
+  // A show with no recommendations is 200 [] and renders no section at all —
+  // roughly 8% of the long tail (NEU-1054). Tests that want the section serve
+  // their own rows.
+  http.get(`${base}/shows/:id/similar`, () => HttpResponse.json([])),
   http.get(`${base}/episodes/5000/guest-cast`, () => HttpResponse.json(fixtureGuestCast)),
   // Every other episode has no guest cast — that is 96% of the catalog.
   http.get(`${base}/episodes/:id/guest-cast`, () => HttpResponse.json([])),

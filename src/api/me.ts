@@ -155,6 +155,12 @@ function invalidateAll(qc: ReturnType<typeof useQueryClient>) {
   qc.invalidateQueries({ queryKey: ["season-progress"] });
   // Friend engagement may include the caller in the future; keep honest.
   qc.invalidateQueries({ queryKey: ["friend-activity"] });
+  // `GET /trending` and `GET /anticipated` each carry a per-user `in_my_shows`
+  // mark, so adding or removing a show changes both bodies (NEU-1057,
+  // NEU-1060). `staleTime: 0` alone only refetches on mount, which would leave
+  // a Discover tab showing the pre-toggle mark until it remounted.
+  qc.invalidateQueries({ queryKey: ["trending"] });
+  qc.invalidateQueries({ queryKey: ["anticipated"] });
 }
 
 function placeholderMyShowEntry(showId: number): MyShowEntry {

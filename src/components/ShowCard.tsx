@@ -1,3 +1,4 @@
+import { Library } from "lucide-react";
 import { Link } from "react-router";
 
 import type { ShowSummary } from "@/api/types";
@@ -7,8 +8,34 @@ import { tenPointToFiveStar } from "@/lib/rating";
 const FALLBACK_POSTER =
   "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 3 4'><rect width='3' height='4' fill='%23e2e8f0'/></svg>";
 
-function year(dateStr: string | null): string {
-  return dateStr ? dateStr.slice(0, 4) : "—";
+const PREMIERE_FMT = new Intl.DateTimeFormat("en-US", {
+  month: "short",
+  day: "numeric",
+  year: "numeric",
+});
+
+/** How much of the premiere date the card's date line shows.
+ *
+ * `"year"` is what every catalog surface has always shown, and the only thing
+ * a mixed list of decades can usefully carry. `"date"` is Most Anticipated's
+ * (NEU-1060): every entry there premieres within the coming year, so the year
+ * alone distinguishes almost nothing and the date is the whole point of the
+ * surface.
+ */
+export type PremiereDisplay = "year" | "date";
+
+function premiereLabel(dateStr: string | null, display: PremiereDisplay): string {
+  // An undated show reads "—" beside dated ones on a catalog list and "TBA"
+  // on a list of things being waited for, where a dash would read as a
+  // rendering failure. `/anticipated` never sends one (contract §5), so this
+  // is the card declining to trust that rather than a case it expects.
+  if (!dateStr) return display === "date" ? "TBA" : "—";
+  if (display === "year") return dateStr.slice(0, 4);
+  const [y, m, d] = dateStr.split("-").map(Number);
+  // Built from the parts rather than `new Date(iso)`, which reads a bare
+  // `YYYY-MM-DD` as UTC and renders the day before for a viewer west of it.
+  if (!Number.isFinite(y) || !Number.isFinite(m) || !Number.isFinite(d)) return "TBA";
+  return PREMIERE_FMT.format(new Date(y, m - 1, d));
 }
 
 /** A poster card for one show.
@@ -16,8 +43,27 @@ function year(dateStr: string | null): string {
  * `reason` is the optional line of body text a recommendation carries
  * (NEU-1114). It is model-authored prose, so it renders as ordinary React text
  * — never `SafeHtml`, never `dangerouslySetInnerHTML`.
+ *
+ * `inMyShows` marks a show the viewer already tracks (NEU-1057). It is a mark
+ * and never a filter — the surfaces that carry it are claims about the world,
+ * and seeing your own show in one is a feature. The `Library` icon is the same
+ * one `MyShowsToggle` uses, so the mark and the control that sets it read as
+ * the same thing.
+ *
+ * `premiereDisplay` chooses how much of the premiere date the date line
+ * carries; it defaults to the year every existing caller has always rendered.
  */
-export function ShowCard({ show, reason }: { show: ShowSummary; reason?: string }) {
+export function ShowCard({
+  show,
+  reason,
+  inMyShows,
+  premiereDisplay = "year",
+}: {
+  show: ShowSummary;
+  reason?: string;
+  inMyShows?: boolean;
+  premiereDisplay?: PremiereDisplay;
+}) {
   const aggregate = tenPointToFiveStar(show.rating_average);
   return (
     <Link
@@ -30,6 +76,19 @@ export function ShowCard({ show, reason }: { show: ShowSummary; reason?: string 
         className="aspect-[210/295] w-full object-cover"
         loading="lazy"
       />
+      {inMyShows && (
+        // `role="img"` with a bare `title` and no text content: the accessible
+        // name falls back to the title, so the mark is announced once and
+        // still carries a tooltip for the sighted. An sr-only label beside the
+        // title would name it *and* describe it with the same words.
+        <span
+          role="img"
+          title="In My Shows"
+          className="absolute top-1 left-1 inline-flex items-center rounded-sm bg-foreground/85 p-1 text-background shadow"
+        >
+          <Library className="h-3 w-3" aria-hidden />
+        </span>
+      )}
       {show.my_rating != null && show.my_rating > 0 && (
         <RatingBadge
           value={show.my_rating}
@@ -55,7 +114,9 @@ export function ShowCard({ show, reason }: { show: ShowSummary; reason?: string 
             {show.matched_aka}
           </p>
         )}
-        <p className="text-[10px] text-muted-foreground leading-tight">{year(show.premiered)}</p>
+        <p className="text-[10px] text-muted-foreground leading-tight">
+          {premiereLabel(show.premiered, premiereDisplay)}
+        </p>
         {reason && (
           <p className="truncate text-[10px] text-muted-foreground leading-tight" title={reason}>
             {reason}

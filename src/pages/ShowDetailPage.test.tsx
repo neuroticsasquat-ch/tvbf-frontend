@@ -104,4 +104,58 @@ describe("ShowDetailPage", () => {
       expect(screen.getByRole("tab", { name: /Seasons/ })).toHaveAttribute("aria-selected", "true"),
     );
   });
+
+  it("renders similar shows below the tabs", async () => {
+    server.use(
+      http.get(`${base}/shows/100/similar`, () =>
+        HttpResponse.json([
+          {
+            id: 777,
+            name: "Similar Show",
+            type: null,
+            status: null,
+            language: null,
+            premiered: "2020-01-01",
+            ended: null,
+            image_medium: null,
+            image_original: null,
+            network: null,
+            web_channel: null,
+            genres: [],
+            matched_aka: null,
+            rating_average: null,
+            my_rating: null,
+          },
+        ]),
+      ),
+    );
+    renderWithProviders(routed(), { route: "/shows/100" });
+
+    const heading = await screen.findByRole("heading", { level: 2, name: "More like this" });
+    const tabs = screen.getByRole("tablist");
+    // Below the tab strip in document order, not a fourth tab.
+    expect(tabs.compareDocumentPosition(heading) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(screen.getByRole("link", { name: /Similar Show/ })).toHaveAttribute(
+      "href",
+      "/shows/777",
+    );
+  });
+
+  it("renders no similar-shows section when the show has none", async () => {
+    // Gate on the request actually having been served: a negative assertion
+    // inside `waitFor` passes on the first tick, so it would hold against a
+    // page that has not asked for the list yet.
+    let called = false;
+    server.use(
+      http.get(`${base}/shows/100/similar`, () => {
+        called = true;
+        return HttpResponse.json([]);
+      }),
+    );
+    renderWithProviders(routed(), { route: "/shows/100" });
+
+    await screen.findByRole("heading", { name: "Fixture Show" });
+    await waitFor(() => expect(called).toBe(true));
+    expect(screen.queryByRole("heading", { name: "More like this" })).not.toBeInTheDocument();
+  });
 });

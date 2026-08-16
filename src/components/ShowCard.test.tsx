@@ -57,6 +57,55 @@ describe("ShowCard", () => {
     expect(screen.queryByText("<em>Bleak</em> and funny.")).not.toBeInTheDocument();
   });
 
+  it("marks a show the viewer already tracks, naming the mark once", () => {
+    renderWithProviders(<ShowCard show={makeShow()} inMyShows />);
+    expect(screen.getByRole("img", { name: "In My Shows" })).toBeInTheDocument();
+    expect(screen.getByTitle("In My Shows")).toBeInTheDocument();
+  });
+
+  it("renders no mark when the card carries no in-My-Shows flag", () => {
+    renderWithProviders(<ShowCard show={makeShow()} />);
+    expect(screen.queryByTitle("In My Shows")).not.toBeInTheDocument();
+  });
+
+  it("renders the premiere year by default", () => {
+    renderWithProviders(<ShowCard show={makeShow({ premiered: "2021-09-29" })} />);
+    expect(screen.getByText("2021")).toBeInTheDocument();
+  });
+
+  it("renders the full premiere date when asked for one", () => {
+    // Most Anticipated's surface (NEU-1060): every entry premieres inside one
+    // window, so the year alone separates almost nothing.
+    renderWithProviders(
+      <ShowCard show={makeShow({ premiered: "2027-02-18" })} premiereDisplay="date" />,
+    );
+    expect(screen.getByText("Feb 18, 2027")).toBeInTheDocument();
+  });
+
+  it("renders the premiere date from its parts, not as a UTC instant", () => {
+    // `new Date("2027-01-01")` is midnight UTC and renders as Dec 31 for any
+    // viewer west of it — the same trap the Upcoming lists avoid.
+    renderWithProviders(
+      <ShowCard show={makeShow({ premiered: "2027-01-01" })} premiereDisplay="date" />,
+    );
+    expect(screen.getByText("Jan 1, 2027")).toBeInTheDocument();
+  });
+
+  it("reads an undated show as a dash on a year card and TBA on a date card", () => {
+    const { unmount } = renderWithProviders(<ShowCard show={makeShow({ premiered: null })} />);
+    expect(screen.getByText("—")).toBeInTheDocument();
+    unmount();
+
+    renderWithProviders(<ShowCard show={makeShow({ premiered: null })} premiereDisplay="date" />);
+    expect(screen.getByText("TBA")).toBeInTheDocument();
+  });
+
+  it("reads an unparseable premiere date as TBA rather than an Invalid Date", () => {
+    renderWithProviders(<ShowCard show={makeShow({ premiered: "soon" })} premiereDisplay="date" />);
+    expect(screen.getByText("TBA")).toBeInTheDocument();
+    expect(screen.queryByText(/invalid date/i)).not.toBeInTheDocument();
+  });
+
   it("hides rating badges when both are null", () => {
     renderWithProviders(<ShowCard show={makeShow()} />);
     expect(screen.queryByTitle("TMDB average")).not.toBeInTheDocument();
