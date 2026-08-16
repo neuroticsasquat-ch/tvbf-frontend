@@ -11,6 +11,7 @@ import { SignupPage } from "@/pages/SignupPage";
 import { RequireAuth } from "@/components/RequireAuth";
 import { WatchNextPage } from "@/pages/WatchNextPage";
 import { UpcomingPage } from "@/pages/UpcomingPage";
+import { DiscoverPage } from "@/pages/DiscoverPage";
 import { MyShowsPage } from "@/pages/MyShowsPage";
 import { AdminPage } from "@/pages/AdminPage";
 import { FriendProfilePage } from "@/pages/FriendProfilePage";
@@ -37,6 +38,7 @@ export const router = createBrowserRouter([
         children: [
           { index: true, element: <WatchNextPage /> },
           { path: "upcoming", element: <UpcomingPage /> },
+          { path: "discover", element: <DiscoverPage /> },
           { path: "my-shows", element: <MyShowsPage /> },
           { path: "friends", element: <FriendsFeedPage /> },
           { path: "admin", element: <AdminPage /> },

@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { screen, within } from "@testing-library/react";
+import { http, HttpResponse } from "msw";
+import { server } from "@/test/msw/server";
+import { env } from "@/env";
 import { renderWithProviders } from "@/test/renderWithProviders";
 import { AppShell } from "./AppShell";
 
@@ -70,5 +73,57 @@ describe("AppShell footer publisher line", () => {
     // footer. If this ever becomes an <img>, the dark theme breaks silently.
     expect(mark.tagName.toLowerCase()).toBe("svg");
     expect(mark).not.toHaveAttribute("src");
+  });
+});
+
+describe("AppShell primary nav", () => {
+  // Both the desktop header nav and the mobile bottom bar render the same
+  // primaryLinks() and carry aria-label="Primary", so there are always two.
+  async function primaryNavs() {
+    server.use(
+      http.get(`${env.apiBaseUrl}/me`, () =>
+        HttpResponse.json({
+          id: "u1",
+          email: "a@b.com",
+          display_name: "A",
+          created_at: new Date().toISOString(),
+        }),
+      ),
+      http.get(`${env.apiBaseUrl}/me/connection-requests`, () =>
+        HttpResponse.json({ incoming: [], outgoing: [] }),
+      ),
+    );
+    renderWithProviders(<AppShell />);
+    return await screen.findAllByRole("navigation", { name: "Primary" });
+  }
+
+  it("links Discover at /discover", async () => {
+    const [desktop] = await primaryNavs();
+    expect(within(desktop).getByRole("link", { name: "Discover" })).toHaveAttribute(
+      "href",
+      "/discover",
+    );
+  });
+
+  // Position, not just presence: NEU-1113 and the M5 contract both place
+  // Discover immediately after Upcoming. "Fifth nav item" in the spec is the
+  // count the mobile bottom bar has to carry, not the slot.
+  it("places Discover immediately after Upcoming, five items in all", async () => {
+    const [desktop] = await primaryNavs();
+    const hrefs = within(desktop)
+      .getAllByRole("link")
+      .map((a) => a.getAttribute("href"));
+    expect(hrefs).toEqual(["/", "/upcoming", "/discover", "/my-shows", "/friends"]);
+  });
+
+  // The bottom bar is the placement the five-item ceiling was accepted for, so
+  // it carries the same five rather than a subset.
+  it("carries the same five items in the mobile bottom bar", async () => {
+    const navs = await primaryNavs();
+    const bottom = navs[navs.length - 1];
+    const hrefs = within(bottom)
+      .getAllByRole("link")
+      .map((a) => a.getAttribute("href"));
+    expect(hrefs).toEqual(["/", "/upcoming", "/discover", "/my-shows", "/friends"]);
   });
 });
