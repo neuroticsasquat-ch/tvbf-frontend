@@ -100,6 +100,28 @@ export interface Rating {
   rated_at: string;
 }
 
+/** One row of `GET /me/recommendations` — `ShowSummary` flattened, plus the
+ * model's own `rank` and its `reason`.
+ *
+ * Flattened rather than nested under a `show` key, unlike `MyShowEntry` /
+ * `WatchNextEntry` / `UpcomingEntry`: those carry per-show progress, which is a
+ * second object with its own identity, where a recommendation carries a
+ * sentence and a position. See
+ * tvbf-backend/docs/specs/NEU-1112-recommendations-page-contract.md §2.
+ *
+ * `reason` is model-authored prose and renders as plain text, never markup.
+ * `rank` is the stored rank, so it is not guaranteed contiguous or to start at
+ * 1 — a row the server filtered out took its rank with it.
+ */
+export interface Recommendation extends ShowSummary {
+  rank: number;
+  reason: string;
+}
+
+export interface RecommendationsResponse {
+  recommendations: Recommendation[];
+}
+
 export interface ShowDetail extends ShowSummary {
   summary: string | null;
   runtime: number | null;

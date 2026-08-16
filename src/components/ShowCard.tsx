@@ -11,7 +11,13 @@ function year(dateStr: string | null): string {
   return dateStr ? dateStr.slice(0, 4) : "—";
 }
 
-export function ShowCard({ show }: { show: ShowSummary }) {
+/** A poster card for one show.
+ *
+ * `reason` is the optional line of body text a recommendation carries
+ * (NEU-1114). It is model-authored prose, so it renders as ordinary React text
+ * — never `SafeHtml`, never `dangerouslySetInnerHTML`.
+ */
+export function ShowCard({ show, reason }: { show: ShowSummary; reason?: string }) {
   const aggregate = tenPointToFiveStar(show.rating_average);
   return (
     <Link
@@ -50,6 +56,11 @@ export function ShowCard({ show }: { show: ShowSummary }) {
           </p>
         )}
         <p className="text-[10px] text-muted-foreground leading-tight">{year(show.premiered)}</p>
+        {reason && (
+          <p className="truncate text-[10px] text-muted-foreground leading-tight" title={reason}>
+            {reason}
+          </p>
+        )}
       </div>
     </Link>
   );

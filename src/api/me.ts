@@ -11,6 +11,7 @@ import type {
   MyShowEntry,
   MyShowsSort,
   Rating,
+  RecommendationsResponse,
   ShowDetail,
   UpcomingEntry,
   UpcomingSeasonEntry,
@@ -477,6 +478,31 @@ export function useFeed(limit = 20) {
     queryFn: ({ pageParam }) => fetchFeed((pageParam as string | null) ?? null, limit),
     initialPageParam: null as string | null,
     getNextPageParam: (lastPage) => lastPage.next_cursor,
+    staleTime: 0,
+  });
+}
+
+export function fetchRecommendations(): Promise<RecommendationsResponse> {
+  return apiFetch<RecommendationsResponse>("/me/recommendations");
+}
+
+/** The newest succeeded batch of weekly recommendations, already capped and
+ * filtered by the server.
+ *
+ * The client never slices and never filters this list: the server caps at 12
+ * *after* applying the `adult` / `deleted_upstream_at` filters, so a client
+ * re-slicing a pre-filtered list would show fewer than twelve the first time a
+ * tombstone landed (NEU-1112 contract §4). It never re-sorts it either — the
+ * array arrives in the model's rank order, the only ordering in the payload
+ * that carries information.
+ */
+export function useRecommendations() {
+  return useQuery<RecommendationsResponse>({
+    // `staleTime: 0`, matching `useFeed`: the route answers `Cache-Control:
+    // no-store` because it is per-user content the weekly pass replaces out
+    // from under any cache (NEU-1112 contract §1).
+    queryKey: ["me-recommendations"],
+    queryFn: fetchRecommendations,
     staleTime: 0,
   });
 }

@@ -3,6 +3,7 @@ import { Link, NavLink, Outlet, useLocation } from "react-router";
 import {
   PlayCircle as WatchNextIcon,
   Calendar as CalendarIcon,
+  Compass as DiscoverIcon,
   Library as MyShowsIcon,
   Users as FriendsIcon,
   Search as SearchIcon,
@@ -109,6 +110,15 @@ export function AppShell() {
     placement === "mobile-bottom" ? "text-foreground" : "text-foreground bg-accent";
   const inactiveCls = "text-muted-foreground hover:text-foreground";
 
+  // Labels everywhere except the mobile header, whose slots are 9x9 icon
+  // buttons. Note the bottom bar is *labelled*, not icon-only — NEU-1113's spec
+  // and the M5 milestone both describe it as icon-only, which was never true of
+  // this code. Measured in Chrome at the fifth item's landing (NEU-1113): five
+  // slots fit with no horizontal overflow down to 320px CSS, all five cells
+  // keeping equal height. At 375px and up every label sits on one line; below
+  // ~340px "Watch Next" wraps to two and the bar grows 55px -> 71px, which is
+  // the whole cost of the fifth item. Dropping the labels to buy that back
+  // would cost every mobile user legibility on all five, so it was declined.
   const showLabel = (placement: Placement) => placement !== "mobile-header";
   const userMenuVariant = (placement: Placement) =>
     placement === "mobile-bottom"
@@ -140,6 +150,16 @@ export function AppShell() {
       >
         <CalendarIcon className="h-5 w-5" aria-hidden />
         {showLabel(placement) && <span>Upcoming</span>}
+      </NavLink>
+      <NavLink
+        to="/discover"
+        className={({ isActive }) =>
+          cn(linkCls(placement), isActive ? activeCls(placement) : inactiveCls)
+        }
+        aria-label="Discover"
+      >
+        <DiscoverIcon className="h-5 w-5" aria-hidden />
+        {showLabel(placement) && <span>Discover</span>}
       </NavLink>
       <NavLink
         to="/my-shows"
