@@ -49,10 +49,11 @@ function serveRows(recommendations: Recommendation[]) {
   return serveRecommendations(() => HttpResponse.json({ recommendations }));
 }
 
-/** The "Recommended for you" section itself, so assertions stay scoped to it
- * once Discovery's trending / most anticipated sections share this page. */
+/** The "My Recommendations" panel itself, so assertions stay scoped to it
+ * rather than to the sibling tabs' panels. The heading is `sr-only` — the tab
+ * label carries the visible title — so it is found by role, not by sight. */
 async function findSection(): Promise<HTMLElement> {
-  const heading = await screen.findByRole("heading", { level: 2, name: "Recommended for you" });
+  const heading = await screen.findByRole("heading", { level: 2, name: "My Recommendations" });
   const section = heading.closest("section");
   if (!section) throw new Error("the heading is not inside a section");
   return section;
@@ -175,8 +176,16 @@ describe("DiscoverPage", () => {
 
     await waitFor(() => expect(request.called()).toBe(true));
     expect(screen.getByRole("heading", { level: 1, name: "Discover" })).toBeInTheDocument();
-    expect(screen.queryByRole("heading", { name: "Recommended for you" })).not.toBeInTheDocument();
-    // No empty state, no nudge, no spinner, no error (project spec §11).
+    expect(screen.queryByRole("heading", { name: "My Recommendations" })).not.toBeInTheDocument();
+    // The tab goes with the panel: a disabled tab is the empty state with a
+    // smaller footprint (project spec §11).
+    // `waitFor` genuinely waits here rather than passing on the first tick:
+    // the tab *is* rendered while the query is in flight, so this only settles
+    // once the empty answer has landed and the tab has gone.
+    await waitFor(() =>
+      expect(screen.queryByRole("tab", { name: "My Recommendations" })).not.toBeInTheDocument(),
+    );
+    // No empty state, no nudge, no spinner, no error.
     expect(screen.queryByText(/no shows/i)).not.toBeInTheDocument();
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
@@ -189,17 +198,44 @@ describe("DiscoverPage", () => {
 
     await waitFor(() => expect(request.called()).toBe(true));
     expect(screen.getByRole("heading", { level: 1, name: "Discover" })).toBeInTheDocument();
-    expect(screen.queryByRole("heading", { name: "Recommended for you" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "My Recommendations" })).not.toBeInTheDocument();
+    // `waitFor` genuinely waits here rather than passing on the first tick:
+    // the tab *is* rendered while the query is in flight, so this only settles
+    // once the empty answer has landed and the tab has gone.
+    await waitFor(() =>
+      expect(screen.queryByRole("tab", { name: "My Recommendations" })).not.toBeInTheDocument(),
+    );
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
 
-  it("renders the Trending tab, selected by default", async () => {
+  it("opens on My Recommendations, ahead of the other two tabs", async () => {
+    serveRows([makeRecommendation()]);
+    renderWithProviders(<DiscoverPage />);
+
+    const mine = await screen.findByRole("tab", { name: "My Recommendations" });
+    expect(mine).toHaveAttribute("aria-selected", "true");
+    // First in the strip, not merely present.
+    const labels = screen.getAllByRole("tab").map((t) => t.textContent);
+    expect(labels).toEqual(["My Recommendations", "Trending", "Most Anticipated"]);
+    expect(await screen.findByRole("link", { name: /Severance/ })).toBeInTheDocument();
+  });
+
+  it("falls back to Trending when the user has no recommendations", async () => {
+    const request = serveRows([]);
     serveTrending([makeTrendingShow()]);
     renderWithProviders(<DiscoverPage />);
 
-    const trending = screen.getByRole("tab", { name: "Trending" });
-    expect(trending).toHaveAttribute("aria-selected", "true");
+    await waitFor(() => expect(request.called()).toBe(true));
+    await waitFor(() =>
+      expect(screen.getByRole("tab", { name: "Trending" })).toHaveAttribute(
+        "aria-selected",
+        "true",
+      ),
+    );
     expect(await screen.findByRole("link", { name: /Lanterns/ })).toBeInTheDocument();
+    // The stored preference is untouched: deferring is a decision for this
+    // visit, not a reason to spend the user's default on one bad Sunday.
+    expect(window.localStorage.getItem("tvbf:str:discover-tab")).toBe("my-recommendations");
   });
 
   it("restores the persisted tab", () => {
@@ -209,25 +245,38 @@ describe("DiscoverPage", () => {
     expect(screen.getByRole("tab", { name: "Trending" })).toHaveAttribute("aria-selected", "true");
   });
 
-  it("falls back to the default tab when the persisted value names no tab", () => {
+  it("falls back to the default tab when the persisted value names no tab", async () => {
     // `usePersistedString` does not validate, so a value that outlives the tab
     // it named must not leave the page with nothing selected.
     window.localStorage.setItem("tvbf:str:discover-tab", "coming-soon");
+    serveRows([makeRecommendation()]);
     renderWithProviders(<DiscoverPage />);
 
-    expect(screen.getByRole("tab", { name: "Trending" })).toHaveAttribute("aria-selected", "true");
+    expect(await screen.findByRole("tab", { name: "My Recommendations" })).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
     // Healed, not merely ignored — otherwise the value would come back to life
     // the day a tab is added by that name.
-    expect(window.localStorage.getItem("tvbf:str:discover-tab")).toBe("trending");
+    await waitFor(() =>
+      expect(window.localStorage.getItem("tvbf:str:discover-tab")).toBe("my-recommendations"),
+    );
   });
 
-  it("renders the Most Anticipated tab beside Trending", () => {
+  it("renders the Most Anticipated tab beside Trending", async () => {
+    const request = serveRows([]);
     serveTrending([makeTrendingShow()]);
     serveAnticipated([makeAnticipatedShow()]);
     renderWithProviders(<DiscoverPage />);
 
+    await waitFor(() => expect(request.called()).toBe(true));
     expect(screen.getByRole("tab", { name: "Most Anticipated" })).toBeInTheDocument();
-    expect(screen.getByRole("tab", { name: "Trending" })).toHaveAttribute("aria-selected", "true");
+    await waitFor(() =>
+      expect(screen.getByRole("tab", { name: "Trending" })).toHaveAttribute(
+        "aria-selected",
+        "true",
+      ),
+    );
   });
 
   it("restores Most Anticipated when it is the persisted tab", async () => {
@@ -246,6 +295,7 @@ describe("DiscoverPage", () => {
   });
 
   it("persists the tab when the user switches to Most Anticipated", async () => {
+    serveRows([makeRecommendation()]);
     serveTrending([makeTrendingShow()]);
     serveAnticipated([makeAnticipatedShow()]);
     renderWithProviders(<DiscoverPage />);
