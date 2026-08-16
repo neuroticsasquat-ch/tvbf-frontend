@@ -43,6 +43,17 @@ describe("ShowCard", () => {
     expect(screen.getByTitle("Your rating")).toBeInTheDocument();
   });
 
+  it("renders a recommendation reason as plain text when given one", () => {
+    renderWithProviders(<ShowCard show={makeShow()} reason="<em>Bleak</em> and funny." />);
+    expect(screen.getByText("<em>Bleak</em> and funny.")).toBeInTheDocument();
+    expect(document.querySelector("em")).toBeNull();
+  });
+
+  it("renders no reason line when none is given", () => {
+    const { container } = renderWithProviders(<ShowCard show={makeShow()} />);
+    expect(container.querySelectorAll("p[title]")).toHaveLength(0);
+  });
+
   it("hides rating badges when both are null", () => {
     renderWithProviders(<ShowCard show={makeShow()} />);
     expect(screen.queryByTitle("TMDB average")).not.toBeInTheDocument();
