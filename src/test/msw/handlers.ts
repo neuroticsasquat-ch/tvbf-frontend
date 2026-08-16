@@ -26,6 +26,10 @@ export const handlers = [
   http.get(`${base}/me/watch-next`, () => HttpResponse.json([])),
   http.get(`${base}/me/upcoming`, () => HttpResponse.json([])),
   http.get(`${base}/me/sessions`, () => HttpResponse.json([])),
+  // Empty is the common case and is a 200 with an empty list, never a 204 —
+  // the section distinguishes "nothing to show" from "the request failed" by
+  // status code (NEU-1112 contract §3).
+  http.get(`${base}/me/recommendations`, () => HttpResponse.json({ recommendations: [] })),
   http.get(`${base}/genres`, () => HttpResponse.json(fixtureGenres)),
   http.get(`${base}/networks`, () => HttpResponse.json(fixtureNetworks)),
   http.get(`${base}/shows`, () => HttpResponse.json(fixtureShowListPage)),
