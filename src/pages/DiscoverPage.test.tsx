@@ -1,10 +1,10 @@
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 import { screen, waitFor, within } from "@testing-library/react";
 import { http, HttpResponse } from "msw";
 import { env } from "@/env";
 import { server } from "@/test/msw/server";
 import { renderWithProviders } from "@/test/renderWithProviders";
-import type { Recommendation } from "@/api/types";
+import type { Recommendation, TrendingShow } from "@/api/types";
 import { DiscoverPage } from "./DiscoverPage";
 
 function makeRecommendation(overrides: Partial<Recommendation> = {}): Recommendation {
@@ -57,7 +57,40 @@ async function findSection(): Promise<HTMLElement> {
   return section;
 }
 
+function makeTrendingShow(overrides: Partial<TrendingShow> = {}): TrendingShow {
+  return {
+    id: 900,
+    name: "Lanterns",
+    type: null,
+    status: "Returning Series",
+    language: "en",
+    premiered: "2026-02-18",
+    ended: null,
+    image_medium: null,
+    image_original: null,
+    network: null,
+    web_channel: null,
+    genres: [],
+    matched_aka: null,
+    rating_average: null,
+    my_rating: null,
+    in_my_shows: false,
+    ...overrides,
+  };
+}
+
+function serveTrending(shows: TrendingShow[]) {
+  server.use(
+    http.get(`${env.apiBaseUrl}/trending`, () =>
+      HttpResponse.json({ captured_at: shows.length ? "2026-08-16T04:00:11.481Z" : null, shows }),
+    ),
+  );
+}
+
 describe("DiscoverPage", () => {
+  // The tab is persisted, and nothing else clears localStorage between tests.
+  beforeEach(() => window.localStorage.clear());
+
   it("renders the page heading", () => {
     renderWithProviders(<DiscoverPage />);
     expect(screen.getByRole("heading", { level: 1, name: "Discover" })).toBeInTheDocument();
@@ -130,6 +163,51 @@ describe("DiscoverPage", () => {
     await waitFor(() => expect(request.called()).toBe(true));
     expect(screen.getByRole("heading", { level: 1, name: "Discover" })).toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: "Recommended for you" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
+
+  it("renders the Trending tab, selected by default", async () => {
+    serveTrending([makeTrendingShow()]);
+    renderWithProviders(<DiscoverPage />);
+
+    const trending = screen.getByRole("tab", { name: "Trending" });
+    expect(trending).toHaveAttribute("aria-selected", "true");
+    expect(await screen.findByRole("link", { name: /Lanterns/ })).toBeInTheDocument();
+  });
+
+  it("restores the persisted tab", () => {
+    window.localStorage.setItem("tvbf:str:discover-tab", "trending");
+    renderWithProviders(<DiscoverPage />);
+
+    expect(screen.getByRole("tab", { name: "Trending" })).toHaveAttribute("aria-selected", "true");
+  });
+
+  it("falls back to the default tab when the persisted value names no tab", () => {
+    // `usePersistedString` does not validate, so a value that outlives the tab
+    // it named must not leave the page with nothing selected.
+    window.localStorage.setItem("tvbf:str:discover-tab", "most-anticipated");
+    renderWithProviders(<DiscoverPage />);
+
+    expect(screen.getByRole("tab", { name: "Trending" })).toHaveAttribute("aria-selected", "true");
+    // Healed, not merely ignored — otherwise the value would come back to life
+    // the day a tab is added by that name.
+    expect(window.localStorage.getItem("tvbf:str:discover-tab")).toBe("trending");
+  });
+
+  it("renders the tab with no content, and no error, when trending is empty", async () => {
+    let called = false;
+    server.use(
+      http.get(`${env.apiBaseUrl}/trending`, () => {
+        called = true;
+        return HttpResponse.json({ captured_at: null, shows: [] });
+      }),
+    );
+    renderWithProviders(<DiscoverPage />);
+
+    await waitFor(() => expect(called).toBe(true));
+    expect(screen.getByRole("tab", { name: "Trending" })).toBeInTheDocument();
+    expect(screen.queryByText(/stale/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/no shows/i)).not.toBeInTheDocument();
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
 });

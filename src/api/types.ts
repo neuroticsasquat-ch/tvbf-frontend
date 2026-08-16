@@ -95,6 +95,35 @@ export interface ShowSummary {
   my_rating: number | null;
 }
 
+/** One entry of `GET /trending` — `ShowSummary` flattened, plus the one field
+ * that makes it an entry rather than a search result.
+ *
+ * Flattened rather than nested under a `show` key, on `Recommendation`'s
+ * reasoning: `ShowGrid` / `ShowCard` already take a `ShowSummary`, so a wrapper
+ * type would cost this client something for a single boolean. See
+ * tvbf-backend/docs/specs/NEU-1056-trending-contract.md §2.
+ *
+ * `in_my_shows` is a **mark, never a filter** — trending is a claim about the
+ * world, and seeing a show you already track in it is a feature.
+ */
+export interface TrendingShow extends ShowSummary {
+  in_my_shows: boolean;
+}
+
+/** The `GET /trending` body.
+ *
+ * `captured_at` is null exactly when `shows` is empty, and a stale snapshot is
+ * served as the same empty body an empty table gives (contract §3). So this
+ * client can neither re-derive the seven-day cutoff nor tell the two apart —
+ * which is the point: the cutoff is the server's rule, enforced in one place,
+ * and a rule enforced in two drifts into week-old rows under a label reading
+ * "trending right now".
+ */
+export interface TrendingSnapshot {
+  captured_at: string | null;
+  shows: TrendingShow[];
+}
+
 export interface Rating {
   stars: number;
   rated_at: string;
