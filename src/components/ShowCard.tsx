@@ -1,7 +1,7 @@
-import { Library } from "lucide-react";
 import { Link } from "react-router";
 
 import type { ShowSummary } from "@/api/types";
+import { InMyShowsBadge } from "@/components/InMyShowsBadge";
 import { RatingBadge } from "@/components/RatingBadge";
 import { tenPointToFiveStar } from "@/lib/rating";
 
@@ -40,27 +40,26 @@ function premiereLabel(dateStr: string | null, display: PremiereDisplay): string
 
 /** A poster card for one show.
  *
- * `reason` is the optional line of body text a recommendation carries
- * (NEU-1114). It is model-authored prose, so it renders as ordinary React text
- * — never `SafeHtml`, never `dangerouslySetInnerHTML`.
+ * There is deliberately **no body-text line**. Recommendations used to carry a
+ * model-authored `reason` here (NEU-1114), rendered as one truncated 10px line
+ * — which is not room for a sentence, so the server stopped serving it. Do not
+ * reintroduce a prose row on this card without giving it somewhere to fit.
  *
  * `inMyShows` marks a show the viewer already tracks (NEU-1057). It is a mark
  * and never a filter — the surfaces that carry it are claims about the world,
- * and seeing your own show in one is a feature. The `Library` icon is the same
- * one `MyShowsToggle` uses, so the mark and the control that sets it read as
- * the same thing.
+ * and seeing your own show in one is a feature. The mark itself is
+ * `InMyShowsBadge`, shared with the card grids and the friend list rows so that
+ * one claim has one picture.
  *
  * `premiereDisplay` chooses how much of the premiere date the date line
  * carries; it defaults to the year every existing caller has always rendered.
  */
 export function ShowCard({
   show,
-  reason,
   inMyShows,
   premiereDisplay = "year",
 }: {
   show: ShowSummary;
-  reason?: string;
   inMyShows?: boolean;
   premiereDisplay?: PremiereDisplay;
 }) {
@@ -81,13 +80,7 @@ export function ShowCard({
         // name falls back to the title, so the mark is announced once and
         // still carries a tooltip for the sighted. An sr-only label beside the
         // title would name it *and* describe it with the same words.
-        <span
-          role="img"
-          title="In My Shows"
-          className="absolute top-1 left-1 inline-flex items-center rounded-sm bg-foreground/85 p-1 text-background shadow"
-        >
-          <Library className="h-3 w-3" aria-hidden />
-        </span>
+        <InMyShowsBadge className="top-1 left-1" />
       )}
       {show.my_rating != null && show.my_rating > 0 && (
         <RatingBadge
@@ -117,11 +110,6 @@ export function ShowCard({
         <p className="text-[10px] text-muted-foreground leading-tight">
           {premiereLabel(show.premiered, premiereDisplay)}
         </p>
-        {reason && (
-          <p className="truncate text-[10px] text-muted-foreground leading-tight" title={reason}>
-            {reason}
-          </p>
-        )}
       </div>
     </Link>
   );

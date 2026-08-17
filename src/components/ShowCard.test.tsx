@@ -43,18 +43,13 @@ describe("ShowCard", () => {
     expect(screen.getByTitle("Your rating")).toBeInTheDocument();
   });
 
-  it("renders a recommendation reason as plain text when given one", () => {
-    renderWithProviders(<ShowCard show={makeShow()} reason="<em>Bleak</em> and funny." />);
-    expect(screen.getByText("<em>Bleak</em> and funny.")).toBeInTheDocument();
-    expect(document.querySelector("em")).toBeNull();
-  });
-
-  it("renders no reason line when none is given", () => {
+  it("renders the name and date lines and no body text under them", () => {
+    // The card used to carry a recommendation's model-authored `reason` as one
+    // truncated 10px line. The server stopped serving it — that is not room for
+    // a sentence — so the card's own lines are all there are.
     renderWithProviders(<ShowCard show={makeShow({ premiered: "2021-09-29" })} />);
-    // The card's own lines survive; nothing else does.
     expect(screen.getByText("Kastanjemanden")).toBeInTheDocument();
     expect(screen.getByText("2021")).toBeInTheDocument();
-    expect(screen.queryByText("<em>Bleak</em> and funny.")).not.toBeInTheDocument();
   });
 
   it("marks a show the viewer already tracks, naming the mark once", () => {
