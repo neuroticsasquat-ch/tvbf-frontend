@@ -26,7 +26,6 @@ function makeRecommendation(overrides: Partial<Recommendation> = {}): Recommenda
     rating_average: null,
     my_rating: null,
     rank: 1,
-    reason: "Slow-burn workplace dread, like the thrillers you finished.",
     ...overrides,
   };
 }
@@ -132,7 +131,6 @@ describe("DiscoverPage", () => {
         name: "The Leftovers",
         premiered: "2014-06-29",
         rank: 3,
-        reason: "Grief handled with the same restraint.",
       }),
     ]);
     renderWithProviders(<DiscoverPage />);
@@ -140,10 +138,8 @@ describe("DiscoverPage", () => {
     const section = await findSection();
     const links = within(section).getAllByRole("link");
     expect(links.map((a) => a.getAttribute("href"))).toEqual(["/shows/1", "/shows/2"]);
-    expect(
-      screen.getByText("Slow-burn workplace dread, like the thrillers you finished."),
-    ).toBeInTheDocument();
-    expect(screen.getByText("Grief handled with the same restraint.")).toBeInTheDocument();
+    expect(within(section).getByText("Severance")).toBeInTheDocument();
+    expect(within(section).getByText("The Leftovers")).toBeInTheDocument();
   });
 
   it("renders every row the server sent, without slicing", async () => {
@@ -161,11 +157,17 @@ describe("DiscoverPage", () => {
     expect(within(section).getAllByRole("link")).toHaveLength(13);
   });
 
-  it("renders the reason as plain text, never as markup", async () => {
-    serveRows([makeRecommendation({ reason: "<em>Sharp</em> and <b>funny</b>." })]);
+  it("renders no model-authored prose on the cards", async () => {
+    // `reason` is written and stored server-side but never served (NEU-1112
+    // contract): the card has one truncated 10px line for it, which is not room
+    // for a sentence. A payload that carries one anyway must not render it.
+    serveRows([
+      { ...makeRecommendation(), reason: "<em>Sharp</em> and <b>funny</b>." } as Recommendation,
+    ]);
     renderWithProviders(<DiscoverPage />);
 
-    expect(await screen.findByText("<em>Sharp</em> and <b>funny</b>.")).toBeInTheDocument();
+    await findSection();
+    expect(screen.queryByText("<em>Sharp</em> and <b>funny</b>.")).not.toBeInTheDocument();
     expect(document.querySelector("em")).toBeNull();
     expect(document.querySelector("b")).toBeNull();
   });
