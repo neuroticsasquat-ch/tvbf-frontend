@@ -52,4 +52,18 @@ describe("MyShowCard", () => {
     renderWithProviders(<MyShowCard entry={makeEntry(null)} />);
     expect(screen.queryByTitle("Your rating")).not.toBeInTheDocument();
   });
+
+  it("marks a tracked show with the shared library badge, not a green check", () => {
+    // The same assertion `ShowCard.test.tsx` makes, which is the point: one
+    // claim, one picture. This card drew its own emerald ✓ until the three
+    // definitions were unified on `InMyShowsBadge`, and emerald means *watched*
+    // everywhere else in the app.
+    renderWithProviders(<MyShowCard entry={makeEntry(null)} />);
+    expect(screen.getByRole("img", { name: "In My Shows" })).toBeInTheDocument();
+  });
+
+  it("renders no mark when the show is not in My Shows", () => {
+    renderWithProviders(<MyShowCard entry={makeEntry(null)} inMyShows={false} />);
+    expect(screen.queryByTitle("In My Shows")).not.toBeInTheDocument();
+  });
 });
