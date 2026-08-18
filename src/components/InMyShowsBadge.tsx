@@ -26,9 +26,13 @@ import { cn } from "@/lib/cn";
  * reading "In your library", so the mark stays visibly tied to the control that
  * creates it.
  *
- * Positioning is the caller's: the cards put their rating badge in different
- * corners, so the mark goes wherever that card has room. Every caller is
- * inside a `relative` container and passes the corner.
+ * **Positioning is not the caller's — the mark is always top-left.** It used to
+ * be: the cards put their rating badge in different corners, so the mark went
+ * wherever that card had room, and moving between Discover and My Shows the two
+ * marks traded places diagonally. `ShowPoster` assigns the corner now, under
+ * one rule — facts on top, controls on the bottom, library mark top-left,
+ * viewer's rating top-right (NEU-1183 §3.4). The `className` prop remains for
+ * the offset itself, and every caller should be `ShowPoster`.
  */
 export function InMyShowsBadge({ className }: { className?: string }) {
   return (

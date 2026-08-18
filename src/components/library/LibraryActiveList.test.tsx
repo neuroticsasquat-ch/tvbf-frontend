@@ -139,6 +139,23 @@ describe("LibraryActiveList ownership", () => {
     expect(screen.queryByText(/Jeanne/)).not.toBeInTheDocument();
   });
 
+  it("draws its row poster through ShowPoster rather than hand-rolling one", () => {
+    // NEU-1183 AC 1: the mark sat top-right on a library row and top-left on a
+    // Discover card. It is one corner now — asserted once, in
+    // `ShowPoster.test.tsx`, and inherited here rather than restated.
+    const { container } = renderWithProviders(
+      <LibraryActiveList
+        data={[makeEntry()]}
+        isLoading={false}
+        viewerContext={JEANNE}
+        callerLibrary={callerLibrary}
+        storagePrefix="friend-active"
+      />,
+    );
+    expect(container.querySelector("[data-show-poster]")).not.toBeNull();
+    expect(screen.getByRole("img", { name: "In your My Shows" })).toBeInTheDocument();
+  });
+
   it("defaults to self mode", () => {
     renderWithProviders(<LibraryActiveList data={[makeEntry()]} isLoading={false} />);
     expect(SELF.kind).toBe("self");

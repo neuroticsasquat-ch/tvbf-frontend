@@ -7,6 +7,7 @@ import { ConfirmDialog } from "@/components/connections/ConfirmDialog";
 import { Button } from "@/components/ui/button";
 import { ViewToggle } from "@/components/ViewToggle";
 import { MyShowCard } from "@/components/MyShowCard";
+import { ShowPoster } from "@/components/ShowPoster";
 import { MyShowsButton } from "@/components/MyShowsButton";
 import { WatchProgressBar } from "@/components/WatchProgressBar";
 import { FilterSheet } from "@/components/home/FilterSheet";
@@ -41,9 +42,9 @@ import { usePersistedSort } from "@/hooks/usePersistedSort";
 import { usePersistedString } from "@/hooks/usePersistedString";
 import { usePersistedView } from "@/hooks/usePersistedView";
 import { OwnerFacts } from "@/components/OwnerFacts";
-import type { CallerLibrary } from "./callerLibrary";
+import { callerPosterMark, type CallerLibrary } from "./callerLibrary";
 import { matchesCallerMembership, matchesCallerWatchState } from "./callerFilters";
-import { CallerPosterBadge, CallerProgressNote } from "./LibraryRowIndicators";
+import { CallerProgressNote } from "./LibraryRowIndicators";
 import { SELF, ratingOwnerFor, type ViewerContext } from "./viewerContext";
 
 // Disabled options on All Watched per NEU-121:
@@ -298,26 +299,13 @@ function WatchedRow({
 
   return (
     <li className="border border-border rounded p-3 flex items-start gap-3 sm:gap-4">
-      <Link
+      <ShowPoster
         to={`/shows/${entry.show.id}`}
-        className="shrink-0 relative"
-        aria-label={entry.show.name}
-      >
-        {entry.show.image_medium ? (
-          <img
-            src={entry.show.image_medium}
-            alt=""
-            className="w-16 aspect-[210/295] object-cover rounded"
-          />
-        ) : (
-          <div className="w-16 aspect-[210/295] rounded bg-muted" />
-        )}
-        <CallerPosterBadge
-          showId={entry.show.id}
-          viewerContext={viewerContext}
-          callerLibrary={callerLibrary}
-        />
-      </Link>
+        src={entry.show.image_medium}
+        linkLabel={entry.show.name}
+        size="row"
+        inMyShows={callerPosterMark(entry.show.id, viewerContext, callerLibrary)}
+      />
       <div className="flex-1 min-w-0 flex flex-col gap-2">
         <div className="flex items-baseline gap-2 flex-wrap">
           <Link
