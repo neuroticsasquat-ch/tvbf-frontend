@@ -1,4 +1,5 @@
 import type { MyShowEntry, WatchedEntry } from "@/api/types";
+import type { ViewerContext } from "./viewerContext";
 
 /** Per-show caller-relative state, keyed in `CallerLibrary` by show id.
  * Used by the friend library views (NEU-120) to render the action button,
@@ -61,4 +62,25 @@ export function callerProgress(
   const watched = state.watched_episode_count ?? 0;
   if (watched <= 0) return null;
   return { watched, aired: state.aired_episode_count ?? 0 };
+}
+
+/** Whether a list-view poster carries the "in My Shows" mark: friend mode, and
+ * the caller actually has the show in their own My Shows. Suppressed for self
+ * mode (their own library already implies tracking) or when no caller
+ * relationship exists.
+ *
+ * It **answers with a boolean rather than drawing the mark**, which it did
+ * until NEU-1183. The mark is `InMyShowsBadge` either way — it used to be a
+ * green ✓ drawn here, one of the three separate definitions NEU-1057 unified —
+ * but its *corner* is now `ShowPoster`'s to assign, so the gating logic that
+ * belongs to the friend surfaces stays here and the placement that belongs to
+ * every surface stays there.
+ */
+export function callerPosterMark(
+  showId: number,
+  viewerContext: ViewerContext,
+  callerLibrary?: CallerLibrary,
+): boolean {
+  if (viewerContext.kind !== "friend") return false;
+  return callerHasShow(callerLibrary, showId);
 }

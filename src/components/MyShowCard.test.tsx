@@ -96,4 +96,14 @@ describe("MyShowCard", () => {
     renderWithProviders(<MyShowCard entry={makeEntry(null)} ratingOwner={YOU} inMyShows={false} />);
     expect(screen.queryByTitle("In your My Shows")).not.toBeInTheDocument();
   });
+
+  it("draws its poster through ShowPoster rather than hand-rolling one", () => {
+    // NEU-1183 AC 3. Both this card's corners moved with it: the mark from
+    // top-right to top-left and the rating from bottom-left to top-right, and
+    // neither is stated here — which is the point.
+    const { container } = renderWithProviders(
+      <MyShowCard entry={makeEntry(4)} ratingOwner={YOU} />,
+    );
+    expect(container.querySelector("[data-show-poster]")).not.toBeNull();
+  });
 });

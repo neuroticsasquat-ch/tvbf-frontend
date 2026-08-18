@@ -39,6 +39,13 @@ import { useDismissRecommendation } from "@/api/me";
  * do not have. The 24px chip is well below the 44px tap-target guideline, so
  * the button's padding — not its box — is the hit area, and it is load-bearing
  * rather than decoration.
+ *
+ * **It states no corner.** It used to carry `absolute top-0 right-0` itself;
+ * `ShowPoster` now assigns the corner (NEU-1183 §3.4) and this is passed as its
+ * `control`, so the chip sits bottom-right where controls live. Everything that
+ * makes it read as *dismiss* is unchanged — the `X` glyph, the `aria-label`,
+ * the `bg-background/80` treatment and the `data-dismiss-recommendation`
+ * attribute NEU-1179's focus management keys on.
  */
 export function DismissRecommendationButton({
   showId,
@@ -64,7 +71,7 @@ export function DismissRecommendationButton({
       disabled={dismiss.isPending}
       aria-label={`Don't recommend ${showName} again`}
       title="Don't recommend this again"
-      className="absolute top-0 right-0 z-10 p-1.5 text-muted-foreground hover:text-foreground disabled:opacity-50"
+      className="p-1.5 text-muted-foreground hover:text-foreground disabled:opacity-50"
     >
       <span className="flex h-6 w-6 items-center justify-center rounded-full bg-background/80 shadow backdrop-blur">
         <X className="h-3.5 w-3.5" aria-hidden />

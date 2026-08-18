@@ -1,14 +1,9 @@
-import { Link } from "react-router";
 import type { MyShowEntry } from "@/api/types";
-import { InMyShowsBadge } from "@/components/InMyShowsBadge";
 import { OwnerFacts } from "@/components/OwnerFacts";
-import { RatingBadge } from "@/components/RatingBadge";
+import { ShowPoster } from "@/components/ShowPoster";
 import { WatchProgressBar } from "@/components/WatchProgressBar";
 import { isEndedStatus } from "@/components/home/filterTypes";
 import type { RatingOwner } from "@/lib/rating";
-
-const FALLBACK_POSTER =
-  "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 3 4'><rect width='3' height='4' fill='%23e2e8f0'/></svg>";
 
 function year(dateStr: string | null): string {
   return dateStr ? dateStr.slice(0, 4) : "—";
@@ -40,64 +35,57 @@ export function MyShowCard({
     isEndedStatus(entry.show.status);
 
   return (
-    <Link
-      to={`/shows/${entry.show.id}`}
-      className="group relative block overflow-hidden rounded border border-border bg-background transition hover:border-foreground"
-    >
-      <div className="relative">
-        <img
-          src={entry.show.image_medium ?? FALLBACK_POSTER}
-          alt=""
-          className="aspect-[210/295] w-full object-cover"
-          loading="lazy"
-        />
-        {inMyShows && <InMyShowsBadge className="top-1 right-1" />}
-        {ratingOwner.kind === "own" && entry.my_rating != null && entry.my_rating > 0 && (
-          <RatingBadge
-            kind="own"
-            value={entry.my_rating}
-            className="absolute bottom-1 left-1 text-[10px] py-0 px-1 shadow"
-          />
-        )}
-      </div>
-      <div className="p-1.5">
-        <h3 className="truncate text-xs font-medium leading-tight group-hover:underline">
-          {entry.show.name}
-        </h3>
-        <p className="text-[10px] text-muted-foreground leading-tight">
-          {year(entry.show.premiered)}
-        </p>
-        {!isFinished && entry.aired_episode_count > 0 && (
-          <WatchProgressBar
-            watched={entry.watched_episode_count}
-            aired={entry.aired_episode_count}
-            upcoming={entry.upcoming_episode_count}
-            barOnly
-          />
-        )}
-        <OwnerFacts
-          owner={ratingOwner}
-          layout="stacked"
-          status={isFinished ? "finished" : null}
-          progress={
-            !isFinished && entry.aired_episode_count > 0
-              ? { watched: entry.watched_episode_count, aired: entry.aired_episode_count }
-              : null
-          }
-          // The viewer's own rating has a home of its own on this card — the
-          // poster corner above. Only a friend's lands in the group.
-          rating={ratingOwner.kind === "own" ? null : entry.my_rating}
-          // The card has never carried a date, in either mode: it is the
-          // densest surface in the app and the fraction is what a reader
-          // compares.
-          lastWatchedAt={null}
-        />
-        {!isFinished && entry.upcoming_episode_count > 0 && (
+    <div className="relative overflow-hidden rounded border border-border bg-background transition hover:border-foreground">
+      <ShowPoster
+        to={`/shows/${entry.show.id}`}
+        src={entry.show.image_medium}
+        linkLabel={entry.show.name}
+        size="card"
+        inMyShows={inMyShows}
+        // Only the viewer's own rating may occupy a poster corner. A friend's
+        // goes to `OwnerFacts` below, under their name (NEU-1182 §3.5) — and
+        // the prop takes a bare number, so it could not go here anyway.
+        ownRating={ratingOwner.kind === "own" ? entry.my_rating : null}
+      >
+        <div className="p-1.5">
+          <h3 className="truncate text-xs font-medium leading-tight group-hover:underline">
+            {entry.show.name}
+          </h3>
           <p className="text-[10px] text-muted-foreground leading-tight">
-            {entry.upcoming_episode_count} upcoming
+            {year(entry.show.premiered)}
           </p>
-        )}
-      </div>
-    </Link>
+          {!isFinished && entry.aired_episode_count > 0 && (
+            <WatchProgressBar
+              watched={entry.watched_episode_count}
+              aired={entry.aired_episode_count}
+              upcoming={entry.upcoming_episode_count}
+              barOnly
+            />
+          )}
+          <OwnerFacts
+            owner={ratingOwner}
+            layout="stacked"
+            status={isFinished ? "finished" : null}
+            progress={
+              !isFinished && entry.aired_episode_count > 0
+                ? { watched: entry.watched_episode_count, aired: entry.aired_episode_count }
+                : null
+            }
+            // The viewer's own rating has a home of its own on this card — the
+            // poster corner above. Only a friend's lands in the group.
+            rating={ratingOwner.kind === "own" ? null : entry.my_rating}
+            // The card has never carried a date, in either mode: it is the
+            // densest surface in the app and the fraction is what a reader
+            // compares.
+            lastWatchedAt={null}
+          />
+          {!isFinished && entry.upcoming_episode_count > 0 && (
+            <p className="text-[10px] text-muted-foreground leading-tight">
+              {entry.upcoming_episode_count} upcoming
+            </p>
+          )}
+        </div>
+      </ShowPoster>
+    </div>
   );
 }

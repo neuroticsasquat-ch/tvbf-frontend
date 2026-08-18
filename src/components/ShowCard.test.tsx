@@ -152,6 +152,25 @@ describe("ShowCard", () => {
     expect(chip.closest("a")).toBeNull();
   });
 
+  it("draws its poster through ShowPoster rather than hand-rolling one", () => {
+    // The tripwire (NEU-1183 AC 3): placement is inherited from `ShowPoster`,
+    // which is where the corner rule is asserted. A surface that hand-rolls a
+    // poster is a surface that has stated a corner of its own.
+    const { container } = renderWithProviders(<ShowCard show={makeShow()} inMyShows />);
+    expect(container.querySelector("[data-show-poster]")).not.toBeNull();
+  });
+
+  it("hands the dismiss chip to the poster's control slot, stating no corner", () => {
+    // AC 4: the chip used to position itself top-right — the corner the
+    // viewer's rating owns — and was safe only by coincidence. It is now the
+    // poster's `control`, so which corner it lands in is asserted once, in
+    // `ShowPoster.test.tsx`, and this card states nothing about it.
+    renderWithProviders(<ShowCard show={makeShow()} dismissible />);
+    const chip = screen.getByRole("button", { name: /Don't recommend/i });
+    expect(chip.closest("[data-show-poster]")).not.toBeNull();
+    expect(chip.className).not.toContain("absolute");
+  });
+
   it("hides rating badges when both are null", () => {
     renderWithProviders(<ShowCard show={makeShow()} />);
     expect(screen.queryByTitle("TMDB average")).not.toBeInTheDocument();

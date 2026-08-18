@@ -1,14 +1,9 @@
-import { Link } from "react-router";
-
 import type { ShowSummary } from "@/api/types";
 import { DismissRecommendationButton } from "@/components/DismissRecommendationButton";
-import { InMyShowsBadge } from "@/components/InMyShowsBadge";
 import { MyShowsButton } from "@/components/MyShowsButton";
 import { RatingBadge } from "@/components/RatingBadge";
+import { ShowPoster } from "@/components/ShowPoster";
 import { tenPointToFiveStar } from "@/lib/rating";
-
-const FALLBACK_POSTER =
-  "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 3 4'><rect width='3' height='4' fill='%23e2e8f0'/></svg>";
 
 const PREMIERE_FMT = new Intl.DateTimeFormat("en-US", {
   month: "short",
@@ -51,7 +46,9 @@ function premiereLabel(dateStr: string | null, display: PremiereDisplay): string
  * and never a filter — the surfaces that carry it are claims about the world,
  * and seeing your own show in one is a feature. The mark itself is
  * `InMyShowsBadge`, shared with the card grids and the friend list rows so that
- * one claim has one picture.
+ * one claim has one picture — drawn by `ShowPoster`, which is where its corner
+ * is decided (NEU-1183 §3.4). This card states no position for it, and neither
+ * should any other surface.
  *
  * `premiereDisplay` chooses how much of the premiere date the date line
  * carries; it defaults to the year every existing caller has always rendered.
@@ -75,18 +72,28 @@ function premiereLabel(dateStr: string | null, display: PremiereDisplay): string
  * icon-only `h-7 w-7` needs 78 + 4 + 28 = 110px. It does not fit, and wrapping
  * or stacking would make recommendation cards taller than every other card in
  * a shared grid. The overlay costs no row width and changes card height on no
- * surface. Both corners are free on this surface: `my_rating` is null by
- * contract, and a show the viewer tracks or has rated is suppressed from the
- * list before it can be recommended at all.
+ * surface — that argument is unchanged.
  *
- * The button is a **sibling of the `Link`, never a descendant**: a `<button>`
- * inside an `<a>` is invalid content nesting and a real focus-order problem.
- * `NextEpisodeCard` is the precedent that does it right; `SeasonWatchCheckbox`'s
- * `preventDefault` / `stopPropagation` is the fallback for where nesting could
- * not be avoided, and here it can. So the border, rounding and hover transition
- * belong to the outer wrapper — they are the card's, not the link's — while
- * `group` stays on the `Link`, so hovering the button does not underline the
- * title.
+ * **Which corner it overlays is no longer this card's to decide.** It used to
+ * sit top-right, and the card's own docstring justified that as safe by
+ * coincidence: `my_rating` is null on the recommendations contract, and a show
+ * the viewer tracks or has rated is suppressed before it can be recommended at
+ * all — so both corners happened to be free. `ShowPoster` ends the coincidence
+ * by rule (NEU-1183 §3.4, §5.3): facts on top, controls on the bottom, so the
+ * chip is passed as `control` and lands bottom-right. Making a rating and a
+ * control mutually exclusive in the type was rejected — it encodes the
+ * constraint as a prohibition, and the prohibited thing (a recommendations grid
+ * that eventually shows the viewer's rating) is reasonable.
+ *
+ * The button is a **sibling of the poster's `Link`, never a descendant**: a
+ * `<button>` inside an `<a>` is invalid content nesting and a real focus-order
+ * problem. `ShowPoster` is what makes that structural rather than remembered
+ * here — it renders the control in an overlay layer beside its link, so no
+ * `preventDefault` is needed for a control that must not navigate. The border,
+ * rounding and hover transition belong to the outer wrapper — they are the
+ * card's, not the link's — while `group` lives on the poster's link, which is
+ * the one this card's title sits inside, so hovering either underlines it and
+ * hovering an overlay control does not.
  */
 export function ShowCard({
   show,
@@ -106,27 +113,23 @@ export function ShowCard({
   const aggregate = tenPointToFiveStar(show.rating_average);
   return (
     <div className="relative overflow-hidden rounded border border-border bg-background transition hover:border-foreground">
-      <Link to={`/shows/${show.id}`} className="group relative block">
-        <img
-          src={show.image_medium ?? FALLBACK_POSTER}
-          alt=""
-          className="aspect-[210/295] w-full object-cover"
-          loading="lazy"
-        />
-        {inMyShows && (
-          // `role="img"` with a bare `title` and no text content: the accessible
-          // name falls back to the title, so the mark is announced once and
-          // still carries a tooltip for the sighted. An sr-only label beside the
-          // title would name it *and* describe it with the same words.
-          <InMyShowsBadge className="top-1 left-1" />
-        )}
-        {show.my_rating != null && show.my_rating > 0 && (
-          <RatingBadge
-            kind="own"
-            value={show.my_rating}
-            className="absolute top-1 right-1 text-[10px] py-0 px-1 shadow"
-          />
-        )}
+      <ShowPoster
+        to={`/shows/${show.id}`}
+        src={show.image_medium}
+        linkLabel={show.name}
+        size="card"
+        inMyShows={inMyShows}
+        ownRating={show.my_rating}
+        control={
+          dismissible ? (
+            <DismissRecommendationButton
+              showId={show.id}
+              showName={show.name}
+              onDismissed={onDismissed}
+            />
+          ) : undefined
+        }
+      >
         <div className="p-1.5">
           <div className="flex items-baseline gap-1">
             <h3 className="truncate text-xs font-medium leading-tight group-hover:underline">
@@ -150,17 +153,7 @@ export function ShowCard({
             {premiereLabel(show.premiered, premiereDisplay)}
           </p>
         </div>
-      </Link>
-      {dismissible && (
-        // A sibling of the `Link`, never a descendant — the same rule the add
-        // button follows, and why no `preventDefault` / `stopPropagation` is
-        // needed for a control that must not navigate.
-        <DismissRecommendationButton
-          showId={show.id}
-          showName={show.name}
-          onDismissed={onDismissed}
-        />
-      )}
+      </ShowPoster>
       {addable && (
         // The button reads the card's own `inMyShows`, so it can never
         // contradict the badge above it. On the one surface that passes

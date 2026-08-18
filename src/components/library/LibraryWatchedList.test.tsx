@@ -180,6 +180,17 @@ describe("LibraryWatchedList row UI", () => {
     expect(screen.getByText("Fringe")).toBeInTheDocument();
   });
 
+  it("draws its row poster through ShowPoster rather than hand-rolling one", async () => {
+    // NEU-1183 AC 3, and the fallback that came with it: this row rendered a
+    // `bg-muted` div for a show with no image where the cards rendered a data
+    // URI. Same picture, two behaviours, until the poster was one component.
+    watchedResponse = [makeWatched(106, "Rectify")];
+    const { container } = renderWithProviders(<Harness />);
+
+    await waitFor(() => expect(screen.getByText("Rectify")).toBeInTheDocument());
+    expect(container.querySelector("[data-show-poster]")).not.toBeNull();
+  });
+
   it("row name links to the show detail page", async () => {
     watchedResponse = [makeWatched(105, "Deadwood")];
     renderWithProviders(<Harness />);
