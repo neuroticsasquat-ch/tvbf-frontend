@@ -45,12 +45,12 @@ function makeEntry(my_rating: number | null = null): MyShowEntry {
 describe("MyShowCard", () => {
   it("renders my-rating badge when my_rating is set", () => {
     renderWithProviders(<MyShowCard entry={makeEntry(4)} />);
-    expect(screen.getByTitle("Your rating")).toBeInTheDocument();
+    expect(screen.getByRole("img", { name: "Your rating: 4.0 out of 5" })).toBeInTheDocument();
   });
 
   it("hides my-rating badge when my_rating is null", () => {
     renderWithProviders(<MyShowCard entry={makeEntry(null)} />);
-    expect(screen.queryByTitle("Your rating")).not.toBeInTheDocument();
+    expect(screen.queryByRole("img", { name: /rating:/ })).not.toBeInTheDocument();
   });
 
   it("marks a tracked show with the shared library badge, not a green check", () => {

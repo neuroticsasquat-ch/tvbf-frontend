@@ -50,6 +50,43 @@ describe("FriendRatingsList (show)", () => {
     expect(screen.getByText("Bob").closest("a")).toHaveAttribute("href", "/users/u-2");
   });
 
+  it("renders the friends' average as an aggregate and each row as its owner's", async () => {
+    // NEU-1182 AC 6. The average was drawn in amber — the colour this design
+    // reserves for a named person — on the same page as the TMDB average.
+    server.use(
+      http.get(`${env.apiBaseUrl}/shows/4/friends/ratings`, () =>
+        HttpResponse.json({
+          avg: 4.25,
+          count: 2,
+          items: [
+            {
+              user_id: "u-1",
+              display_name: "Alice",
+              stars: 4.5,
+              rated_at: "2026-05-01T00:00:00Z",
+            },
+            {
+              user_id: "u-2",
+              display_name: "Bob",
+              stars: 4.0,
+              rated_at: "2026-04-20T00:00:00Z",
+            },
+          ],
+        }),
+      ),
+    );
+
+    renderWithProviders(<FriendRatingsList showId={4} />);
+
+    await waitFor(() =>
+      expect(
+        screen.getByRole("img", { name: "Friends average: 4.3 out of 5" }),
+      ).toBeInTheDocument(),
+    );
+    expect(screen.getByRole("img", { name: "Alice's rating: 4.5 out of 5" })).toBeInTheDocument();
+    expect(screen.getByRole("img", { name: "Bob's rating: 4.0 out of 5" })).toBeInTheDocument();
+  });
+
   it("uses singular friend when count is 1", async () => {
     server.use(
       http.get(`${env.apiBaseUrl}/shows/2/friends/ratings`, () =>

@@ -353,7 +353,7 @@ function ActiveRow({
           </>
         )}
         <div className="flex flex-wrap items-center justify-end gap-2 pt-1">
-          <RatingBadge value={entry.my_rating} title="Your rating" />
+          <RatingBadge kind="own" value={entry.my_rating} />
           <CallerProgressNote
             showId={entry.show.id}
             viewerContext={viewerContext}

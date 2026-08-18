@@ -110,9 +110,11 @@ describe("FriendsFeedPage", () => {
     expect(text).toContain("Alice watched Severance S1 · A Christmas Special.");
     expect(text).not.toContain("Enull");
     expect(text).not.toContain("E0");
-    // rated_show / rated_episode use StarRatingDisplay; check it rendered.
-    expect(screen.getByLabelText("4.5 out of 5")).toBeInTheDocument();
-    expect(screen.getByLabelText("3.0 out of 5")).toBeInTheDocument();
+    // rated_show / rated_episode use StarRatingDisplay; check it rendered, and
+    // that NEU-1182 attributes it to the actor rather than leaving a bare
+    // number in the accessibility tree.
+    expect(screen.getByLabelText("Alice's rating: 4.5 out of 5")).toBeInTheDocument();
+    expect(screen.getByLabelText("Alice's rating: 3.0 out of 5")).toBeInTheDocument();
   });
 
   // NEU-1133: the roll-up label comes from the server, via `seasonLabel`.
