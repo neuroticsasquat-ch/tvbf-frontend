@@ -3,7 +3,7 @@ import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { http, HttpResponse } from "msw";
 
-import { useRemoveShow } from "@/api/me";
+import { useAddShow, useRemoveShow } from "@/api/me";
 import type { Recommendation } from "@/api/types";
 import { env } from "@/env";
 import { server } from "@/test/msw/server";
@@ -50,6 +50,15 @@ function serveShrinkingList(pages: Recommendation[][]) {
   return { calls: () => call };
 }
 
+/** A My Shows *add* taken somewhere other than the grid — the show detail page
+ * the card links to, in the running app. AC 2: the grid has to reflect it on
+ * the way back, and the mutation is what guarantees that, whichever surface
+ * called it. */
+function AddElsewhere({ showId }: { showId: number }) {
+  const add = useAddShow();
+  return <button onClick={() => add.mutate(showId)}>add elsewhere</button>;
+}
+
 /** A My Shows removal taken somewhere other than the grid — the show detail
  * page in the running app. Anything that changes one of project spec §8's four
  * records has to refresh this key, so the trigger is deliberately not one of
@@ -82,6 +91,29 @@ describe("RecommendedForYou", () => {
 
     await waitFor(() => expect(screen.queryByText("Severance")).not.toBeInTheDocument());
     expect(screen.getByText("The Leftovers")).toBeInTheDocument();
+    expect(screen.getByText("Andor")).toBeInTheDocument();
+  });
+
+  it("drops a card added from the show detail page, not just from its own button", async () => {
+    // AC 2. The invalidation lives on the mutation rather than on this
+    // component, so the surface that took the action is irrelevant — a
+    // subscription here would miss exactly this case.
+    serveShrinkingList([
+      [A, B],
+      [B, C],
+    ]);
+    renderWithProviders(
+      <>
+        <RecommendedForYou />
+        <AddElsewhere showId={1} />
+      </>,
+    );
+
+    expect(await screen.findByText("Severance")).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: "add elsewhere" }));
+
+    await waitFor(() => expect(screen.queryByText("Severance")).not.toBeInTheDocument());
     expect(screen.getByText("Andor")).toBeInTheDocument();
   });
 

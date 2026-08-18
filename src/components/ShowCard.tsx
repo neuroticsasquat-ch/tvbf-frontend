@@ -129,15 +129,21 @@ export function ShowCard({
         </div>
       </Link>
       {addable && (
-        // `inMyShows={false}` is true by construction on the one surface that
-        // passes `addable`: the server suppresses any show the viewer already
-        // has a record for, so a tracked show never renders here. The button's
-        // own optimistic override supplies the "✓ My Shows" beat between the
-        // click and the card disappearing, which is the only feedback there is
-        // — the card vanishing is the confirmation, so there is no success
-        // state, and a failed add simply reverts and leaves the card in place.
+        // The button reads the card's own `inMyShows`, so it can never
+        // contradict the badge above it. On the one surface that passes
+        // `addable` that value is false by construction — the server
+        // suppresses any show the viewer already has a record for, so a
+        // tracked show never renders there — but taking the answer from the
+        // card rather than hard-coding it is what keeps the next `addable`
+        // surface from showing a "tracked" badge beside an "Add" button.
+        //
+        // The button's own optimistic override supplies the "✓ My Shows" beat
+        // between the click and the card disappearing, which is the only
+        // feedback there is: the card vanishing is the confirmation, so there
+        // is no success state, and a failed add reverts and leaves the card in
+        // place.
         <div className="px-1.5 pb-1.5">
-          <MyShowsButton showId={show.id} inMyShows={false} />
+          <MyShowsButton showId={show.id} inMyShows={inMyShows ?? false} />
         </div>
       )}
     </div>

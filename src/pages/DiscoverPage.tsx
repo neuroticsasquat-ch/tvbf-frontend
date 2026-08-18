@@ -1,10 +1,11 @@
-import { useEffect, useRef } from "react";
+import { useEffect } from "react";
 
 import { useRecommendations } from "@/api/me";
 import { Anticipated } from "@/components/discover/Anticipated";
 import { RecommendedForYou } from "@/components/discover/RecommendedForYou";
 import { Trending } from "@/components/discover/Trending";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useLatched } from "@/hooks/useLatched";
 import { usePersistedString } from "@/hooks/usePersistedString";
 
 /** The tabs holding Discover's browsing surfaces. "My Recommendations" leads
@@ -71,12 +72,14 @@ export function DiscoverPage() {
   const recommendationsQuery = useRecommendations();
   const hasRecommendations = (recommendationsQuery.data?.recommendations.length ?? 0) > 0;
   const recommendationsPending = recommendationsQuery.isPending;
-  // A ref rather than state: the latch never causes a render of its own — the
-  // render that empties the list is the one that reads it.
-  const hadRecommendations = useRef(false);
-  if (hasRecommendations) hadRecommendations.current = true;
+  // Latched here rather than inside the panel, because Radix unmounts an
+  // inactive `TabsContent`: a panel-scoped latch is lost the moment the user
+  // looks at Trending and comes back, which would leave this tab standing over
+  // a pane rendering nothing. This page outlives every tab switch, so it is
+  // what the panel reads through `everHadRows` below.
+  const everHadRecommendations = useLatched(hasRecommendations);
   const showRecommendations =
-    hasRecommendations || recommendationsPending || hadRecommendations.current;
+    hasRecommendations || recommendationsPending || everHadRecommendations;
   const tab = parsed === "my-recommendations" && !showRecommendations ? FALLBACK_TAB : parsed;
 
   // Heal the store as well as the render. `usePersistedString` writes back
@@ -98,7 +101,7 @@ export function DiscoverPage() {
           <TabsTrigger value="most-anticipated">Most Anticipated</TabsTrigger>
         </TabsList>
         <TabsContent value="my-recommendations">
-          <RecommendedForYou />
+          <RecommendedForYou everHadRows={everHadRecommendations} />
         </TabsContent>
         <TabsContent value="trending">
           <Trending />

@@ -1,18 +1,19 @@
-import { useRef } from "react";
-
 import { useRecommendations } from "@/api/me";
 import { ShowGrid } from "@/components/ShowGrid";
+import { useLatched } from "@/hooks/useLatched";
 
 /** The "My Recommendations" tab of the Discover page (NEU-1114).
  *
- * Renders nothing at all when there is nothing to show — no empty state, no
- * "add more shows" nudge, no spinner, no error. That covers a user whose set
- * has never been generated, one below the generation floor, one whose Sunday
- * run failed, and a request that failed outright, all identically: an
+ * Renders nothing at all when there has never been anything to show — no empty
+ * state, no "add more shows" nudge, no spinner, no error. That covers a user
+ * whose set has never been generated, one below the generation floor, one whose
+ * Sunday run failed, and a request that failed outright, all identically: an
  * empty-state panel explaining an absent feature costs a real moment of "why is
  * this broken?" while advertising machinery nobody asked about (project spec
  * §11). `DiscoverPage` applies the same rule one level up and withholds the
- * tab itself, so this panel is normally unreachable when it is empty.
+ * tab itself, so this panel is normally unreachable when it is empty. A list
+ * that empties *under* a reader who had rows is the one case that says
+ * something, and it is the last paragraph below.
  *
  * The label is "My Recommendations", not "Because you watched" — the latter
  * promises a per-show causal link the reason does not deliver, since the model
@@ -35,17 +36,21 @@ import { ShowGrid } from "@/components/ShowGrid";
  * request — still renders nothing at all, and `DiscoverPage` still withholds
  * the tab for them. "Sunday" is accurate: the weekly pass is a Coolify
  * scheduled task running Sundays.
+ *
+ * `everHadRows` is that latch taken one level up. Radix unmounts an inactive
+ * `TabsContent`, so a latch held only here is lost on a tab switch and this
+ * pane would render nothing under a tab `DiscoverPage` is still showing — the
+ * blank the latch exists to prevent, one interaction later. The page owns the
+ * durable answer and hands it down; the local latch remains for a caller that
+ * renders this panel on its own.
  */
-export function RecommendedForYou() {
+export function RecommendedForYou({ everHadRows = false }: { everHadRows?: boolean } = {}) {
   const { data } = useRecommendations();
   const recommendations = data?.recommendations ?? [];
-  // A ref rather than state: nothing re-renders *because* of the latch — the
-  // render that empties the list is the one that reads it.
-  const hadRows = useRef(false);
-  if (recommendations.length > 0) hadRows.current = true;
+  const hadRows = useLatched(recommendations.length > 0) || everHadRows;
 
   if (recommendations.length === 0) {
-    if (!hadRows.current) return null;
+    if (!hadRows) return null;
     return (
       <section aria-labelledby="my-recommendations-heading" className="flex flex-col gap-2">
         <h2 id="my-recommendations-heading" className="sr-only">
