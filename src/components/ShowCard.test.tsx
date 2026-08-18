@@ -101,6 +101,28 @@ describe("ShowCard", () => {
     expect(screen.queryByText(/invalid date/i)).not.toBeInTheDocument();
   });
 
+  it("renders an add control only when the surface asks for one", () => {
+    // The containment seam (NEU-1176): the card is shared by trending, most
+    // anticipated, similar shows, search and browse, so a control that belongs
+    // to one surface is opt-in and absent by default. Asserted here, in the
+    // shared component, rather than once per grid.
+    renderWithProviders(<ShowCard show={makeShow()} addable />);
+    expect(screen.getByRole("button", { name: "Add to My Shows" })).toBeInTheDocument();
+  });
+
+  it("renders no add control by default", () => {
+    renderWithProviders(<ShowCard show={makeShow()} />);
+    expect(screen.queryByRole("button", { name: /My Shows/ })).not.toBeInTheDocument();
+  });
+
+  it("keeps the add control outside the card's link", () => {
+    // A `<button>` inside an `<a>` is invalid content nesting and a real
+    // focus-order problem, so activating it can never navigate.
+    renderWithProviders(<ShowCard show={makeShow()} addable />);
+    const button = screen.getByRole("button", { name: "Add to My Shows" });
+    expect(button.closest("a")).toBeNull();
+  });
+
   it("hides rating badges when both are null", () => {
     renderWithProviders(<ShowCard show={makeShow()} />);
     expect(screen.queryByTitle("TMDB average")).not.toBeInTheDocument();

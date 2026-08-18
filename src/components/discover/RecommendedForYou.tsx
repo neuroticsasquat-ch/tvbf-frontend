@@ -1,3 +1,5 @@
+import { useRef } from "react";
+
 import { useRecommendations } from "@/api/me";
 import { ShowGrid } from "@/components/ShowGrid";
 
@@ -20,12 +22,41 @@ import { ShowGrid } from "@/components/ShowGrid";
  * model's, and letting users re-sort discards the only ordering that carries
  * information. The list is rendered exactly as the server sent it — the cap and
  * the `adult` / `deleted_upstream_at` filters are the server's (NEU-1112
- * contract §4).
+ * contract §4). It legitimately shrinks as the user acts on it: the server
+ * suppresses a suggestion once the viewer has a record for that show
+ * (NEU-1175), and the stored set is never backfilled from an older one.
+ *
+ * **The one-line sign-off is mount-scoped, and is not the empty state §11
+ * forbids.** That rule is about a user meeting machinery they have never had,
+ * where an explanation costs a real moment of "why is this broken?". This line
+ * is reachable only by a user who just used up every suggestion they were
+ * given in this very mount, and it explains something they spent. Every cold
+ * path — never generated, below the floor, a failed Sunday run, a failed
+ * request — still renders nothing at all, and `DiscoverPage` still withholds
+ * the tab for them. "Sunday" is accurate: the weekly pass is a Coolify
+ * scheduled task running Sundays.
  */
 export function RecommendedForYou() {
   const { data } = useRecommendations();
   const recommendations = data?.recommendations ?? [];
-  if (recommendations.length === 0) return null;
+  // A ref rather than state: nothing re-renders *because* of the latch — the
+  // render that empties the list is the one that reads it.
+  const hadRows = useRef(false);
+  if (recommendations.length > 0) hadRows.current = true;
+
+  if (recommendations.length === 0) {
+    if (!hadRows.current) return null;
+    return (
+      <section aria-labelledby="my-recommendations-heading" className="flex flex-col gap-2">
+        <h2 id="my-recommendations-heading" className="sr-only">
+          My Recommendations
+        </h2>
+        <p className="text-muted-foreground">
+          That&rsquo;s everything for this week &mdash; new recommendations on Sunday.
+        </p>
+      </section>
+    );
+  }
 
   return (
     <section aria-labelledby="my-recommendations-heading" className="flex flex-col gap-2">
@@ -34,7 +65,11 @@ export function RecommendedForYou() {
       <h2 id="my-recommendations-heading" className="sr-only">
         My Recommendations
       </h2>
-      <ShowGrid shows={recommendations} />
+      {/* The one surface that passes `addable`: making the grid a place a
+        suggestion can be acted on is the shortest path between seeing one and
+        taking it, and it is what the refetch above exists to serve. Every
+        other grid passes nothing and renders no control. */}
+      <ShowGrid shows={recommendations} addable />
     </section>
   );
 }

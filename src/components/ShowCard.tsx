@@ -2,6 +2,7 @@ import { Link } from "react-router";
 
 import type { ShowSummary } from "@/api/types";
 import { InMyShowsBadge } from "@/components/InMyShowsBadge";
+import { MyShowsButton } from "@/components/MyShowsButton";
 import { RatingBadge } from "@/components/RatingBadge";
 import { tenPointToFiveStar } from "@/lib/rating";
 
@@ -53,64 +54,92 @@ function premiereLabel(dateStr: string | null, display: PremiereDisplay): string
  *
  * `premiereDisplay` chooses how much of the premiere date the date line
  * carries; it defaults to the year every existing caller has always rendered.
+ *
+ * `addable` is the containment seam for surface-specific controls (NEU-1176).
+ * This card is shared by trending, most anticipated, similar shows, search and
+ * browse, so an affordance that belongs to *one* surface arrives as an opt-in
+ * prop threaded through `ShowGrid` rather than as a default every grid then has
+ * to opt out of. Only `RecommendedForYou` passes it today.
+ *
+ * The button is a **sibling of the `Link`, never a descendant**: a `<button>`
+ * inside an `<a>` is invalid content nesting and a real focus-order problem.
+ * `NextEpisodeCard` is the precedent that does it right; `SeasonWatchCheckbox`'s
+ * `preventDefault` / `stopPropagation` is the fallback for where nesting could
+ * not be avoided, and here it can. So the border, rounding and hover transition
+ * belong to the outer wrapper — they are the card's, not the link's — while
+ * `group` stays on the `Link`, so hovering the button does not underline the
+ * title.
  */
 export function ShowCard({
   show,
   inMyShows,
   premiereDisplay = "year",
+  addable,
 }: {
   show: ShowSummary;
   inMyShows?: boolean;
   premiereDisplay?: PremiereDisplay;
+  addable?: boolean;
 }) {
   const aggregate = tenPointToFiveStar(show.rating_average);
   return (
-    <Link
-      to={`/shows/${show.id}`}
-      className="group relative block overflow-hidden rounded border border-border bg-background transition hover:border-foreground"
-    >
-      <img
-        src={show.image_medium ?? FALLBACK_POSTER}
-        alt=""
-        className="aspect-[210/295] w-full object-cover"
-        loading="lazy"
-      />
-      {inMyShows && (
-        // `role="img"` with a bare `title` and no text content: the accessible
-        // name falls back to the title, so the mark is announced once and
-        // still carries a tooltip for the sighted. An sr-only label beside the
-        // title would name it *and* describe it with the same words.
-        <InMyShowsBadge className="top-1 left-1" />
-      )}
-      {show.my_rating != null && show.my_rating > 0 && (
-        <RatingBadge
-          value={show.my_rating}
-          title="Your rating"
-          className="absolute top-1 right-1 text-[10px] py-0 px-1 shadow"
+    <div className="relative overflow-hidden rounded border border-border bg-background transition hover:border-foreground">
+      <Link to={`/shows/${show.id}`} className="group relative block">
+        <img
+          src={show.image_medium ?? FALLBACK_POSTER}
+          alt=""
+          className="aspect-[210/295] w-full object-cover"
+          loading="lazy"
         />
-      )}
-      <div className="p-1.5">
-        <div className="flex items-baseline gap-1">
-          <h3 className="truncate text-xs font-medium leading-tight group-hover:underline">
-            {show.name}
-          </h3>
-          {aggregate != null && (
-            <RatingBadge
-              value={aggregate}
-              title="TMDB average"
-              className="shrink-0 text-[10px] py-0 px-1"
-            />
-          )}
-        </div>
-        {show.matched_aka && (
-          <p className="truncate text-[10px] text-muted-foreground leading-tight italic">
-            {show.matched_aka}
-          </p>
+        {inMyShows && (
+          // `role="img"` with a bare `title` and no text content: the accessible
+          // name falls back to the title, so the mark is announced once and
+          // still carries a tooltip for the sighted. An sr-only label beside the
+          // title would name it *and* describe it with the same words.
+          <InMyShowsBadge className="top-1 left-1" />
         )}
-        <p className="text-[10px] text-muted-foreground leading-tight">
-          {premiereLabel(show.premiered, premiereDisplay)}
-        </p>
-      </div>
-    </Link>
+        {show.my_rating != null && show.my_rating > 0 && (
+          <RatingBadge
+            value={show.my_rating}
+            title="Your rating"
+            className="absolute top-1 right-1 text-[10px] py-0 px-1 shadow"
+          />
+        )}
+        <div className="p-1.5">
+          <div className="flex items-baseline gap-1">
+            <h3 className="truncate text-xs font-medium leading-tight group-hover:underline">
+              {show.name}
+            </h3>
+            {aggregate != null && (
+              <RatingBadge
+                value={aggregate}
+                title="TMDB average"
+                className="shrink-0 text-[10px] py-0 px-1"
+              />
+            )}
+          </div>
+          {show.matched_aka && (
+            <p className="truncate text-[10px] text-muted-foreground leading-tight italic">
+              {show.matched_aka}
+            </p>
+          )}
+          <p className="text-[10px] text-muted-foreground leading-tight">
+            {premiereLabel(show.premiered, premiereDisplay)}
+          </p>
+        </div>
+      </Link>
+      {addable && (
+        // `inMyShows={false}` is true by construction on the one surface that
+        // passes `addable`: the server suppresses any show the viewer already
+        // has a record for, so a tracked show never renders here. The button's
+        // own optimistic override supplies the "✓ My Shows" beat between the
+        // click and the card disappearing, which is the only feedback there is
+        // — the card vanishing is the confirmation, so there is no success
+        // state, and a failed add simply reverts and leaves the card in place.
+        <div className="px-1.5 pb-1.5">
+          <MyShowsButton showId={show.id} inMyShows={false} />
+        </div>
+      )}
+    </div>
   );
 }

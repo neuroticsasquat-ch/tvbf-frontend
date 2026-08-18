@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 
 import { useRecommendations } from "@/api/me";
 import { Anticipated } from "@/components/discover/Anticipated";
@@ -52,6 +52,15 @@ function isDiscoverTab(value: string): value is DiscoverTab {
  * deferring to Trending because the recommendations are not there is a display
  * decision for this visit, and writing it back would spend the user's stored
  * preference on one bad Sunday.
+ *
+ * **Once the tab has been shown in this mount it stays shown** (NEU-1176).
+ * A recommendation card can now be acted on from the grid, so adding the last
+ * remaining suggestion would otherwise make the tab vanish under the user
+ * mid-interaction and drop them on Trending — their own action reading as an
+ * unrequested navigation. The tab is still absent on the *next* visit, so §11's
+ * "never advertise absent machinery" rule is untouched for every user it was
+ * written for: a user who has just used their recommendations up is not a user
+ * who has never had any.
  */
 export function DiscoverPage() {
   const [stored, setStored] = usePersistedString("discover-tab", DEFAULT_TAB);
@@ -62,7 +71,12 @@ export function DiscoverPage() {
   const recommendationsQuery = useRecommendations();
   const hasRecommendations = (recommendationsQuery.data?.recommendations.length ?? 0) > 0;
   const recommendationsPending = recommendationsQuery.isPending;
-  const showRecommendations = hasRecommendations || recommendationsPending;
+  // A ref rather than state: the latch never causes a render of its own — the
+  // render that empties the list is the one that reads it.
+  const hadRecommendations = useRef(false);
+  if (hasRecommendations) hadRecommendations.current = true;
+  const showRecommendations =
+    hasRecommendations || recommendationsPending || hadRecommendations.current;
   const tab = parsed === "my-recommendations" && !showRecommendations ? FALLBACK_TAB : parsed;
 
   // Heal the store as well as the render. `usePersistedString` writes back

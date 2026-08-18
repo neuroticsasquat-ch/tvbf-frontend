@@ -161,6 +161,26 @@ function invalidateAll(qc: ReturnType<typeof useQueryClient>) {
   // a Discover tab showing the pre-toggle mark until it remounted.
   qc.invalidateQueries({ queryKey: ["trending"] });
   qc.invalidateQueries({ queryKey: ["anticipated"] });
+  invalidateRecommendations(qc);
+}
+
+/** `GET /me/recommendations` suppresses any stored suggestion the viewer
+ * already has a record for, and the suppression is a live join rather than a
+ * stored flag (NEU-1175), so every mutation that creates or removes one of
+ * project spec §8's four records changes this body in one direction or the
+ * other: My Shows membership, a show rating, any episode watch, any episode
+ * rating.
+ *
+ * The client **never re-implements the suppression rule** — it is one
+ * definition on the server (`recommendations/exclusion.py`), cited by the
+ * NEU-1112 contract §4.1, and a client-side copy is a second expression of it
+ * that drifts. All the client decides is *when to refetch*.
+ *
+ * Called from `invalidateAll` (which covers membership and every episode-watch
+ * path) and by hand from the three mutations that do not route through it.
+ */
+function invalidateRecommendations(qc: ReturnType<typeof useQueryClient>) {
+  qc.invalidateQueries({ queryKey: ["me-recommendations"] });
 }
 
 function placeholderMyShowEntry(showId: number): MyShowEntry {
@@ -379,6 +399,7 @@ export function useRemoveFromHistory() {
       qc.invalidateQueries({ queryKey: ["upcoming"] });
       qc.invalidateQueries({ queryKey: ["watched-episodes", vars.showId] });
       qc.invalidateQueries({ queryKey: ["season-progress", vars.showId] });
+      invalidateRecommendations(qc);
     },
   });
 }
@@ -432,6 +453,7 @@ export function useShowRating(showId: number) {
       qc.invalidateQueries({ queryKey: ["show", showId] });
       qc.invalidateQueries({ queryKey: ["my-shows"] });
       qc.invalidateQueries({ queryKey: ["shows"] });
+      invalidateRecommendations(qc);
     },
   });
 }
@@ -468,6 +490,7 @@ export function useEpisodeRating(episodeId: number) {
       if (showId !== undefined) {
         qc.invalidateQueries({ queryKey: ["show-episodes", showId] });
       }
+      invalidateRecommendations(qc);
     },
   });
 }
