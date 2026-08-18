@@ -123,6 +123,30 @@ describe("ShowCard", () => {
     expect(button.closest("a")).toBeNull();
   });
 
+  it("renders a dismiss control only when the surface asks for one", () => {
+    // The same containment seam one control further along (NEU-1179): only
+    // "My Recommendations" passes `dismissible`, and asserting its absence
+    // here covers trending, most anticipated, similar shows, search and browse
+    // in one place rather than once per grid.
+    renderWithProviders(<ShowCard show={makeShow()} dismissible />);
+    expect(
+      screen.getByRole("button", { name: /Don't recommend Kastanjemanden again/i }),
+    ).toBeInTheDocument();
+  });
+
+  it("renders no dismiss control by default", () => {
+    renderWithProviders(<ShowCard show={makeShow()} />);
+    expect(screen.queryByRole("button", { name: /Don't recommend/i })).not.toBeInTheDocument();
+  });
+
+  it("keeps the dismiss control outside the card's link", () => {
+    // AC 2: activating it can never navigate, because it is a sibling of the
+    // `Link` rather than a descendant — no `preventDefault` needed.
+    renderWithProviders(<ShowCard show={makeShow()} dismissible />);
+    const chip = screen.getByRole("button", { name: /Don't recommend/i });
+    expect(chip.closest("a")).toBeNull();
+  });
+
   it("hides rating badges when both are null", () => {
     renderWithProviders(<ShowCard show={makeShow()} />);
     expect(screen.queryByTitle("TMDB average")).not.toBeInTheDocument();

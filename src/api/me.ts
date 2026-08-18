@@ -169,7 +169,9 @@ function invalidateAll(qc: ReturnType<typeof useQueryClient>) {
  * stored flag (NEU-1175), so every mutation that creates or removes one of
  * project spec §8's four records changes this body in one direction or the
  * other: My Shows membership, a show rating, any episode watch, any episode
- * rating.
+ * rating. NEU-1178 added a fifth that is not one of those four and need not
+ * name a show the viewer has ever seen: a dismissal
+ * (`useDismissRecommendation`).
  *
  * The client **never re-implements the suppression rule** — it is one
  * definition on the server (`recommendations/exclusion.py`), cited by the
@@ -177,7 +179,7 @@ function invalidateAll(qc: ReturnType<typeof useQueryClient>) {
  * that drifts. All the client decides is *when to refetch*.
  *
  * Called from `invalidateAll` (which covers membership and every episode-watch
- * path) and by hand from the three mutations that do not route through it.
+ * path) and by hand from the four mutations that do not route through it.
  */
 function invalidateRecommendations(qc: ReturnType<typeof useQueryClient>) {
   qc.invalidateQueries({ queryKey: ["me-recommendations"] });
@@ -533,6 +535,45 @@ export function useRecommendations() {
     queryKey: ["me-recommendations"],
     queryFn: fetchRecommendations,
     staleTime: 0,
+  });
+}
+
+/** `POST /me/recommendations/{show_id}/dismiss` — never recommend this show to
+ * this viewer again (NEU-1178, NEU-1179).
+ *
+ * `apiFetch` needs nothing else here: it sets `X-CSRF-Token` on any non-GET,
+ * sends no `Content-Type` when there is no body, and short-circuits the `204`
+ * before it would try to parse one. The endpoint is idempotent
+ * (`ON CONFLICT DO NOTHING`, `204` on every repeat), so the client fires
+ * without checking whether the show is already dismissed.
+ *
+ * **It invalidates `["me-recommendations"]` and nothing else.** A dismissal
+ * creates no My Shows row, no rating, no `activity_event` and no feed item
+ * (NEU-1178 AC 9), so no other key's body changes — it is the fifth
+ * never-recommend source and only that.
+ *
+ * **`onSuccess`, not `onSettled`** — the one mutation in this file that
+ * refreshes this key that way. The others invalidate on settle because they
+ * carry optimistic updates whose rollback still leaves the server
+ * authoritative. This one has none, so a refetch after a failure would spend a
+ * request to be told the same thing, and firing only on success is what makes
+ * "a failed request leaves the card in place" structural rather than
+ * incidental.
+ *
+ * The toast is the whole of the failure feedback: there is no optimistic
+ * override to visibly revert, so without it a genuinely broken endpoint reads
+ * as a button that does nothing at all. It is not the page-level error a
+ * background browsing surface must not show.
+ */
+export function useDismissRecommendation() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (showId: number) =>
+      apiFetch<void>(`/me/recommendations/${showId}/dismiss`, { method: "POST" }),
+    onSuccess: () => invalidateRecommendations(qc),
+    onError: () => {
+      toast.error("Could not remove that recommendation.");
+    },
   });
 }
 
