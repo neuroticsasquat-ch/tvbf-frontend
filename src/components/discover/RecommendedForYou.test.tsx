@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { http, HttpResponse } from "msw";
@@ -9,6 +9,14 @@ import { env } from "@/env";
 import { server } from "@/test/msw/server";
 import { renderWithProviders } from "@/test/renderWithProviders";
 import { RecommendedForYou } from "./RecommendedForYou";
+
+const toastErrorMock = vi.fn();
+vi.mock("sonner", () => ({
+  toast: Object.assign(() => undefined, {
+    error: (...args: unknown[]) => toastErrorMock(...args),
+    success: () => undefined,
+  }),
+}));
 
 function makeRecommendation(overrides: Partial<Recommendation> = {}): Recommendation {
   return {
@@ -46,6 +54,10 @@ function serveShrinkingList(pages: Recommendation[][]) {
     }),
     http.put(`${env.apiBaseUrl}/me/shows/:id`, () => new HttpResponse(null, { status: 204 })),
     http.delete(`${env.apiBaseUrl}/me/shows/:id`, () => new HttpResponse(null, { status: 204 })),
+    http.post(
+      `${env.apiBaseUrl}/me/recommendations/:id/dismiss`,
+      () => new HttpResponse(null, { status: 204 }),
+    ),
   );
   return { calls: () => call };
 }
@@ -200,5 +212,117 @@ describe("RecommendedForYou", () => {
     );
     expect(screen.getByText("Severance")).toBeInTheDocument();
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
+  it("drops the dismissed card and surfaces the next suggestion, with no reload", async () => {
+    // AC 1, the dismiss half. As with an add, there is nothing to
+    // optimistically put in the gap: the replacement is the server's choice
+    // from the stored set.
+    serveShrinkingList([
+      [A, B],
+      [B, C],
+    ]);
+    renderWithProviders(<RecommendedForYou />);
+
+    expect(await screen.findByText("Severance")).toBeInTheDocument();
+    expect(screen.queryByText("Andor")).not.toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: /Don't recommend Severance again/i }));
+
+    await waitFor(() => expect(screen.queryByText("Severance")).not.toBeInTheDocument());
+    expect(screen.getByText("The Leftovers")).toBeInTheDocument();
+    expect(screen.getByText("Andor")).toBeInTheDocument();
+  });
+
+  it("keeps the card, spends no refetch and raises no page error when a dismissal fails", async () => {
+    // AC 4. The mutation invalidates on success only, so a failure costs no
+    // request — and the toast is not the page-level error this background
+    // browsing surface must not show.
+    toastErrorMock.mockClear();
+    let gets = 0;
+    server.use(
+      http.get(`${env.apiBaseUrl}/me/recommendations`, () => {
+        gets += 1;
+        return HttpResponse.json({ recommendations: [A, B] });
+      }),
+      http.post(`${env.apiBaseUrl}/me/recommendations/:id/dismiss`, () =>
+        HttpResponse.json({ detail: "boom" }, { status: 500 }),
+      ),
+    );
+    renderWithProviders(<RecommendedForYou />);
+
+    await screen.findByText("Severance");
+    await waitFor(() => expect(gets).toBe(1));
+
+    await userEvent.click(screen.getByRole("button", { name: /Don't recommend Severance again/i }));
+
+    await waitFor(() => expect(toastErrorMock).toHaveBeenCalledTimes(1));
+    expect(screen.getByText("Severance")).toBeInTheDocument();
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    expect(gets).toBe(1);
+  });
+
+  it("says one line when the last suggestion is dismissed", async () => {
+    // AC 5. The mount-scoped latch covers a dismissal for free: it latches on
+    // having had rows, not on why they went away. Never `ShowGrid`'s filter
+    // copy — nothing here was filtered.
+    serveShrinkingList([[A], []]);
+    renderWithProviders(<RecommendedForYou />);
+
+    await screen.findByText("Severance");
+    await userEvent.click(screen.getByRole("button", { name: /Don't recommend Severance again/i }));
+
+    expect(await screen.findByText(/new recommendations on Sunday/i)).toBeInTheDocument();
+    expect(screen.queryByRole("link")).not.toBeInTheDocument();
+    expect(screen.queryByText(/No shows match your filters/i)).not.toBeInTheDocument();
+  });
+
+  it("moves focus to the card that took the dismissed one's place", async () => {
+    // AC 6. Without this, focus falls to `<body>` and a keyboard user is ~25
+    // tab stops from where they were — on the action this surface expects to
+    // be repeated.
+    serveShrinkingList([
+      [A, B],
+      [B, C],
+    ]);
+    renderWithProviders(<RecommendedForYou />);
+
+    await screen.findByText("Severance");
+    await userEvent.click(screen.getByRole("button", { name: /Don't recommend Severance again/i }));
+
+    await waitFor(() =>
+      expect(document.activeElement).toBe(
+        screen.getByRole("button", { name: /Don't recommend The Leftovers again/i }),
+      ),
+    );
+  });
+
+  it("clamps to the last card when the dismissed one was last", async () => {
+    // AC 6, the clamp: there is no slot after the last card to shift into.
+    serveShrinkingList([[A, B], [A]]);
+    renderWithProviders(<RecommendedForYou />);
+
+    await screen.findByText("The Leftovers");
+    await userEvent.click(
+      screen.getByRole("button", { name: /Don't recommend The Leftovers again/i }),
+    );
+
+    await waitFor(() =>
+      expect(document.activeElement).toBe(
+        screen.getByRole("button", { name: /Don't recommend Severance again/i }),
+      ),
+    );
+  });
+
+  it("moves focus to the sign-off line when the last suggestion goes", async () => {
+    // AC 6, the empty outcome: what the reader hears is the line explaining
+    // what they just spent, rather than nothing at all.
+    serveShrinkingList([[A], []]);
+    renderWithProviders(<RecommendedForYou />);
+
+    await screen.findByText("Severance");
+    await userEvent.click(screen.getByRole("button", { name: /Don't recommend Severance again/i }));
+
+    const signoff = await screen.findByText(/new recommendations on Sunday/i);
+    await waitFor(() => expect(document.activeElement).toBe(signoff));
   });
 });

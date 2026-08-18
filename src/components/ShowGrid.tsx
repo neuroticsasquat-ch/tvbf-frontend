@@ -17,16 +17,24 @@ import { ShowCard, type PremiereDisplay } from "./ShowCard";
  * `addable` is the same shape one prop further along (NEU-1176): the grid
  * threads a surface's opt-in card control to every card it renders, so the
  * decision is the surface's and the default — no control at all — is what every
- * other grid keeps without saying anything.
+ * other grid keeps without saying anything. `dismissible` is the second such
+ * control (NEU-1179) and behaves identically; `onDismissed` rides with it as
+ * one function reference passed to every card, never a per-row closure — the
+ * card already knows its own id and hands it back. The grid threads flat values
+ * only.
  */
 export function ShowGrid({
   shows,
   premiereDisplay,
   addable,
+  dismissible,
+  onDismissed,
 }: {
   shows: (ShowSummary & { in_my_shows?: boolean })[];
   premiereDisplay?: PremiereDisplay;
   addable?: boolean;
+  dismissible?: boolean;
+  onDismissed?: (showId: number) => void;
 }) {
   if (shows.length === 0) {
     return <p className="py-16 text-center text-muted-foreground">No shows match your filters.</p>;
@@ -40,6 +48,8 @@ export function ShowGrid({
           inMyShows={s.in_my_shows}
           premiereDisplay={premiereDisplay}
           addable={addable}
+          dismissible={dismissible}
+          onDismissed={onDismissed}
         />
       ))}
     </div>

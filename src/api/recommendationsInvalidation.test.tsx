@@ -8,6 +8,7 @@ import { env } from "@/env";
 import { server } from "@/test/msw/server";
 import {
   useAddShow,
+  useDismissRecommendation,
   useEpisodeRating,
   useMarkEpisode,
   useRecommendations,
@@ -35,7 +36,8 @@ function makeWrapper() {
  * suppresses on, and NEU-1175 made that a live join. So each of them changes
  * this payload in one direction or the other, and the client's whole job is to
  * refetch afterwards (NEU-1112 contract §4.1). It never re-implements the
- * rule itself.
+ * rule itself. NEU-1178 added a fifth — a dismissal — which is not one of
+ * those four and need not name a show the viewer has ever seen.
  *
  * Counted at the hook level rather than through a page, because the guarantee
  * belongs to the mutations: any surface that calls one gets it. */
@@ -63,11 +65,15 @@ describe("mutations refresh the recommendations key", () => {
         `${env.apiBaseUrl}/me/shows/:id/watched`,
         () => new HttpResponse(null, { status: 204 }),
       ),
+      http.post(
+        `${env.apiBaseUrl}/me/recommendations/:id/dismiss`,
+        () => new HttpResponse(null, { status: 204 }),
+      ),
     );
     return { wrapper: makeWrapper(), calls: () => calls };
   }
 
-  /** One case per §8 source. Each carries a hook that returns the click: the
+  /** One case per never-recommend source. Each carries a hook that returns the click: the
    * mutations differ in what they take, and a tuple table would infer one
    * union across all of them and then reject every member of it. */
   const CASES: { label: string; useFire: () => () => void }[] = [
@@ -120,6 +126,15 @@ describe("mutations refresh the recommendations key", () => {
         return () => m.mutate({ showId: 1 });
       },
     },
+    {
+      // The fifth source (NEU-1178), and the one that need not name a show the
+      // viewer has ever seen.
+      label: "dismissing a recommendation",
+      useFire: () => {
+        const m = useDismissRecommendation();
+        return () => m.mutate(1);
+      },
+    },
   ];
 
   it.each(CASES)("refetches after $label", async ({ useFire }) => {
@@ -135,5 +150,32 @@ describe("mutations refresh the recommendations key", () => {
     result.current.fire();
 
     await waitFor(() => expect(calls()).toBe(2));
+  });
+
+  it("spends no refetch when a dismissal fails", async () => {
+    // The one mutation here that invalidates on success rather than on settle:
+    // it carries no optimistic update, so a refetch after a failure would
+    // spend a request to be told the same thing — and firing only on success
+    // is what makes "a failed dismissal leaves the card in place" structural.
+    let calls = 0;
+    server.use(
+      http.get(`${env.apiBaseUrl}/me/recommendations`, () => {
+        calls += 1;
+        return HttpResponse.json({ recommendations: [] });
+      }),
+      http.post(`${env.apiBaseUrl}/me/recommendations/:id/dismiss`, () =>
+        HttpResponse.json({ detail: "boom" }, { status: 500 }),
+      ),
+    );
+    const { result } = renderHook(
+      () => ({ query: useRecommendations(), dismiss: useDismissRecommendation() }),
+      { wrapper: makeWrapper() },
+    );
+    await waitFor(() => expect(calls).toBe(1));
+
+    result.current.dismiss.mutate(1);
+
+    await waitFor(() => expect(result.current.dismiss.isError).toBe(true));
+    expect(calls).toBe(1);
   });
 });

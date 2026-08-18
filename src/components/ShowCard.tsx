@@ -1,6 +1,7 @@
 import { Link } from "react-router";
 
 import type { ShowSummary } from "@/api/types";
+import { DismissRecommendationButton } from "@/components/DismissRecommendationButton";
 import { InMyShowsBadge } from "@/components/InMyShowsBadge";
 import { MyShowsButton } from "@/components/MyShowsButton";
 import { RatingBadge } from "@/components/RatingBadge";
@@ -61,6 +62,23 @@ function premiereLabel(dateStr: string | null, display: PremiereDisplay): string
  * prop threaded through `ShowGrid` rather than as a default every grid then has
  * to opt out of. Only `RecommendedForYou` passes it today.
  *
+ * `dismissible` is the same seam one control further along (NEU-1179), and it
+ * is independent of `addable`: the one surface that passes either passes both,
+ * and every other grid passes neither. `onDismissed` reports a landed dismissal
+ * back to that surface so it can move focus; it is one function reference
+ * shared by every card, and the card hands its own id back.
+ *
+ * **The dismiss chip overlays the poster where the add button sits below it.**
+ * Measured: at a 375px viewport `AppShell`'s `max-w-6xl px-4` and the grid's
+ * `grid-cols-3 gap-2` leave a card ~109px wide, so ~97px inside the action
+ * row's `px-1.5`. `MyShowsButton` is ~78px, and a second control even at an
+ * icon-only `h-7 w-7` needs 78 + 4 + 28 = 110px. It does not fit, and wrapping
+ * or stacking would make recommendation cards taller than every other card in
+ * a shared grid. The overlay costs no row width and changes card height on no
+ * surface. Both corners are free on this surface: `my_rating` is null by
+ * contract, and a show the viewer tracks or has rated is suppressed from the
+ * list before it can be recommended at all.
+ *
  * The button is a **sibling of the `Link`, never a descendant**: a `<button>`
  * inside an `<a>` is invalid content nesting and a real focus-order problem.
  * `NextEpisodeCard` is the precedent that does it right; `SeasonWatchCheckbox`'s
@@ -75,11 +93,15 @@ export function ShowCard({
   inMyShows,
   premiereDisplay = "year",
   addable,
+  dismissible,
+  onDismissed,
 }: {
   show: ShowSummary;
   inMyShows?: boolean;
   premiereDisplay?: PremiereDisplay;
   addable?: boolean;
+  dismissible?: boolean;
+  onDismissed?: (showId: number) => void;
 }) {
   const aggregate = tenPointToFiveStar(show.rating_average);
   return (
@@ -128,6 +150,16 @@ export function ShowCard({
           </p>
         </div>
       </Link>
+      {dismissible && (
+        // A sibling of the `Link`, never a descendant — the same rule the add
+        // button follows, and why no `preventDefault` / `stopPropagation` is
+        // needed for a control that must not navigate.
+        <DismissRecommendationButton
+          showId={show.id}
+          showName={show.name}
+          onDismissed={onDismissed}
+        />
+      )}
       {addable && (
         // The button reads the card's own `inMyShows`, so it can never
         // contradict the badge above it. On the one surface that passes
