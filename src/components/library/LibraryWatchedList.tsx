@@ -40,10 +40,11 @@ import {
 import { usePersistedSort } from "@/hooks/usePersistedSort";
 import { usePersistedString } from "@/hooks/usePersistedString";
 import { usePersistedView } from "@/hooks/usePersistedView";
+import { OwnerFacts } from "@/components/OwnerFacts";
 import type { CallerLibrary } from "./callerLibrary";
 import { matchesCallerMembership, matchesCallerWatchState } from "./callerFilters";
-import type { ViewerContext } from "./LibraryActiveList";
 import { CallerPosterBadge, CallerProgressNote } from "./LibraryRowIndicators";
+import { SELF, ratingOwnerFor, type ViewerContext } from "./viewerContext";
 
 // Disabled options on All Watched per NEU-121:
 // - Watch State: "Not Started" — every entry has at least one watched episode.
@@ -54,19 +55,6 @@ const DISABLED_WATCH_STATES: Partial<Record<WatchState, string>> = {
 const DISABLED_SORTS: Partial<Record<LibrarySort, string>> = {
   added_desc: "Available on the Active tab.",
 };
-
-function formatDate(iso: string | null): string {
-  if (!iso) return "";
-  const d = new Date(iso);
-  if (Number.isNaN(d.valueOf())) return "";
-  const ageDays = (Date.now() - d.getTime()) / 86_400_000;
-  const includeYear = ageDays > 180;
-  return d.toLocaleDateString(undefined, {
-    month: "short",
-    day: "numeric",
-    ...(includeYear ? { year: "numeric" } : {}),
-  });
-}
 
 interface Props {
   data: WatchedEntry[] | undefined;
@@ -87,7 +75,7 @@ export function LibraryWatchedList({
   data,
   isLoading,
   isError,
-  viewerContext = "self",
+  viewerContext = SELF,
   callerLibrary,
   storagePrefix = "watched",
 }: Props) {
@@ -189,7 +177,7 @@ export function LibraryWatchedList({
         />
         <ShowStatusFilterPicker value={showStatus} onChange={setShowStatus} />
         <InMyShowsFilterPicker value={inMyShows} onChange={setInMyShows} />
-        {viewerContext === "friend" && (
+        {viewerContext.kind === "friend" && (
           <>
             <CallerMembershipFilterPicker value={callerMembership} onChange={setCallerMembership} />
             <CallerWatchStateFilterPicker value={callerWatchState} onChange={setCallerWatchState} />
@@ -229,8 +217,13 @@ export function LibraryWatchedList({
               <MyShowCard
                 key={entry.show.id}
                 entry={watchedToMyShowEntry(entry)}
+                // The seam is installed here even though `watchedToMyShowEntry`
+                // hard-codes `my_rating: null` today: that is NEU-1188's defect,
+                // and the moment it is fixed this grid starts rendering a rating
+                // that is the friend's in friend mode (NEU-1182 §2.8).
+                ratingOwner={ratingOwnerFor(viewerContext)}
                 inMyShows={
-                  viewerContext === "friend"
+                  viewerContext.kind === "friend"
                     ? (callerLibrary?.get(entry.show.id)?.in_my_shows ?? false)
                     : entry.in_my_shows
                 }
@@ -293,7 +286,7 @@ function WatchedRow({
   // the sources, because this choice is the row's and not the button's
   // (NEU-1176).
   const upstream =
-    viewerContext === "friend"
+    viewerContext.kind === "friend"
       ? (callerLibrary?.get(entry.show.id)?.in_my_shows ?? false)
       : entry.in_my_shows;
 
@@ -347,31 +340,20 @@ function WatchedRow({
             barOnly
           />
         )}
-        <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
-          {status === "finished" ? (
-            <span className="px-1.5 py-0.5 rounded border border-emerald-600 text-emerald-700">
-              Finished
-            </span>
-          ) : status === "caught_up" ? (
-            <span className="px-1.5 py-0.5 rounded border border-emerald-600 text-emerald-700">
-              Caught Up
-            </span>
-          ) : (
-            <span>
-              Progress: {entry.watched_episode_count}/{entry.aired_episode_count}
-            </span>
-          )}
-          {entry.last_watched_at && (
-            <span aria-hidden className="text-muted-foreground/50">
-              ·
-            </span>
-          )}
-          {entry.last_watched_at && (
-            <span className="whitespace-nowrap">
-              Last Watched: {formatDate(entry.last_watched_at)}
-            </span>
-          )}
-        </div>
+        <OwnerFacts
+          owner={ratingOwnerFor(viewerContext)}
+          layout="inline"
+          status={status}
+          progress={
+            status === null
+              ? { watched: entry.watched_episode_count, aired: entry.aired_episode_count }
+              : null
+          }
+          // `WatchedEntry` carries no rating at all — the friend's rating
+          // reaches this surface only once NEU-1188 lands.
+          rating={null}
+          lastWatchedAt={entry.last_watched_at}
+        />
         {status !== "finished" && upcoming > 0 && (
           <p className="text-xs text-muted-foreground">{upcoming} upcoming</p>
         )}
@@ -382,7 +364,7 @@ function WatchedRow({
             callerLibrary={callerLibrary}
           />
           <MyShowsButton showId={entry.show.id} inMyShows={upstream} />
-          {viewerContext === "self" && (
+          {viewerContext.kind === "self" && (
             <Button
               type="button"
               size="sm"

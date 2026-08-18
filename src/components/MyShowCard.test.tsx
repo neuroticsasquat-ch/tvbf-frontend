@@ -2,6 +2,7 @@ import { screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
 import type { MyShowEntry, ShowSummary } from "@/api/types";
+import type { RatingOwner } from "@/lib/rating";
 import { renderWithProviders } from "@/test/renderWithProviders";
 import { MyShowCard } from "./MyShowCard";
 
@@ -26,7 +27,10 @@ function makeShow(overrides: Partial<ShowSummary> = {}): ShowSummary {
   };
 }
 
-function makeEntry(my_rating: number | null = null): MyShowEntry {
+function makeEntry(
+  my_rating: number | null = null,
+  overrides: Partial<MyShowEntry> = {},
+): MyShowEntry {
   return {
     show: makeShow(),
     watched_episode_count: 0,
@@ -39,17 +43,21 @@ function makeEntry(my_rating: number | null = null): MyShowEntry {
     next_episode: null,
     added_at: "2026-01-01T00:00:00Z",
     my_rating,
+    ...overrides,
   };
 }
 
+const YOU: RatingOwner = { kind: "own" };
+const JEANNE: RatingOwner = { kind: "other", ownerName: "Jeanne" };
+
 describe("MyShowCard", () => {
   it("renders my-rating badge when my_rating is set", () => {
-    renderWithProviders(<MyShowCard entry={makeEntry(4)} />);
+    renderWithProviders(<MyShowCard entry={makeEntry(4)} ratingOwner={YOU} />);
     expect(screen.getByRole("img", { name: "Your rating: 4.0 out of 5" })).toBeInTheDocument();
   });
 
   it("hides my-rating badge when my_rating is null", () => {
-    renderWithProviders(<MyShowCard entry={makeEntry(null)} />);
+    renderWithProviders(<MyShowCard entry={makeEntry(null)} ratingOwner={YOU} />);
     expect(screen.queryByRole("img", { name: /rating:/ })).not.toBeInTheDocument();
   });
 
@@ -58,12 +66,34 @@ describe("MyShowCard", () => {
     // claim, one picture. This card drew its own emerald ✓ until the three
     // definitions were unified on `InMyShowsBadge`, and emerald means *watched*
     // everywhere else in the app.
-    renderWithProviders(<MyShowCard entry={makeEntry(null)} />);
-    expect(screen.getByRole("img", { name: "In My Shows" })).toBeInTheDocument();
+    renderWithProviders(<MyShowCard entry={makeEntry(null)} ratingOwner={YOU} />);
+    expect(screen.getByRole("img", { name: "In your My Shows" })).toBeInTheDocument();
+  });
+
+  it("attributes a friend's rating to the friend, never to the viewer", () => {
+    // NEU-1181 AC 1/2 at grid density. The friend endpoint hydrates `my_rating`
+    // for the *friend's* user id, and this card is the surface that used to
+    // render it under a hard-coded "Your rating".
+    renderWithProviders(<MyShowCard entry={makeEntry(4)} ratingOwner={JEANNE} />);
+    expect(screen.getByRole("img", { name: "Jeanne's rating: 4.0 out of 5" })).toBeInTheDocument();
+    expect(screen.queryByRole("img", { name: /your rating/i })).not.toBeInTheDocument();
+  });
+
+  it("names a friend once visibly and attributes each of their facts", () => {
+    renderWithProviders(
+      <MyShowCard
+        entry={makeEntry(4, { watched_episode_count: 3, aired_episode_count: 10 })}
+        ratingOwner={JEANNE}
+      />,
+    );
+    expect(screen.getAllByText("Jeanne:")).toHaveLength(1);
+    expect(screen.getByText("Jeanne's progress: 3 of 10")).toBeInTheDocument();
+    // The friend's fraction is not offered as the viewer's unlabelled progress.
+    expect(screen.queryByText(/^Progress: 3\/10$/)).not.toBeInTheDocument();
   });
 
   it("renders no mark when the show is not in My Shows", () => {
-    renderWithProviders(<MyShowCard entry={makeEntry(null)} inMyShows={false} />);
-    expect(screen.queryByTitle("In My Shows")).not.toBeInTheDocument();
+    renderWithProviders(<MyShowCard entry={makeEntry(null)} ratingOwner={YOU} inMyShows={false} />);
+    expect(screen.queryByTitle("In your My Shows")).not.toBeInTheDocument();
   });
 });

@@ -1,6 +1,6 @@
 import { InMyShowsBadge } from "@/components/InMyShowsBadge";
 import { callerHasShow, callerProgress, type CallerLibrary } from "./callerLibrary";
-import type { ViewerContext } from "./LibraryActiveList";
+import type { ViewerContext } from "./viewerContext";
 
 /** The "in My Shows" mark on a list-view poster, when the caller has the show
  * in their own My Shows. Suppressed for self mode (their own library already
@@ -17,7 +17,7 @@ export function CallerPosterBadge({
   viewerContext: ViewerContext;
   callerLibrary?: CallerLibrary;
 }) {
-  if (viewerContext !== "friend") return null;
+  if (viewerContext.kind !== "friend") return null;
   if (!callerHasShow(callerLibrary, showId)) return null;
   return <InMyShowsBadge className="top-1 right-1" />;
 }
@@ -37,7 +37,7 @@ export function CallerProgressNote({
   viewerContext: ViewerContext;
   callerLibrary?: CallerLibrary;
 }) {
-  if (viewerContext !== "friend") return null;
+  if (viewerContext.kind !== "friend") return null;
   const progress = callerProgress(callerLibrary, showId);
   if (!progress) return null;
   return (

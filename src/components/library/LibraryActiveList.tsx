@@ -43,16 +43,16 @@ import {
   compareLibraryEntries,
   type LibrarySort,
 } from "@/components/home/librarySort";
+import { OwnerFacts } from "@/components/OwnerFacts";
 import { callerHasShow, type CallerLibrary } from "./callerLibrary";
 import { matchesCallerMembership, matchesCallerWatchState } from "./callerFilters";
 import { CallerPosterBadge, CallerProgressNote } from "./LibraryRowIndicators";
+import { SELF, ratingOwnerFor, type ViewerContext } from "./viewerContext";
 
 // On Active tabs the In My Shows filter is inert end-to-end: `In My Shows` is
 // a no-op (every Active row is in My Shows by definition) and `Not in My
 // Shows` would always be empty. Disable the whole picker (NEU-131).
 const IN_MY_SHOWS_DISABLED_REASON = "All Active shows are in My Shows.";
-
-export type ViewerContext = "self" | "friend";
 
 interface Props {
   data: MyShowEntry[] | undefined;
@@ -75,7 +75,7 @@ interface Props {
 export function LibraryActiveList({
   data,
   isLoading,
-  viewerContext = "self",
+  viewerContext = SELF,
   callerLibrary,
   storagePrefix = "my-shows",
   onRatedOnlyChange,
@@ -184,13 +184,13 @@ export function LibraryActiveList({
           onChange={setInMyShows}
           disabledReason={IN_MY_SHOWS_DISABLED_REASON}
         />
-        {viewerContext === "friend" && (
+        {viewerContext.kind === "friend" && (
           <>
             <CallerMembershipFilterPicker value={callerMembership} onChange={setCallerMembership} />
             <CallerWatchStateFilterPicker value={callerWatchState} onChange={setCallerWatchState} />
           </>
         )}
-        {viewerContext === "self" && <RatedOnlyFilter value={rated} onChange={setRated} />}
+        {viewerContext.kind === "self" && <RatedOnlyFilter value={rated} onChange={setRated} />}
         <GenreFilter value={genre} onChange={setGenre} />
         {filtersActive && (
           <ClearFiltersButton
@@ -216,8 +216,9 @@ export function LibraryActiveList({
             <MyShowCard
               key={entry.show.id}
               entry={entry}
+              ratingOwner={ratingOwnerFor(viewerContext)}
               inMyShows={
-                viewerContext === "friend" ? callerHasShow(callerLibrary, entry.show.id) : true
+                viewerContext.kind === "friend" ? callerHasShow(callerLibrary, entry.show.id) : true
               }
             />
           ))}
@@ -239,19 +240,6 @@ export function LibraryActiveList({
   );
 }
 
-function formatDate(iso: string | null): string {
-  if (!iso) return "";
-  const d = new Date(iso);
-  if (Number.isNaN(d.valueOf())) return "";
-  const ageDays = (Date.now() - d.getTime()) / 86_400_000;
-  const includeYear = ageDays > 180;
-  return d.toLocaleDateString(undefined, {
-    month: "short",
-    day: "numeric",
-    ...(includeYear ? { year: "numeric" } : {}),
-  });
-}
-
 function ActiveRow({
   entry,
   viewerContext,
@@ -262,6 +250,7 @@ function ActiveRow({
   callerLibrary?: CallerLibrary;
 }) {
   const status = libraryStatusFor(entry);
+  const owner = ratingOwnerFor(viewerContext);
   const action = (
     <ActionButton entry={entry} viewerContext={viewerContext} callerLibrary={callerLibrary} />
   );
@@ -302,58 +291,35 @@ function ActiveRow({
             </span>
           )}
         </div>
-        {status === "finished" ? (
-          <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
-            <span className="px-1.5 py-0.5 rounded border border-emerald-600 text-emerald-700">
-              Finished
-            </span>
-            {entry.last_watched_at && (
-              <span className="whitespace-nowrap">
-                Last Watched: {formatDate(entry.last_watched_at)}
-              </span>
-            )}
-          </div>
-        ) : (
-          <>
-            {entry.aired_episode_count > 0 && (
-              <WatchProgressBar
-                watched={entry.watched_episode_count}
-                aired={entry.aired_episode_count}
-                upcoming={entry.upcoming_episode_count}
-                barOnly
-              />
-            )}
-            <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
-              {status === "caught_up" ? (
-                <span className="px-1.5 py-0.5 rounded border border-emerald-600 text-emerald-700">
-                  Caught Up
-                </span>
-              ) : entry.aired_episode_count > 0 ? (
-                <span>
-                  Progress: {entry.watched_episode_count}/{entry.aired_episode_count}
-                </span>
-              ) : null}
-              {(status === "caught_up" || entry.aired_episode_count > 0) &&
-                entry.last_watched_at && (
-                  <span aria-hidden className="text-muted-foreground/50">
-                    ·
-                  </span>
-                )}
-              {entry.last_watched_at && (
-                <span className="whitespace-nowrap">
-                  Last Watched: {formatDate(entry.last_watched_at)}
-                </span>
-              )}
-            </div>
-            {entry.upcoming_episode_count > 0 && (
-              <p className="text-xs text-muted-foreground">
-                {entry.upcoming_episode_count} upcoming
-              </p>
-            )}
-          </>
+        {status !== "finished" && entry.aired_episode_count > 0 && (
+          <WatchProgressBar
+            watched={entry.watched_episode_count}
+            aired={entry.aired_episode_count}
+            upcoming={entry.upcoming_episode_count}
+            barOnly
+          />
+        )}
+        <OwnerFacts
+          owner={owner}
+          layout="inline"
+          status={status}
+          progress={
+            status === null && entry.aired_episode_count > 0
+              ? { watched: entry.watched_episode_count, aired: entry.aired_episode_count }
+              : null
+          }
+          // `my_rating` is the *row owner's* rating — the friend endpoint
+          // hydrates it for the friend's user id. In self mode it keeps its
+          // established home in the action row below; in friend mode it belongs
+          // to the group that carries their name (NEU-1181 §6.2).
+          rating={owner.kind === "own" ? null : entry.my_rating}
+          lastWatchedAt={entry.last_watched_at}
+        />
+        {status !== "finished" && entry.upcoming_episode_count > 0 && (
+          <p className="text-xs text-muted-foreground">{entry.upcoming_episode_count} upcoming</p>
         )}
         <div className="flex flex-wrap items-center justify-end gap-2 pt-1">
-          <RatingBadge kind="own" value={entry.my_rating} />
+          {owner.kind === "own" && <RatingBadge kind="own" value={entry.my_rating} />}
           <CallerProgressNote
             showId={entry.show.id}
             viewerContext={viewerContext}
@@ -392,7 +358,7 @@ function ActionButton({
   // self mode: optimistic row removal on click.
   const [removed, setRemoved] = useState(false);
 
-  if (viewerContext === "self") {
+  if (viewerContext.kind === "self") {
     if (removed) return null;
     function onRemoveSelf() {
       setRemoved(true);

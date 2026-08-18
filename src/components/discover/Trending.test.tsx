@@ -78,7 +78,7 @@ describe("Trending", () => {
     // Marked, never filtered: both cards are present, one carries the mark.
     expect(await screen.findByRole("link", { name: /Lanterns/ })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /Neagley/ })).toBeInTheDocument();
-    expect(screen.getAllByTitle("In My Shows")).toHaveLength(1);
+    expect(screen.getAllByTitle("In your My Shows")).toHaveLength(1);
   });
 
   it("renders nothing at all when the snapshot is empty", async () => {

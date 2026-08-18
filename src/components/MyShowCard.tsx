@@ -1,9 +1,11 @@
 import { Link } from "react-router";
 import type { MyShowEntry } from "@/api/types";
 import { InMyShowsBadge } from "@/components/InMyShowsBadge";
+import { OwnerFacts } from "@/components/OwnerFacts";
 import { RatingBadge } from "@/components/RatingBadge";
 import { WatchProgressBar } from "@/components/WatchProgressBar";
 import { isEndedStatus } from "@/components/home/filterTypes";
+import type { RatingOwner } from "@/lib/rating";
 
 const FALLBACK_POSTER =
   "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 3 4'><rect width='3' height='4' fill='%23e2e8f0'/></svg>";
@@ -14,11 +16,20 @@ function year(dateStr: string | null): string {
 
 export function MyShowCard({
   entry,
+  ratingOwner,
   inMyShows = true,
 }: {
   entry: MyShowEntry;
-  /** Whether this show is in the user's My Shows. On the Active tab every
-   * card is in My Shows by definition; on All Watched it varies per row. */
+  /** Whose library this card is drawn from — the viewer's own, or a named
+   * friend's. Required with no default: this card is shared by My Shows and by
+   * a friend's library, and every fact on it except the show itself belongs to
+   * whoever that is. A default of "yours" is what labelled a friend's rating
+   * "Your rating" (NEU-1181 §6.2). */
+  ratingOwner: RatingOwner;
+  /** Whether this show is in **the viewer's** My Shows — never the owner's.
+   * The mark is always a claim about the viewer's own library (§6.5), which is
+   * why it does not travel with `ratingOwner`. On the Active tab of your own
+   * library every card is in My Shows by definition; elsewhere it varies. */
   inMyShows?: boolean;
 }) {
   // Same predicate as the list view (NEU-101 decision 2): show is over AND
@@ -41,7 +52,7 @@ export function MyShowCard({
           loading="lazy"
         />
         {inMyShows && <InMyShowsBadge className="top-1 right-1" />}
-        {entry.my_rating != null && entry.my_rating > 0 && (
+        {ratingOwner.kind === "own" && entry.my_rating != null && entry.my_rating > 0 && (
           <RatingBadge
             kind="own"
             value={entry.my_rating}
@@ -56,31 +67,35 @@ export function MyShowCard({
         <p className="text-[10px] text-muted-foreground leading-tight">
           {year(entry.show.premiered)}
         </p>
-        {isFinished ? (
-          <span className="mt-1 inline-block text-[10px] px-1 py-0.5 rounded border border-emerald-600 text-emerald-700">
-            Finished
-          </span>
-        ) : (
-          <>
-            {entry.aired_episode_count > 0 && (
-              <WatchProgressBar
-                watched={entry.watched_episode_count}
-                aired={entry.aired_episode_count}
-                upcoming={entry.upcoming_episode_count}
-                barOnly
-              />
-            )}
-            {entry.aired_episode_count > 0 && (
-              <p className="text-[10px] text-muted-foreground mt-0.5 leading-tight">
-                Progress: {entry.watched_episode_count}/{entry.aired_episode_count}
-              </p>
-            )}
-            {entry.upcoming_episode_count > 0 && (
-              <p className="text-[10px] text-muted-foreground leading-tight">
-                {entry.upcoming_episode_count} upcoming
-              </p>
-            )}
-          </>
+        {!isFinished && entry.aired_episode_count > 0 && (
+          <WatchProgressBar
+            watched={entry.watched_episode_count}
+            aired={entry.aired_episode_count}
+            upcoming={entry.upcoming_episode_count}
+            barOnly
+          />
+        )}
+        <OwnerFacts
+          owner={ratingOwner}
+          layout="stacked"
+          status={isFinished ? "finished" : null}
+          progress={
+            !isFinished && entry.aired_episode_count > 0
+              ? { watched: entry.watched_episode_count, aired: entry.aired_episode_count }
+              : null
+          }
+          // The viewer's own rating has a home of its own on this card — the
+          // poster corner above. Only a friend's lands in the group.
+          rating={ratingOwner.kind === "own" ? null : entry.my_rating}
+          // The card has never carried a date, in either mode: it is the
+          // densest surface in the app and the fraction is what a reader
+          // compares.
+          lastWatchedAt={null}
+        />
+        {!isFinished && entry.upcoming_episode_count > 0 && (
+          <p className="text-[10px] text-muted-foreground leading-tight">
+            {entry.upcoming_episode_count} upcoming
+          </p>
         )}
       </div>
     </Link>

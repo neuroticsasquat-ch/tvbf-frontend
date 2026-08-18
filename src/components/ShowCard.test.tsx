@@ -59,13 +59,13 @@ describe("ShowCard", () => {
 
   it("marks a show the viewer already tracks, naming the mark once", () => {
     renderWithProviders(<ShowCard show={makeShow()} inMyShows />);
-    expect(screen.getByRole("img", { name: "In My Shows" })).toBeInTheDocument();
-    expect(screen.getByTitle("In My Shows")).toBeInTheDocument();
+    expect(screen.getByRole("img", { name: "In your My Shows" })).toBeInTheDocument();
+    expect(screen.getByTitle("In your My Shows")).toBeInTheDocument();
   });
 
   it("renders no mark when the card carries no in-My-Shows flag", () => {
     renderWithProviders(<ShowCard show={makeShow()} />);
-    expect(screen.queryByTitle("In My Shows")).not.toBeInTheDocument();
+    expect(screen.queryByTitle("In your My Shows")).not.toBeInTheDocument();
   });
 
   it("renders the premiere year by default", () => {
