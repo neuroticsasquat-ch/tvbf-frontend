@@ -122,8 +122,8 @@ export function ShowCard({
         )}
         {show.my_rating != null && show.my_rating > 0 && (
           <RatingBadge
+            kind="own"
             value={show.my_rating}
-            title="Your rating"
             className="absolute top-1 right-1 text-[10px] py-0 px-1 shadow"
           />
         )}
@@ -134,8 +134,9 @@ export function ShowCard({
             </h3>
             {aggregate != null && (
               <RatingBadge
+                kind="aggregate"
+                crowdName="TMDB"
                 value={aggregate}
-                title="TMDB average"
                 className="shrink-0 text-[10px] py-0 px-1"
               />
             )}

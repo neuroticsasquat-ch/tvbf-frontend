@@ -18,7 +18,12 @@ function Items({ data }: { data: FriendRatingsResponse }) {
           <Link to={`/users/${item.user_id}`} className="hover:underline text-foreground">
             {item.display_name}
           </Link>
-          <StarRatingDisplay value={item.stars} size="sm" />
+          <StarRatingDisplay
+            kind="other"
+            ownerName={item.display_name}
+            value={item.stars}
+            size="sm"
+          />
           <span>· {formatRelativeTime(item.rated_at)}</span>
         </li>
       ))}
@@ -43,7 +48,9 @@ export function FriendRatingsList(props: Props) {
     <section aria-label="Friend ratings" className="flex flex-col gap-2 text-sm">
       <div className="flex flex-wrap items-center gap-2">
         <span className="font-medium">Friends:</span>
-        {data.avg !== null && <StarRatingDisplay value={data.avg} size="sm" />}
+        {data.avg !== null && (
+          <StarRatingDisplay kind="aggregate" crowdName="Friends" value={data.avg} size="sm" />
+        )}
         <span className="text-muted-foreground">
           · {data.count} {data.count === 1 ? "friend" : "friends"}
         </span>

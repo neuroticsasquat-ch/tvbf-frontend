@@ -127,14 +127,28 @@ function renderBody(item: FeedItem): ReactNode {
       return (
         <span className="inline-flex flex-wrap items-center gap-1.5">
           <ActorLink item={item} /> rated <ShowLink item={item} />
-          {item.stars !== null && <StarRatingDisplay value={item.stars} size="sm" />}
+          {item.stars !== null && (
+            <StarRatingDisplay
+              kind="other"
+              ownerName={item.actor.display_name}
+              value={item.stars}
+              size="sm"
+            />
+          )}
         </span>
       );
     case "rated_episode":
       return (
         <span className="inline-flex flex-wrap items-center gap-1.5">
           <ActorLink item={item} /> rated <ShowLink item={item} /> <EpisodeLink item={item} />
-          {item.stars !== null && <StarRatingDisplay value={item.stars} size="sm" />}
+          {item.stars !== null && (
+            <StarRatingDisplay
+              kind="other"
+              ownerName={item.actor.display_name}
+              value={item.stars}
+              size="sm"
+            />
+          )}
         </span>
       );
   }

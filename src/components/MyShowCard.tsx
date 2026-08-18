@@ -43,8 +43,8 @@ export function MyShowCard({
         {inMyShows && <InMyShowsBadge className="top-1 right-1" />}
         {entry.my_rating != null && entry.my_rating > 0 && (
           <RatingBadge
+            kind="own"
             value={entry.my_rating}
-            title="Your rating"
             className="absolute bottom-1 left-1 text-[10px] py-0 px-1 shadow"
           />
         )}

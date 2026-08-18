@@ -37,10 +37,15 @@ describe("ShowCard", () => {
     expect(screen.queryByText(/Matched:/i)).not.toBeInTheDocument();
   });
 
-  it("renders both aggregate and my_rating badges when present", () => {
+  it("distinguishes the viewer's rating from the aggregate without hover", () => {
+    // NEU-1182 AC 5. The two badges were pixel-identical and separated only by a
+    // `title` tooltip, which does not exist on touch — so the accessible names
+    // are what this asserts, and neither may be a bare number.
     renderWithProviders(<ShowCard show={makeShow({ rating_average: 8.4, my_rating: 4.5 })} />);
-    expect(screen.getByTitle("TMDB average")).toBeInTheDocument();
-    expect(screen.getByTitle("Your rating")).toBeInTheDocument();
+    expect(screen.getByRole("img", { name: "Your rating: 4.5 out of 5" })).toBeInTheDocument();
+    expect(screen.getByRole("img", { name: "TMDB average: 4.2 out of 5" })).toBeInTheDocument();
+    expect(screen.queryByRole("img", { name: "4.5" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("img", { name: "4.2" })).not.toBeInTheDocument();
   });
 
   it("renders the name and date lines and no body text under them", () => {
