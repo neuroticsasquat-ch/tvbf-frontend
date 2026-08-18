@@ -1,4 +1,4 @@
-import { screen, waitFor } from "@testing-library/react";
+import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { HttpResponse, http } from "msw";
 import { Route, Routes } from "react-router";
@@ -98,6 +98,50 @@ describe("SearchOverlay", () => {
 
     expect(await screen.findByRole("heading", { name: /^Shows/ })).toBeInTheDocument();
     expect(screen.getByText(/No shows match these filters/i)).toBeInTheDocument();
+  });
+
+  it("marks a tracked show in the results grid, alongside both ratings", async () => {
+    // The bug this ticket was filed about, reproduced: a tracked, rated show
+    // showed its own ★4.5 and TMDB's ★4.1 and no library mark. All three
+    // belong on the one card, so all three are asserted on the one card — and
+    // the unmarked row rides in the same payload, so what is being asserted is
+    // the mark rather than which row was served.
+    //
+    // Grid only: it is the default view (`usePersistedView("search", "grid")`)
+    // and the list row is NEU-1188's.
+    noPeople();
+    server.use(
+      http.get(`${base}/shows`, () =>
+        HttpResponse.json({
+          ...fixtureShowListPage,
+          items: [
+            {
+              ...fixtureShowListPage.items[0],
+              name: "The Bear",
+              in_my_shows: true,
+              my_rating: 4.5,
+              rating_average: 8.2,
+            },
+            { ...fixtureShowListPage.items[1], in_my_shows: false },
+          ],
+        }),
+      ),
+    );
+    renderOverlay();
+
+    const tracked = await screen.findByRole("link", { name: /The Bear/i });
+    const card = tracked.closest("div");
+    if (!card) throw new Error("the card link is not inside an element");
+    // Scoped to the one card, or a badge from a neighbouring row would satisfy
+    // the assertion and the "all three on one card" claim would be untested.
+    expect(within(card).queryByText("Another Show")).not.toBeInTheDocument();
+    expect(within(card).getByTitle("In your My Shows")).toBeInTheDocument();
+    expect(within(card).getByTitle("Your rating: 4.5 out of 5")).toBeInTheDocument();
+    expect(within(card).getByTitle("TMDB average: 4.1 out of 5")).toBeInTheDocument();
+
+    // Marked, never filtered: the untracked row is still there, unmarked.
+    expect(screen.getByRole("link", { name: /Another Show/i })).toBeInTheDocument();
+    expect(screen.getAllByTitle("In your My Shows")).toHaveLength(1);
   });
 
   it("tabs from the last show into the People section and activates with Enter", async () => {

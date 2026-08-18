@@ -9,7 +9,7 @@ import type {
   ShowDetail,
   ShowFilters,
   ShowListPage,
-  ShowSummary,
+  SimilarShow,
   TrendingSnapshot,
 } from "./types";
 
@@ -55,18 +55,27 @@ export function useShow(id: number) {
  * twelve the first time a tombstone landed, and the rank order is the only
  * ordering in the payload that carries information.
  *
- * `genres`, `network` and `my_rating` come back empty by design — `ShowCard`
- * renders none of them, and filling them would cost the route the shared cache
- * it keeps by carrying no per-user field.
+ * `genres` and `network` come back empty by design — `ShowCard` renders
+ * neither, and hydrating them would be two more round trips for fields nothing
+ * displays. `my_rating` **does not**: it is filled since NEU-1186, together
+ * with `in_my_shows`. The mark spent the shared cacheability this route used to
+ * keep by carrying no per-user field, and once that was spent only the cost of
+ * one query stood against the rating (spec §3.2).
+ *
+ * `staleTime` stays at five minutes even though the route now answers
+ * `no-store`. Invalidation is what keeps the mark and the rating fresh —
+ * `["show-similar"]` is invalidated by every My Shows toggle and by
+ * `useShowRating` — where `staleTime: 0` alone would only refetch on mount
+ * (spec §5.2).
  *
  * A show with no recommendations answers `200 []` (roughly 8% of the long
  * tail); an unknown show 404s, which this never sees — the section only mounts
  * under a show that already resolved.
  */
 export function useSimilarShows(id: number) {
-  return useQuery<ShowSummary[]>({
+  return useQuery<SimilarShow[]>({
     queryKey: ["show-similar", id],
-    queryFn: () => apiFetch<ShowSummary[]>(`/shows/${id}/similar`),
+    queryFn: () => apiFetch<SimilarShow[]>(`/shows/${id}/similar`),
     staleTime: FIVE_MINUTES,
     enabled: Number.isFinite(id) && id > 0,
   });
