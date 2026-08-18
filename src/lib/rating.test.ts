@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatStars, tenPointToFiveStar } from "./rating";
+import { formatStars, ratingLabel, tenPointToFiveStar } from "./rating";
 
 describe("tenPointToFiveStar", () => {
   it("returns null for null", () => {
@@ -30,5 +30,30 @@ describe("formatStars", () => {
 
   it("formats 4.7 as '4.7'", () => {
     expect(formatStars(4.7)).toBe("4.7");
+  });
+});
+
+describe("ratingLabel", () => {
+  it("names the viewer's own rating", () => {
+    expect(ratingLabel({ kind: "own" }, 4.5)).toBe("Your rating: 4.5 out of 5");
+  });
+
+  it("names an aggregate by its crowd, so a friend group is not announced as TMDB", () => {
+    expect(ratingLabel({ kind: "aggregate", crowdName: "TMDB" }, 4.1)).toBe(
+      "TMDB average: 4.1 out of 5",
+    );
+    expect(ratingLabel({ kind: "aggregate", crowdName: "Friends" }, 4.25)).toBe(
+      "Friends average: 4.3 out of 5",
+    );
+  });
+
+  it("names another person's rating by its owner", () => {
+    expect(ratingLabel({ kind: "other", ownerName: "Jeanne" }, 4)).toBe(
+      "Jeanne's rating: 4.0 out of 5",
+    );
+  });
+
+  it("never renders a bare number", () => {
+    expect(ratingLabel({ kind: "own" }, 3)).not.toBe("3.0");
   });
 });

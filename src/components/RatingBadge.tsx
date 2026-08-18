@@ -2,6 +2,11 @@ import { Star } from "lucide-react";
 import { formatStars, ratingLabel, type RatingAttribution } from "@/lib/rating";
 import { cn } from "@/lib/cn";
 
+type Props = RatingAttribution & {
+  value: number | null | undefined;
+  className?: string;
+};
+
 /** A rating as a compact chip — the dense half of the app's rating vocabulary.
  *
  * Three kinds, two channels, no text label (NEU-1182 §3.1-§3.2). A person's
@@ -29,11 +34,6 @@ import { cn } from "@/lib/cn";
  * tree, adopting `StarRatingDisplay`'s mechanism: the bare number that used to
  * reach a screen reader is now announced as "Your rating: 4.5 out of 5".
  */
-type Props = RatingAttribution & {
-  value: number | null | undefined;
-  className?: string;
-};
-
 export function RatingBadge(props: Props) {
   const { value, className } = props;
   if (value == null || value === 0) return null;

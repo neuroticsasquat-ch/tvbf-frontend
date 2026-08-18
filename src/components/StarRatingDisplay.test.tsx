@@ -23,12 +23,16 @@ describe("StarRatingDisplay", () => {
     expect(screen.getByRole("img")).toHaveAttribute("aria-label", "Your rating: 0.0 out of 5");
   });
 
-  it("draws an aggregate unfilled and muted", () => {
+  it("draws an aggregate muted, keeping the fill that encodes the value", () => {
+    // The fill is how a five-star draws its value, so it cannot also carry the
+    // kind here — an unfilled aggregate rendered as five identical faint
+    // outlines and lost the number entirely. Colour is the kind channel.
     const { container } = render(<StarRatingDisplay kind="aggregate" crowdName="TMDB" value={4} />);
     const overlay = container.querySelector<HTMLElement>("span > span:nth-of-type(2)");
     expect(overlay?.className).toContain("text-muted-foreground");
     expect(overlay?.className).not.toContain("text-amber-500");
-    expect(overlay?.querySelector("svg")?.getAttribute("class")).not.toContain("fill-current");
+    expect(overlay?.querySelector("svg")?.getAttribute("class")).toContain("fill-current");
+    expect(overlay).toHaveStyle({ width: "80%" });
   });
 
   it("draws a person's rating filled amber", () => {
