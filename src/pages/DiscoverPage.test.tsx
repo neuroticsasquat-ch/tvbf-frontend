@@ -192,6 +192,59 @@ describe("DiscoverPage", () => {
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
 
+  it("keeps the tab once it has been shown, even after the list empties", async () => {
+    // A recommendation can now be acted on from the grid, so adding the last
+    // one would otherwise make the tab vanish under the user mid-interaction
+    // and drop them on Trending — their own action reading as an unrequested
+    // navigation (NEU-1176).
+    let call = 0;
+    server.use(
+      http.get(`${env.apiBaseUrl}/me/recommendations`, () => {
+        call += 1;
+        return HttpResponse.json({ recommendations: call === 1 ? [makeRecommendation()] : [] });
+      }),
+      http.put(`${env.apiBaseUrl}/me/shows/1`, () => new HttpResponse(null, { status: 204 })),
+    );
+    renderWithProviders(<DiscoverPage />);
+
+    await screen.findByRole("tab", { name: "My Recommendations" });
+    await userEvent.click(await screen.findByRole("button", { name: "Add to My Shows" }));
+
+    // The list empties; the tab stays, still selected, and the pane says its
+    // one line rather than going blank.
+    await waitFor(() => expect(call).toBeGreaterThan(1));
+    expect(screen.getByRole("tab", { name: "My Recommendations" })).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
+    expect(await screen.findByText(/new recommendations on Sunday/i)).toBeInTheDocument();
+  });
+
+  it("keeps saying its line after the user visits another tab and comes back", async () => {
+    // Radix unmounts an inactive `TabsContent`, so a latch held only inside the
+    // panel is lost on a tab switch — and the tab would then stand over a pane
+    // rendering nothing at all, which is the blank the latch exists to prevent.
+    let call = 0;
+    server.use(
+      http.get(`${env.apiBaseUrl}/me/recommendations`, () => {
+        call += 1;
+        return HttpResponse.json({ recommendations: call === 1 ? [makeRecommendation()] : [] });
+      }),
+      http.put(`${env.apiBaseUrl}/me/shows/1`, () => new HttpResponse(null, { status: 204 })),
+    );
+    serveTrending([makeTrendingShow()]);
+    renderWithProviders(<DiscoverPage />);
+
+    await screen.findByRole("tab", { name: "My Recommendations" });
+    await userEvent.click(await screen.findByRole("button", { name: "Add to My Shows" }));
+    expect(await screen.findByText(/new recommendations on Sunday/i)).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("tab", { name: "Trending" }));
+    await userEvent.click(screen.getByRole("tab", { name: "My Recommendations" }));
+
+    expect(await screen.findByText(/new recommendations on Sunday/i)).toBeInTheDocument();
+  });
+
   it("renders no section and no error when the request fails", async () => {
     const request = serveRecommendations(() =>
       HttpResponse.json({ detail: "boom" }, { status: 500 }),

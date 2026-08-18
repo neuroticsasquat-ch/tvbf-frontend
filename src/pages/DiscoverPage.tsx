@@ -5,6 +5,7 @@ import { Anticipated } from "@/components/discover/Anticipated";
 import { RecommendedForYou } from "@/components/discover/RecommendedForYou";
 import { Trending } from "@/components/discover/Trending";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useLatched } from "@/hooks/useLatched";
 import { usePersistedString } from "@/hooks/usePersistedString";
 
 /** The tabs holding Discover's browsing surfaces. "My Recommendations" leads
@@ -52,6 +53,15 @@ function isDiscoverTab(value: string): value is DiscoverTab {
  * deferring to Trending because the recommendations are not there is a display
  * decision for this visit, and writing it back would spend the user's stored
  * preference on one bad Sunday.
+ *
+ * **Once the tab has been shown in this mount it stays shown** (NEU-1176).
+ * A recommendation card can now be acted on from the grid, so adding the last
+ * remaining suggestion would otherwise make the tab vanish under the user
+ * mid-interaction and drop them on Trending — their own action reading as an
+ * unrequested navigation. The tab is still absent on the *next* visit, so §11's
+ * "never advertise absent machinery" rule is untouched for every user it was
+ * written for: a user who has just used their recommendations up is not a user
+ * who has never had any.
  */
 export function DiscoverPage() {
   const [stored, setStored] = usePersistedString("discover-tab", DEFAULT_TAB);
@@ -62,7 +72,14 @@ export function DiscoverPage() {
   const recommendationsQuery = useRecommendations();
   const hasRecommendations = (recommendationsQuery.data?.recommendations.length ?? 0) > 0;
   const recommendationsPending = recommendationsQuery.isPending;
-  const showRecommendations = hasRecommendations || recommendationsPending;
+  // Latched here rather than inside the panel, because Radix unmounts an
+  // inactive `TabsContent`: a panel-scoped latch is lost the moment the user
+  // looks at Trending and comes back, which would leave this tab standing over
+  // a pane rendering nothing. This page outlives every tab switch, so it is
+  // what the panel reads through `everHadRows` below.
+  const everHadRecommendations = useLatched(hasRecommendations);
+  const showRecommendations =
+    hasRecommendations || recommendationsPending || everHadRecommendations;
   const tab = parsed === "my-recommendations" && !showRecommendations ? FALLBACK_TAB : parsed;
 
   // Heal the store as well as the render. `usePersistedString` writes back
@@ -84,7 +101,7 @@ export function DiscoverPage() {
           <TabsTrigger value="most-anticipated">Most Anticipated</TabsTrigger>
         </TabsList>
         <TabsContent value="my-recommendations">
-          <RecommendedForYou />
+          <RecommendedForYou everHadRows={everHadRecommendations} />
         </TabsContent>
         <TabsContent value="trending">
           <Trending />

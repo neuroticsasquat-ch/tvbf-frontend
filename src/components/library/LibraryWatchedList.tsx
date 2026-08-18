@@ -1,12 +1,13 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router";
-import { ArrowDown, ArrowUp, Check, Plus, Trash2 } from "lucide-react";
-import { useAddShow, useRemoveFromHistory, useRemoveShow } from "@/api/me";
+import { ArrowDown, ArrowUp, Trash2 } from "lucide-react";
+import { useRemoveFromHistory } from "@/api/me";
 import type { MyShowEntry, WatchedEntry } from "@/api/types";
 import { ConfirmDialog } from "@/components/connections/ConfirmDialog";
 import { Button } from "@/components/ui/button";
 import { ViewToggle } from "@/components/ViewToggle";
 import { MyShowCard } from "@/components/MyShowCard";
+import { MyShowsButton } from "@/components/MyShowsButton";
 import { WatchProgressBar } from "@/components/WatchProgressBar";
 import { FilterSheet } from "@/components/home/FilterSheet";
 import {
@@ -39,7 +40,6 @@ import {
 import { usePersistedSort } from "@/hooks/usePersistedSort";
 import { usePersistedString } from "@/hooks/usePersistedString";
 import { usePersistedView } from "@/hooks/usePersistedView";
-import { cn } from "@/lib/cn";
 import type { CallerLibrary } from "./callerLibrary";
 import { matchesCallerMembership, matchesCallerWatchState } from "./callerFilters";
 import type { ViewerContext } from "./LibraryActiveList";
@@ -289,40 +289,19 @@ function WatchedRow({
 }) {
   // For self, `entry.in_my_shows` is the caller's relationship. For friend, the
   // friend endpoint reports the friend's relationship there — drive the button
-  // off `callerLibrary` instead.
+  // off `callerLibrary` instead. `MyShowsButton` takes this answer rather than
+  // the sources, because this choice is the row's and not the button's
+  // (NEU-1176).
   const upstream =
     viewerContext === "friend"
       ? (callerLibrary?.get(entry.show.id)?.in_my_shows ?? false)
       : entry.in_my_shows;
 
-  const [override, setOverride] = useState<boolean | null>(null);
-  const [lastUpstream, setLastUpstream] = useState(upstream);
-  if (lastUpstream !== upstream) {
-    setLastUpstream(upstream);
-    setOverride(null);
-  }
-  const inMyShows = override ?? upstream;
-
-  const add = useAddShow();
-  const remove = useRemoveShow();
   const removeHistory = useRemoveFromHistory();
   const [confirmingRemoveHistory, setConfirmingRemoveHistory] = useState(false);
 
   const status = libraryStatusFor(entry);
   const upcoming = Math.max(0, entry.total_episode_count - entry.aired_episode_count);
-
-  function onAdd() {
-    setOverride(true);
-    add.mutate(entry.show.id, {
-      onError: () => setOverride(false),
-    });
-  }
-  function onRemove() {
-    setOverride(false);
-    remove.mutate(entry.show.id, {
-      onError: () => setOverride(true),
-    });
-  }
 
   return (
     <li className="border border-border rounded p-3 flex items-start gap-3 sm:gap-4">
@@ -402,36 +381,7 @@ function WatchedRow({
             viewerContext={viewerContext}
             callerLibrary={callerLibrary}
           />
-          {inMyShows ? (
-            <Button
-              type="button"
-              size="sm"
-              variant="outline"
-              onClick={onRemove}
-              disabled={remove.isPending}
-              aria-label="Remove from My Shows"
-              className={cn(
-                "h-7 px-2 gap-1 text-xs",
-                "border-emerald-600 text-emerald-700 hover:bg-emerald-50",
-                "dark:text-emerald-400 dark:hover:bg-emerald-950/40",
-              )}
-            >
-              <Check className="h-3.5 w-3.5" aria-hidden />
-              My Shows
-            </Button>
-          ) : (
-            <Button
-              type="button"
-              size="sm"
-              onClick={onAdd}
-              disabled={add.isPending}
-              aria-label="Add to My Shows"
-              className="h-7 px-2 gap-1 text-xs"
-            >
-              <Plus className="h-3.5 w-3.5" aria-hidden />
-              My Shows
-            </Button>
-          )}
+          <MyShowsButton showId={entry.show.id} inMyShows={upstream} />
           {viewerContext === "self" && (
             <Button
               type="button"

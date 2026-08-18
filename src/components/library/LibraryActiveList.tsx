@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router";
-import { ArrowDown, ArrowUp, Check, Plus } from "lucide-react";
-import { useAddShow, useRemoveShow } from "@/api/me";
+import { ArrowDown, ArrowUp, Check } from "lucide-react";
+import { useRemoveShow } from "@/api/me";
 import type { MyShowEntry } from "@/api/types";
 import { usePersistedSort } from "@/hooks/usePersistedSort";
 import { usePersistedString } from "@/hooks/usePersistedString";
@@ -9,6 +9,7 @@ import { usePersistedView } from "@/hooks/usePersistedView";
 import { WatchProgressBar } from "@/components/WatchProgressBar";
 import { ViewToggle } from "@/components/ViewToggle";
 import { MyShowCard } from "@/components/MyShowCard";
+import { MyShowsButton } from "@/components/MyShowsButton";
 import { Button } from "@/components/ui/button";
 import { FilterSheet } from "@/components/home/FilterSheet";
 import {
@@ -42,7 +43,6 @@ import {
   compareLibraryEntries,
   type LibrarySort,
 } from "@/components/home/librarySort";
-import { cn } from "@/lib/cn";
 import { callerHasShow, type CallerLibrary } from "./callerLibrary";
 import { matchesCallerMembership, matchesCallerWatchState } from "./callerFilters";
 import { CallerPosterBadge, CallerProgressNote } from "./LibraryRowIndicators";
@@ -368,10 +368,16 @@ function ActiveRow({
 
 /** Add/Remove My Shows button. Behaves differently for self vs friend:
  * - self: row represents one of the caller's own My Shows, so the button is
- *   always Remove and clicking it optimistically hides the row.
+ *   always Remove and clicking it optimistically hides the row. That is why
+ *   this mode keeps its own copy of the markup rather than using
+ *   `MyShowsButton`: what the click updates is the *row*, and handing a row's
+ *   lifecycle out through the button's interface would route the revert path —
+ *   the one nobody exercises by hand — through two components instead of one.
  * - friend: row represents the friend's library; the button reflects the
  *   *caller's* relationship via `callerLibrary`. Clicking add/removes from
- *   the caller's library; the row stays visible (it's still on the friend's). */
+ *   the caller's library; the row stays visible (it's still on the friend's).
+ *   That is `MyShowsButton` (NEU-1176) — deriving `upstream` stays here,
+ *   because the button takes the answer, not the sources. */
 function ActionButton({
   entry,
   viewerContext,
@@ -381,20 +387,10 @@ function ActionButton({
   viewerContext: ViewerContext;
   callerLibrary?: CallerLibrary;
 }) {
-  const add = useAddShow();
   const remove = useRemoveShow();
 
   // self mode: optimistic row removal on click.
   const [removed, setRemoved] = useState(false);
-
-  // friend mode: optimistic toggle of the caller's relationship.
-  const upstream = callerLibrary?.get(entry.show.id)?.in_my_shows ?? false;
-  const [override, setOverride] = useState<boolean | null>(null);
-  const [lastUpstream, setLastUpstream] = useState(upstream);
-  if (lastUpstream !== upstream) {
-    setLastUpstream(upstream);
-    setOverride(null);
-  }
 
   if (viewerContext === "self") {
     if (removed) return null;
@@ -419,43 +415,6 @@ function ActionButton({
   }
 
   // friend mode
-  const inMyShows = override ?? upstream;
-  function onAdd() {
-    setOverride(true);
-    add.mutate(entry.show.id, { onError: () => setOverride(false) });
-  }
-  function onRemove() {
-    setOverride(false);
-    remove.mutate(entry.show.id, { onError: () => setOverride(true) });
-  }
-  return inMyShows ? (
-    <Button
-      type="button"
-      size="sm"
-      variant="outline"
-      onClick={onRemove}
-      disabled={remove.isPending}
-      aria-label="Remove from My Shows"
-      className={cn(
-        "h-7 px-2 gap-1 text-xs",
-        "border-emerald-600 text-emerald-700 hover:bg-emerald-50",
-        "dark:text-emerald-400 dark:hover:bg-emerald-950/40",
-      )}
-    >
-      <Check className="h-3.5 w-3.5" aria-hidden />
-      My Shows
-    </Button>
-  ) : (
-    <Button
-      type="button"
-      size="sm"
-      onClick={onAdd}
-      disabled={add.isPending}
-      aria-label="Add to My Shows"
-      className="h-7 px-2 gap-1 text-xs"
-    >
-      <Plus className="h-3.5 w-3.5" aria-hidden />
-      My Shows
-    </Button>
-  );
+  const upstream = callerLibrary?.get(entry.show.id)?.in_my_shows ?? false;
+  return <MyShowsButton showId={entry.show.id} inMyShows={upstream} />;
 }
