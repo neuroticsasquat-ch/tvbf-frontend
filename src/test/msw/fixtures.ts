@@ -104,6 +104,7 @@ export const fixtureShowListPage: ShowListPage = {
       matched_aka: null,
       rating_average: 8.4,
       my_rating: null,
+      in_my_shows: false,
     },
     {
       id: 101,
@@ -121,6 +122,7 @@ export const fixtureShowListPage: ShowListPage = {
       matched_aka: null,
       rating_average: null,
       my_rating: null,
+      in_my_shows: false,
     },
   ],
   page: 1,

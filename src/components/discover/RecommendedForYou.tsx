@@ -39,6 +39,16 @@ import { useLatched } from "@/hooks/useLatched";
  * the tab for them. "Sunday" is accurate: the weekly pass is a Coolify
  * scheduled task running Sundays.
  *
+ * **This is the one `ShowGrid` in the app that passes no library mark, and the
+ * absence is the rule holding rather than a gap** (NEU-1184 §6). Its four
+ * siblings — search, Similar, Trending, Anticipated — all mark a show the
+ * viewer already tracks. `Recommendation` carries no `in_my_shows` and
+ * `RecommendationOut` deliberately never gains one: `GET /me/recommendations`
+ * suppresses any show the viewer already has a record for, as a live anti-join
+ * over `recommendations/exclusion.py` (NEU-1175, NEU-1178), so the mark would
+ * be `false` on every card ever served here — a field asserting nothing, on the
+ * one route that already pays a join to guarantee it.
+ *
  * `everHadRows` is that latch taken one level up. Radix unmounts an inactive
  * `TabsContent`, so a latch held only here is lost on a tab switch and this
  * pane would render nothing under a tab `DiscoverPage` is still showing — the

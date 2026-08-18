@@ -95,20 +95,41 @@ export interface ShowSummary {
   my_rating: number | null;
 }
 
-/** One entry of `GET /trending` — `ShowSummary` flattened, plus the one field
- * that makes it an entry rather than a search result.
+/** A `ShowSummary` carrying the viewer's library mark — the shape every grid
+ * surface serves, mirroring the backend's `MarkedShowOut` one-for-one
+ * (tvbf-backend/docs/specs/NEU-1184-in-my-shows-on-browse-surfaces.md §2.1,
+ * §5.1).
+ *
+ * Declared **once** rather than four times. Each surface keeps its own named
+ * subtype and its own docstring, because what differs between them is
+ * everything *around* the field — different bodies, different `my_rating`
+ * rules; what does not differ is the field itself.
+ *
+ * **Not folded into `ShowSummary`.** That type is nested inside six `/me`
+ * payloads (`MyShowEntry.show`, watch-next, upcoming, …) and is `ShowDetail`'s
+ * base, none of which the server computes a mark for — a My Shows row's mark is
+ * tautologically `true` and the detail page derives membership from
+ * `useMyShows()`.
+ *
+ * `in_my_shows` is a **mark, never a filter**: a tracked show still appears in
+ * every list it would otherwise appear in.
+ */
+export interface MarkedShow extends ShowSummary {
+  in_my_shows: boolean;
+}
+
+/** One entry of `GET /trending` — `MarkedShow` flattened, which is what makes
+ * it an entry rather than a search result.
  *
  * Flattened rather than nested under a `show` key, on `Recommendation`'s
  * reasoning: `ShowGrid` / `ShowCard` already take a `ShowSummary`, so a wrapper
  * type would cost this client something for a single boolean. See
  * tvbf-backend/docs/specs/NEU-1056-trending-contract.md §2.
  *
- * `in_my_shows` is a **mark, never a filter** — trending is a claim about the
- * world, and seeing a show you already track in it is a feature.
+ * Trending is a claim about the world, and seeing a show you already track in
+ * it is a feature.
  */
-export interface TrendingShow extends ShowSummary {
-  in_my_shows: boolean;
-}
+export interface TrendingShow extends MarkedShow {}
 
 /** The `GET /trending` body.
  *
@@ -125,9 +146,9 @@ export interface TrendingSnapshot {
 }
 
 /** One entry of `GET /anticipated` — `ShowSummary` flattened, plus the same
- * single boolean `TrendingShow` carries, and for its reason: `ShowGrid` /
- * `ShowCard` already take a `ShowSummary`, so a wrapper type would cost this
- * client something for one field. See
+ * mark `TrendingShow` carries, and for its reason: `ShowGrid` / `ShowCard`
+ * already take a `ShowSummary`, so a wrapper type would cost this client
+ * something for one field. See
  * tvbf-backend/docs/specs/NEU-1059-anticipated-contract.md §2.
  *
  * The body is a **bare array**, unlike `/trending`'s object: nothing is
@@ -144,9 +165,35 @@ export interface TrendingSnapshot {
  * premieres in the future, so a rating would be one for something nobody has
  * seen.
  */
-export interface AnticipatedShow extends ShowSummary {
-  in_my_shows: boolean;
-}
+export interface AnticipatedShow extends MarkedShow {}
+
+/** One item of `GET /shows` — browse and search results (NEU-1186).
+ *
+ * The mark is what the search grid was missing: the app knew the show was
+ * tracked and declined to say so, on the one surface where "should I add this?"
+ * is the actual question (spec §1). `my_rating` was already filled here.
+ *
+ * The route answers `private, no-store`, and has since before the mark — the
+ * body already carried `my_rating`. So adding the mark cost this route no
+ * cacheability, and `useShows` keeps its five-minute `staleTime`: invalidation,
+ * not `staleTime`, is what keeps the mark fresh (spec §5.2).
+ */
+export interface BrowseShow extends MarkedShow {}
+
+/** One row of `GET /shows/{id}/similar` — TMDB's "More like this" (NEU-1186).
+ *
+ * `in_my_shows` **and** `my_rating` are both filled here, and they arrived
+ * together: NEU-1053 left the route free of per-user fields to keep a body
+ * byte-identical for every viewer, and the mark spends exactly that. Once
+ * spent, only the cost of one more query stood against the rating, and leaving
+ * it out would have kept the Similar tab as the one grid in the app where the
+ * same show shows your stars everywhere else and not here (spec §3.2).
+ *
+ * `genres` is always `[]` and `network` always null — unchanged from NEU-1053
+ * and not re-decided: `ShowCard` renders neither, so hydrating them would be
+ * two more round trips for fields nothing displays.
+ */
+export interface SimilarShow extends MarkedShow {}
 
 export interface Rating {
   stars: number;
@@ -304,7 +351,7 @@ export interface PersonListPage {
 }
 
 export interface ShowListPage {
-  items: ShowSummary[];
+  items: BrowseShow[];
   page: number;
   per_page: number;
   total: number;

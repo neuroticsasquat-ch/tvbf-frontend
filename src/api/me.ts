@@ -155,12 +155,17 @@ function invalidateAll(qc: ReturnType<typeof useQueryClient>) {
   qc.invalidateQueries({ queryKey: ["season-progress"] });
   // Friend engagement may include the caller in the future; keep honest.
   qc.invalidateQueries({ queryKey: ["friend-activity"] });
-  // `GET /trending` and `GET /anticipated` each carry a per-user `in_my_shows`
-  // mark, so adding or removing a show changes both bodies (NEU-1057,
-  // NEU-1060). `staleTime: 0` alone only refetches on mount, which would leave
-  // a Discover tab showing the pre-toggle mark until it remounted.
+  // Every grid surface carries a per-user `in_my_shows` mark, so adding or
+  // removing a show changes all four bodies (NEU-1057, NEU-1060, NEU-1186).
+  // Invalidation is the mechanism, not `staleTime`: `staleTime: 0` alone only
+  // refetches on mount, which would leave a Discover tab showing the
+  // pre-toggle mark until it remounted — and `["shows"]` / `["show-similar"]`
+  // keep a five-minute `staleTime`, so for those two it is the only mechanism
+  // there is.
   qc.invalidateQueries({ queryKey: ["trending"] });
   qc.invalidateQueries({ queryKey: ["anticipated"] });
+  qc.invalidateQueries({ queryKey: ["shows"] });
+  qc.invalidateQueries({ queryKey: ["show-similar"] });
   invalidateRecommendations(qc);
 }
 
@@ -455,6 +460,10 @@ export function useShowRating(showId: number) {
       qc.invalidateQueries({ queryKey: ["show", showId] });
       qc.invalidateQueries({ queryKey: ["my-shows"] });
       qc.invalidateQueries({ queryKey: ["shows"] });
+      // `/shows/{id}/similar` carries `my_rating` since NEU-1186, so a rating
+      // changes that body too — and a show is routinely similar to one the
+      // viewer is rating, which is the case a browse-only invalidation misses.
+      qc.invalidateQueries({ queryKey: ["show-similar"] });
       invalidateRecommendations(qc);
     },
   });
