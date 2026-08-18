@@ -50,8 +50,8 @@ export function FriendProfilePage() {
       </div>
 
       <div role="tabpanel">
-        {tab === "active" && <ActiveTab userId={userId} />}
-        {tab === "watched" && <WatchedTab userId={userId} />}
+        {tab === "active" && <ActiveTab userId={userId} name={friend.user.display_name} />}
+        {tab === "watched" && <WatchedTab userId={userId} name={friend.user.display_name} />}
       </div>
     </section>
   );
@@ -85,7 +85,7 @@ function TabButton({
   );
 }
 
-function ActiveTab({ userId }: { userId: string }) {
+function ActiveTab({ userId, name }: { userId: string; name: string }) {
   const today = localToday();
   const { data, isLoading, error } = useQuery<MyShowEntry[]>({
     queryKey: ["friend-shows", userId, today],
@@ -108,14 +108,14 @@ function ActiveTab({ userId }: { userId: string }) {
     <LibraryActiveList
       data={data}
       isLoading={isLoading}
-      viewerContext="friend"
+      viewerContext={{ kind: "friend", name }}
       callerLibrary={callerLibrary}
       storagePrefix="friend-active"
     />
   );
 }
 
-function WatchedTab({ userId }: { userId: string }) {
+function WatchedTab({ userId, name }: { userId: string; name: string }) {
   const today = localToday();
   const { data, isLoading, isError, error } = useQuery<WatchedEntry[]>({
     queryKey: ["friend-watched", userId, today],
@@ -137,7 +137,7 @@ function WatchedTab({ userId }: { userId: string }) {
       data={data}
       isLoading={isLoading}
       isError={isError}
-      viewerContext="friend"
+      viewerContext={{ kind: "friend", name }}
       callerLibrary={callerLibrary}
       storagePrefix="friend-watched"
     />

@@ -83,9 +83,13 @@ export function watchStateOf(entry: WatchStateInput): Exclude<WatchState, "all">
   return "watching";
 }
 
+/** The status pill a library row can carry, or `null` for no pill. Named so
+ * `OwnerFacts` can state what it takes without restating the union (NEU-1181). */
+export type LibraryStatus = "caught_up" | "finished" | null;
+
 /** The "status pill" shown on a library row: `caught_up`, `finished`, or
  * nothing (still watching, not started). Drives the green pill on both lists. */
-export function libraryStatusFor(entry: WatchStateInput): "caught_up" | "finished" | null {
+export function libraryStatusFor(entry: WatchStateInput): LibraryStatus {
   const state = watchStateOf(entry);
   return state === "caught_up" || state === "finished" ? state : null;
 }

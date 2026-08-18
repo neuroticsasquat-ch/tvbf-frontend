@@ -102,7 +102,7 @@ describe("Anticipated", () => {
     // Marked, never filtered: both cards are present, one carries the mark.
     expect(await screen.findByRole("link", { name: /Lanterns/ })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /Neagley/ })).toBeInTheDocument();
-    expect(screen.getAllByTitle("In My Shows")).toHaveLength(1);
+    expect(screen.getAllByTitle("In your My Shows")).toHaveLength(1);
   });
 
   it("renders nothing at all when the list is empty", async () => {
@@ -146,7 +146,7 @@ describe("Anticipated", () => {
 
     await userEvent.click(screen.getByRole("button", { name: "add" }));
 
-    await waitFor(() => expect(screen.getByTitle("In My Shows")).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByTitle("In your My Shows")).toBeInTheDocument());
   });
 
   it("renders nothing and no error when the request fails", async () => {

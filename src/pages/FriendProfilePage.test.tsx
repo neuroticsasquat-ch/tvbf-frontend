@@ -199,7 +199,7 @@ describe("FriendProfilePage", () => {
 
     await waitFor(() => expect(screen.getByText("Severance")).toBeInTheDocument());
     await waitFor(() => {
-      const badges = screen.queryAllByLabelText(/^in my shows$/i);
+      const badges = screen.queryAllByLabelText(/^in your my shows$/i);
       expect(badges).toHaveLength(1);
     });
     // Badge is a sibling of the Severance link (same row), not the Lost link.
@@ -235,7 +235,7 @@ describe("FriendProfilePage", () => {
     await waitFor(() => expect(screen.getByText("Severance")).toBeInTheDocument());
     await waitFor(() => expect(screen.getByText(/^you:\s*3\/9$/i)).toBeInTheDocument());
     // No green ✓ badge for this show — caller watches it but doesn't track it.
-    expect(screen.queryByLabelText(/^in my shows$/i)).not.toBeInTheDocument();
+    expect(screen.queryByLabelText(/^in your my shows$/i)).not.toBeInTheDocument();
   });
 
   it("friend Active row shows BOTH green ✓ and 'You: x/y' when caller tracks AND has watched", async () => {
@@ -257,7 +257,7 @@ describe("FriendProfilePage", () => {
     renderWithProviders(routed(), { route: `/users/${FRIEND_ID}` });
 
     await waitFor(() => expect(screen.getByText("Severance")).toBeInTheDocument());
-    await waitFor(() => expect(screen.getByLabelText(/^in my shows$/i)).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByLabelText(/^in your my shows$/i)).toBeInTheDocument());
     expect(screen.getByText(/^you:\s*5\/10$/i)).toBeInTheDocument();
   });
 
@@ -270,7 +270,7 @@ describe("FriendProfilePage", () => {
     renderWithProviders(routed(), { route: `/users/${FRIEND_ID}` });
 
     await waitFor(() => expect(screen.getByText("Severance")).toBeInTheDocument());
-    expect(screen.queryByLabelText(/^in my shows$/i)).not.toBeInTheDocument();
+    expect(screen.queryByLabelText(/^in your my shows$/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/^you:/i)).not.toBeInTheDocument();
   });
 

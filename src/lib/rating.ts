@@ -47,3 +47,20 @@ const attributionPhrase = (attribution: RatingAttribution): string => {
  */
 export const ratingLabel = (attribution: RatingAttribution, value: number): string =>
   `${attributionPhrase(attribution)}: ${formatStars(value)} out of 5`;
+
+/** Whose facts a card or library row is holding — the viewer's own, or one
+ * named person's.
+ *
+ * **A resolved answer, never the sources.** `MyShowCard` takes this rather than
+ * a `viewerContext` plus a `callerLibrary`, so deriving it stays at the call
+ * site — NEU-1176's `MyShowsButton` seam applied one component over
+ * (NEU-1182 §3.3). It is required with no default, because a default of "yours"
+ * is precisely what made the next shared surface silently wrong.
+ *
+ * It is the rating vocabulary minus `aggregate` rather than the spec §6.2's own
+ * `{ kind: "you" } | { kind: "other"; name: string }`: a crowd cannot own a
+ * library row, but a second union tagged `"you"` beside one tagged `"own"` is
+ * the vocabulary drift this design exists to end, and reusing this one lets an
+ * owner be handed straight to `RatingBadge` as its attribution.
+ */
+export type RatingOwner = Exclude<RatingAttribution, { kind: "aggregate" }>;
