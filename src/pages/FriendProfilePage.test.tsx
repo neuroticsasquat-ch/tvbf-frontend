@@ -84,6 +84,7 @@ function makeWatched(
     first_watched_at: "2026-03-01T00:00:00Z",
     in_my_shows: false,
     status: "finished",
+    my_rating: null,
     ...overrides,
   };
 }
@@ -227,6 +228,7 @@ describe("FriendProfilePage", () => {
             first_watched_at: "2026-03-01T00:00:00Z",
             in_my_shows: false,
             status: "in_progress",
+            my_rating: null,
           },
         ]),
       ),

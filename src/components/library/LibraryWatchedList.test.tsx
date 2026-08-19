@@ -46,6 +46,7 @@ function makeWatched(
     first_watched_at: "2026-03-01T00:00:00Z",
     in_my_shows: false,
     status: "in_progress",
+    my_rating: null,
     ...overrides,
   };
 }
@@ -195,6 +196,37 @@ describe("LibraryWatchedList row UI", () => {
 
     await waitFor(() => expect(screen.getByText("Rectify")).toBeInTheDocument());
     expect(container.querySelector("[data-show-poster]")).not.toBeNull();
+  });
+
+  it("marks a tracked show in list view, where membership genuinely varies", async () => {
+    // NEU-1188 AC 6. The row asked `callerPosterMark`, which hard-returns
+    // `false` in self mode — right on Active, where every row is tracked by
+    // definition, and wrong here, which is the whole reason `WatchedEntry`
+    // carries `in_my_shows` and this tab offers a filter on it.
+    watchedResponse = [
+      makeWatched(108, "Andor", { in_my_shows: true }),
+      makeWatched(109, "Carnivale", { in_my_shows: false }),
+    ];
+    renderWithProviders(<Harness />);
+
+    await waitFor(() => expect(screen.getByText("Andor")).toBeInTheDocument());
+    // One marked and one unmarked in the same payload: a mark that is always
+    // drawn passes any single-row assertion.
+    expect(screen.getAllByRole("img", { name: "In your My Shows" })).toHaveLength(1);
+  });
+
+  it("shows the viewer's own rating, which the server did not send until NEU-1191", async () => {
+    // NEU-1188 AC 4. A show you rated showed its stars on Active and nothing
+    // here, in either view — dropped twice: the adapter hard-coded
+    // `my_rating: null`, and the row rendered no badge at all.
+    watchedResponse = [makeWatched(110, "Rectify", { my_rating: 4.5 })];
+    const { container } = renderWithProviders(<Harness />);
+
+    await waitFor(() => expect(screen.getByText("Rectify")).toBeInTheDocument());
+    const badge = screen.getByRole("img", { name: "Your rating: 4.5 out of 5" });
+    // On the poster, not in the facts group — only the viewer's own rating may
+    // occupy a corner (NEU-1182 §3.5).
+    expect(container.querySelector("[data-show-poster]")?.contains(badge)).toBe(true);
   });
 
   it("row name links to the show detail page", async () => {

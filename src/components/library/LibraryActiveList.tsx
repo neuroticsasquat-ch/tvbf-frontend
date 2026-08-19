@@ -42,7 +42,7 @@ import {
   type LibrarySort,
 } from "@/components/home/librarySort";
 import { OwnerFacts } from "@/components/OwnerFacts";
-import { callerHasShow, callerPosterMark, type CallerLibrary } from "./callerLibrary";
+import { activeCallerRelationship, callerPosterMark, type CallerLibrary } from "./callerLibrary";
 import { matchesCallerMembership, matchesCallerWatchState } from "./callerFilters";
 import { CallerProgressNote } from "./LibraryRowIndicators";
 import { SELF, ratingOwnerFor, type ViewerContext } from "./viewerContext";
@@ -259,6 +259,14 @@ export function LibraryActiveList({
                 // where this passed a literal `true` and the mark could only
                 // ever be true — the always-true badge finding 2.3 names.
                 inMyShows={callerPosterMark(entry.show.id, viewerContext, callerLibrary)}
+                // Null in self mode, so the card draws no action row there —
+                // and the friend grid gains the button and the `You: x/y`
+                // comparison its rows have always carried (NEU-1188 AC 3).
+                callerRelationship={activeCallerRelationship(
+                  entry.show.id,
+                  viewerContext,
+                  callerLibrary,
+                )}
                 removable={viewerContext.kind === "self"}
                 onRemoved={onRemoved}
               />
@@ -312,6 +320,9 @@ function ActiveRow({
   const status = libraryStatusFor(entry);
   const owner = ratingOwnerFor(viewerContext);
   const isSelf = viewerContext.kind === "self";
+  // The same resolver the grid asks, so both views draw one answer rather than
+  // two derivations of it (NEU-1188).
+  const caller = activeCallerRelationship(entry.show.id, viewerContext, callerLibrary);
 
   return (
     <li className="border border-border rounded p-3 flex items-start gap-3 sm:gap-4">
@@ -379,19 +390,13 @@ function ActiveRow({
         {status !== "finished" && entry.upcoming_episode_count > 0 && (
           <p className="text-xs text-muted-foreground">{entry.upcoming_episode_count} upcoming</p>
         )}
-        {!isSelf && (
+        {caller && (
           <div className="flex flex-wrap items-center justify-end gap-2 pt-1">
-            <CallerProgressNote
-              showId={entry.show.id}
-              viewerContext={viewerContext}
-              callerLibrary={callerLibrary}
-            />
-            {/* Deriving `upstream` stays here, because the button takes the
-              answer, not the sources (NEU-1176). */}
+            <CallerProgressNote progress={caller.progress} />
             <MyShowsButton
               showId={entry.show.id}
               showName={entry.show.name}
-              inMyShows={callerHasShow(callerLibrary, entry.show.id)}
+              inMyShows={caller.inMyShows}
             />
           </div>
         )}
