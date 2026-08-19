@@ -1,5 +1,7 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
 import { fireEvent, screen, waitFor } from "@testing-library/react";
+import { server } from "@/test/msw/server";
+import { meHandler } from "@/test/msw/me";
 import { renderWithProviders } from "@/test/renderWithProviders";
 import * as connectionsApi from "@/api/connections";
 import { ApiError } from "@/api/client";
@@ -70,6 +72,30 @@ describe("RequestsInbox", () => {
 
     await waitFor(() => expect(accept).toHaveBeenCalledWith("r-in"));
     await waitFor(() => expect(screen.queryByText("Alice")).not.toBeInTheDocument());
+  });
+
+  it("accepts an incoming request for an unverified viewer", async () => {
+    // The gate is on the send, never on the accept (NEU-1161 §3.3): someone a
+    // real person invited can still say yes before verifying. A frontend that
+    // greyed this out would re-impose the gate the backend went out of its way
+    // not to.
+    server.use(meHandler(null));
+    vi.spyOn(connectionsApi, "listConnectionRequests").mockResolvedValue({
+      incoming: [makeReq("r-in", { id: "u-1", display_name: "Alice" }, "incoming")],
+      outgoing: [],
+    });
+    const accept = vi
+      .spyOn(connectionsApi, "acceptConnectionRequest")
+      .mockResolvedValue(makeReq("r-in", { id: "u-1", display_name: "Alice" }, "incoming"));
+
+    renderWithProviders(<RequestsInbox />);
+
+    await waitFor(() => expect(screen.getByText("Alice")).toBeInTheDocument());
+    const button = screen.getByRole("button", { name: /accept/i });
+    expect(button).not.toHaveAttribute("aria-disabled");
+    fireEvent.click(button);
+
+    await waitFor(() => expect(accept).toHaveBeenCalledWith("r-in"));
   });
 
   it("optimistically removes a row on Reject", async () => {

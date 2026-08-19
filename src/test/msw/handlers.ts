@@ -117,6 +117,31 @@ export const handlers = [
       { status: 201 },
     );
   }),
+  // Social routes. `GET /users/search` answers 200 with a filtered list even
+  // for an unverified caller — it never 403s (NEU-1161 §4), so the empty list
+  // is the whole default and tests that want rows serve their own.
+  http.get(`${base}/users/search`, () => HttpResponse.json([])),
+  // `POST /connection-requests` succeeds by default; the 403
+  // `{"detail": "email_not_verified"}` shape is served per-test, so the
+  // verification backstop is exercised against the real wire body rather than
+  // a hand-built `ApiError`.
+  http.post(`${base}/connection-requests`, async ({ request }) => {
+    const body = (await request.json().catch(() => ({}))) as { addressee_id?: string };
+    return HttpResponse.json(
+      {
+        id: "req-1",
+        requester: { id: "u1", display_name: "Me" },
+        addressee: { id: body.addressee_id ?? "u2", display_name: "Them" },
+        state: "pending",
+        created_at: new Date().toISOString(),
+        responded_at: null,
+      },
+      { status: 201 },
+    );
+  }),
+  // The resend route: 202 with no body on success. Its 429 `rate_limited` is
+  // served per-test.
+  http.post(`${base}/me/email/verification`, () => new HttpResponse(null, { status: 202 })),
   http.post(`${base}/me/feedback`, async ({ request }) => {
     const body = (await request.json().catch(() => ({}))) as {
       subject?: string;

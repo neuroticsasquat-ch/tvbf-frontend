@@ -2,7 +2,7 @@ import { HttpResponse, http } from "msw";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { server } from "@/test/msw/server";
 import { env } from "@/env";
-import { ApiError, apiFetch, buildShowsQuery, setCsrfToken } from "./client";
+import { ApiError, apiFetch, buildShowsQuery, isEmailNotVerified, setCsrfToken } from "./client";
 import type { ShowFilters } from "./types";
 
 describe("apiFetch", () => {
@@ -30,6 +30,35 @@ describe("apiFetch", () => {
   it("throws ApiError with generic message when body has no detail", async () => {
     server.use(http.get(`${env.apiBaseUrl}/fail`, () => new HttpResponse(null, { status: 500 })));
     await expect(apiFetch("/fail")).rejects.toBeInstanceOf(ApiError);
+  });
+});
+
+describe("isEmailNotVerified", () => {
+  afterEach(() => server.resetHandlers());
+
+  /** Errors are produced through `apiFetch` against a served body rather than
+   * constructed by hand, so the helper is asserted against the wire shape
+   * NEU-1161 §4 publishes. */
+  async function errorFrom(status: number, body: { detail: string }): Promise<unknown> {
+    server.use(http.post(`${env.apiBaseUrl}/gated`, () => HttpResponse.json(body, { status })));
+    return await apiFetch("/gated", { method: "POST" }).then(
+      () => null,
+      (e: unknown) => e,
+    );
+  }
+
+  it("is true for a 403 carrying detail email_not_verified", async () => {
+    expect(isEmailNotVerified(await errorFrom(403, { detail: "email_not_verified" }))).toBe(true);
+  });
+
+  it("is false for the other 403 on the same route", async () => {
+    expect(isEmailNotVerified(await errorFrom(403, { detail: "csrf_invalid" }))).toBe(false);
+  });
+
+  it("is false for a 401, and for anything that is not an ApiError", async () => {
+    expect(isEmailNotVerified(await errorFrom(401, { detail: "auth_required" }))).toBe(false);
+    expect(isEmailNotVerified(new Error("email_not_verified"))).toBe(false);
+    expect(isEmailNotVerified(null)).toBe(false);
   });
 });
 
@@ -171,9 +200,7 @@ describe("apiFetch — field validation errors", () => {
 
   it("leaves a message Pydantic did not stamp alone", async () => {
     respond({
-      detail: [
-        { type: "assertion_error", loc: ["body", "email"], msg: "Assertion failed, nope" },
-      ],
+      detail: [{ type: "assertion_error", loc: ["body", "email"], msg: "Assertion failed, nope" }],
     });
     const err = await reject();
     expect(err.fieldErrors).toEqual({ email: "Assertion failed, nope" });
