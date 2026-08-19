@@ -88,6 +88,40 @@ describe("SettingsPage", () => {
     await waitFor(() => expect(screen.getByRole("button", { name: /save/i })).toBeInTheDocument());
   });
 
+  it("shows the server's field message inline when a 422 names display_name", async () => {
+    server.use(authedMeHandler());
+    server.use(
+      http.patch(`${env.apiBaseUrl}/me`, () =>
+        HttpResponse.json(
+          {
+            detail: [
+              {
+                type: "value_error",
+                loc: ["body", "display_name"],
+                msg: "Value error, display_name must not be an email address",
+                input: "a@b.c",
+              },
+            ],
+          },
+          { status: 422 },
+        ),
+      ),
+    );
+
+    renderWithProviders(<SettingsPage />, { route: "/settings" });
+    await screen.findByText("Alice");
+    await userEvent.click(screen.getByRole("button", { name: /edit/i }));
+
+    const input = screen.getByLabelText(/display name/i);
+    await userEvent.clear(input);
+    await userEvent.type(input, "a@b.c");
+    await userEvent.click(screen.getByRole("button", { name: /save/i }));
+
+    expect(
+      await screen.findByText("display_name must not be an email address"),
+    ).toBeInTheDocument();
+  });
+
   it("rejects an empty name client-side without calling the API", async () => {
     server.use(authedMeHandler());
     server.use(

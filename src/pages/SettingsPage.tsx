@@ -372,7 +372,12 @@ function ProfileSection() {
       toast.success("Display name updated.");
       setEditing(false);
     } catch (e) {
-      if (e instanceof ApiError && e.status === 422) {
+      if (e instanceof ApiError && e.fieldErrors?.display_name) {
+        // The rule lives in the schema (NEU-1194), so the server's own sentence
+        // is the only one that says which rule was broken. Inline, beside the
+        // input it is about, rather than in a toast that outlives the editor.
+        setError(e.fieldErrors.display_name);
+      } else if (e instanceof ApiError && e.status === 422) {
         toast.error("That display name isn't allowed. Use 1–80 characters.");
       } else {
         toast.error("Could not update display name. Try again.");

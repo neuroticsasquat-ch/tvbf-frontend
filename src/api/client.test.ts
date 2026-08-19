@@ -123,3 +123,97 @@ describe("apiFetch — auth + csrf", () => {
     expect(result).toBeUndefined();
   });
 });
+
+describe("apiFetch — field validation errors", () => {
+  afterEach(() => server.resetHandlers());
+
+  function respond(body: Record<string, unknown>, status = 422) {
+    server.use(http.post(`${env.apiBaseUrl}/signup`, () => HttpResponse.json(body, { status })));
+  }
+
+  async function reject(): Promise<ApiError> {
+    try {
+      await apiFetch("/signup", { method: "POST", body: "{}" });
+    } catch (e) {
+      return e as ApiError;
+    }
+    throw new Error("expected apiFetch to reject");
+  }
+
+  it("indexes FastAPI's per-field messages by field name", async () => {
+    respond({
+      detail: [
+        {
+          type: "value_error",
+          loc: ["body", "display_name"],
+          msg: "Value error, display_name must not be an email address",
+          input: "a@b.c",
+        },
+      ],
+    });
+    const err = await reject();
+    expect(err.fieldErrors).toEqual({
+      display_name: "display_name must not be an email address",
+    });
+  });
+
+  it("uses the first field message as the error message", async () => {
+    respond({
+      detail: [
+        { type: "missing", loc: ["body", "email"], msg: "Field required" },
+        { type: "missing", loc: ["body", "password"], msg: "Field required" },
+      ],
+    });
+    const err = await reject();
+    expect(err.message).toBe("Field required");
+    expect(err.fieldErrors).toEqual({ email: "Field required", password: "Field required" });
+  });
+
+  it("keeps the first message when one field errors twice", async () => {
+    respond({
+      detail: [
+        { type: "value_error", loc: ["body", "display_name"], msg: "Value error, first" },
+        { type: "string_too_long", loc: ["body", "display_name"], msg: "second" },
+      ],
+    });
+    const err = await reject();
+    expect(err.fieldErrors).toEqual({ display_name: "first" });
+  });
+
+  it("joins nested locations and keeps non-body locations addressable", async () => {
+    respond({
+      detail: [
+        { type: "int_parsing", loc: ["query", "page"], msg: "Input should be a valid integer" },
+        { type: "missing", loc: ["body", "items", 0, "name"], msg: "Field required" },
+        { type: "json_invalid", loc: ["body"], msg: "JSON decode error" },
+      ],
+    });
+    const err = await reject();
+    expect(err.fieldErrors).toEqual({
+      page: "Input should be a valid integer",
+      "items.0.name": "Field required",
+      body: "JSON decode error",
+    });
+  });
+
+  it("leaves a string detail rendering exactly as it does today", async () => {
+    respond({ detail: "Invite code is invalid." });
+    const err = await reject();
+    expect(err.message).toBe("Invite code is invalid.");
+    expect(err.fieldErrors).toBeUndefined();
+  });
+
+  it("falls back to the generic message when the list holds no usable entries", async () => {
+    respond({ detail: [{ nope: true }, "not an object", null] });
+    const err = await reject();
+    expect(err.message).toBe("Request failed with status 422");
+    expect(err.fieldErrors).toBeUndefined();
+  });
+
+  it("falls back to the generic message when detail is neither shape", async () => {
+    respond({ detail: { display_name: "bad" } });
+    const err = await reject();
+    expect(err.message).toBe("Request failed with status 422");
+    expect(err.fieldErrors).toBeUndefined();
+  });
+});

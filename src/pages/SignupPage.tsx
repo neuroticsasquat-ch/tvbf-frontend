@@ -4,6 +4,19 @@ import { Link, useNavigate, useSearchParams } from "react-router";
 import { ApiError } from "@/api/client";
 import { useAuth } from "@/components/AuthContext";
 
+/** The request fields this form has an input for. A 422 naming anything else
+ * falls back to the banner rather than being dropped silently. */
+const OWN_FIELDS = ["invite_code", "email", "display_name", "password"] as const;
+
+function FieldError({ id, message }: { id: string; message: string | undefined }) {
+  if (!message) return null;
+  return (
+    <p id={id} role="alert" className="text-sm text-red-600 mt-1">
+      {message}
+    </p>
+  );
+}
+
 export function SignupPage() {
   const { signup } = useAuth();
   const navigate = useNavigate();
@@ -13,11 +26,13 @@ export function SignupPage() {
   const [password, setPassword] = useState("");
   const [inviteCode, setInviteCode] = useState(() => params.get("invite") ?? "");
   const [error, setError] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
+    setFieldErrors({});
     if (password.length < 8) {
       setError("Password must be at least 8 characters.");
       return;
@@ -36,7 +51,16 @@ export function SignupPage() {
       } else if (err instanceof ApiError && err.status === 409) {
         setError("This email is already registered.");
       } else if (err instanceof ApiError && err.status === 422) {
-        setError("Please check your input and try again.");
+        const fields = err.fieldErrors ?? {};
+        setFieldErrors(fields);
+        const unowned = Object.entries(fields).filter(
+          ([name]) => !(OWN_FIELDS as readonly string[]).includes(name),
+        );
+        // Every message reaches the user: the ones this form has an input for
+        // land against it, anything else keeps the banner.
+        if (unowned.length > 0) setError(unowned.map(([, msg]) => msg).join(" "));
+        else if (Object.keys(fields).length === 0)
+          setError("Please check your input and try again.");
       } else {
         setError("Something went wrong. Please try again.");
       }
@@ -59,9 +83,12 @@ export function SignupPage() {
             required
             value={inviteCode}
             onChange={(e) => setInviteCode(e.target.value)}
+            aria-invalid={fieldErrors.invite_code ? true : undefined}
+            aria-describedby={fieldErrors.invite_code ? "invite_code-error" : undefined}
             className="mt-1 w-full rounded border px-3 py-2"
             autoComplete="off"
           />
+          <FieldError id="invite_code-error" message={fieldErrors.invite_code} />
           <p className="text-xs text-gray-500 mt-1">TV BingeFriend is invite-only during beta.</p>
         </div>
         <div>
@@ -74,9 +101,11 @@ export function SignupPage() {
             required
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            aria-describedby="email-help"
+            aria-invalid={fieldErrors.email ? true : undefined}
+            aria-describedby={fieldErrors.email ? "email-error email-help" : "email-help"}
             className="mt-1 w-full rounded border px-3 py-2"
           />
+          <FieldError id="email-error" message={fieldErrors.email} />
           <p id="email-help" className="text-xs text-gray-500 mt-1">
             Your email won't be shown to other users, but they can find you with it to send a
             connection request.
@@ -93,9 +122,13 @@ export function SignupPage() {
             maxLength={100}
             value={displayName}
             onChange={(e) => setDisplayName(e.target.value)}
-            aria-describedby="display-name-help"
+            aria-invalid={fieldErrors.display_name ? true : undefined}
+            aria-describedby={
+              fieldErrors.display_name ? "display_name-error display-name-help" : "display-name-help"
+            }
             className="mt-1 w-full rounded border px-3 py-2"
           />
+          <FieldError id="display_name-error" message={fieldErrors.display_name} />
           <p id="display-name-help" className="text-xs text-gray-500 mt-1">
             This is the name other users will see on the site.
           </p>
@@ -111,8 +144,11 @@ export function SignupPage() {
             minLength={8}
             value={password}
             onChange={(e) => setPassword(e.target.value)}
+            aria-invalid={fieldErrors.password ? true : undefined}
+            aria-describedby={fieldErrors.password ? "password-error" : undefined}
             className="mt-1 w-full rounded border px-3 py-2"
           />
+          <FieldError id="password-error" message={fieldErrors.password} />
           <p className="text-xs text-gray-500 mt-1">At least 8 characters.</p>
         </div>
         {error && <p className="text-sm text-red-600">{error}</p>}
