@@ -8,6 +8,10 @@ export const signup = (body: {
   password: string;
   display_name: string;
   invite_code: string;
+  /** Optional on the wire exactly as it is in `SignupRequest`: the backend
+   * decides that "verification enabled means a token is required" and answers
+   * 400 `captcha_required` when one is missing (NEU-1160 §7). */
+  turnstile_token?: string;
 }) => apiFetch<AuthedUser>("/auth/signup", { method: "POST", body: JSON.stringify(body) });
 
 export const login = (body: { email: string; password: string }) =>

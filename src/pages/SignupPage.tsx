@@ -1,14 +1,44 @@
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router";
 
 import { ApiError } from "@/api/client";
 import { useAuth } from "@/components/AuthContext";
+import { ErrorState } from "@/components/ErrorState";
 import { FieldError } from "@/components/FieldError";
+import { TurnstileWidget } from "@/components/TurnstileWidget";
+import { env } from "@/env";
 import { useFieldErrors } from "@/hooks/useFieldErrors";
+import { cn } from "@/lib/cn";
 
 /** The request fields this form has an input for. A 422 naming anything else
  * falls back to the banner rather than being dropped silently. */
 const OWN_FIELDS = ["invite_code", "email", "display_name", "password"];
+
+/** The backend's four abuse-gate outcomes carry a plain-string `detail`
+ * (NEU-1160 §7), which is a machine token rather than a sentence — so each is
+ * mapped here rather than being surfaced through `ApiError.message`. */
+const CAPTCHA_MESSAGES: Record<string, string> = {
+  captcha_required: "Please complete the verification check and try again.",
+  captcha_invalid: "The verification check couldn't be confirmed. Please try it again.",
+  captcha_unavailable: "We couldn't reach the verification service. Please try again in a moment.",
+};
+
+/** The backend's switch (`TURNSTILE_ENABLED`) and this one (a site key) live in
+ * different systems, and nothing reconciles them — so verification can be on
+ * server-side while the SPA has no key and draws no widget. Every signup then
+ * gets `captcha_required`, and telling the visitor to complete a check that is
+ * not on the page is the silently-unusable form AC 4 calls the worst outcome.
+ * It is a misconfiguration rather than anything they can act on, so it is
+ * reported as one. */
+const CAPTCHA_MISCONFIGURED = "Sign-up is temporarily unavailable. Please try again shortly.";
+
+function stringDetail(err: unknown): string | null {
+  if (!(err instanceof ApiError)) return null;
+  const body = err.body;
+  if (!body || typeof body !== "object" || !("detail" in body)) return null;
+  const detail = (body as { detail: unknown }).detail;
+  return typeof detail === "string" ? detail : null;
+}
 
 export function SignupPage() {
   const { signup } = useAuth();
@@ -21,10 +51,21 @@ export function SignupPage() {
   const [error, setError] = useState<string | null>(null);
   const { fieldErrors, fieldProps, clearField, capture, reset } = useFieldErrors(OWN_FIELDS);
   const [submitting, setSubmitting] = useState(false);
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
+  // Bumping this remounts the widget, which is how a spent token is replaced —
+  // the backend verifies the token before it can fail for any other reason, so
+  // every rejected attempt leaves the one in hand already used up.
+  const [captchaNonce, setCaptchaNonce] = useState(0);
+  const [rateLimited, setRateLimited] = useState(false);
+  const siteKey = env.turnstileSiteKey;
+  const captchaEnabled = siteKey.length > 0;
+  const handleCaptchaToken = useCallback((token: string | null) => setCaptchaToken(token), []);
+  const captchaBlocked = captchaEnabled && !captchaToken;
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
+    setRateLimited(false);
     reset();
     if (password.length < 8) {
       setError("Password must be at least 8 characters.");
@@ -34,16 +75,29 @@ export function SignupPage() {
       setError("An invite code is required to sign up.");
       return;
     }
+    if (captchaEnabled && !captchaToken) {
+      setError("Please complete the verification check to continue.");
+      return;
+    }
     setSubmitting(true);
     try {
-      await signup(email, password, displayName, inviteCode.trim());
+      await signup(email, password, displayName, inviteCode.trim(), captchaToken ?? undefined);
       navigate("/my-shows");
     } catch (err) {
+      const detail = stringDetail(err);
       // Field messages first: every one reaches the user, the ones this form
       // has an input for against that input and anything else in the banner.
       const captured = capture(err);
       if (captured.handled) {
         setError(captured.banner);
+      } else if (err instanceof ApiError && err.status === 429) {
+        // Not a validation error and not this form's fault, so it gets the
+        // page-level treatment rather than a line under an input (AC 5).
+        setRateLimited(true);
+      } else if (detail === "captcha_required" && !captchaEnabled) {
+        setError(CAPTCHA_MISCONFIGURED);
+      } else if (detail !== null && detail in CAPTCHA_MESSAGES) {
+        setError(CAPTCHA_MESSAGES[detail]);
       } else if (err instanceof ApiError && err.status === 403) {
         setError("Invite code is invalid, already used, or doesn't match this email.");
       } else if (err instanceof ApiError && err.status === 409) {
@@ -53,6 +107,10 @@ export function SignupPage() {
       } else {
         setError("Something went wrong. Please try again.");
       }
+      if (captchaEnabled) {
+        setCaptchaToken(null);
+        setCaptchaNonce((n) => n + 1);
+      }
     } finally {
       setSubmitting(false);
     }
@@ -61,6 +119,11 @@ export function SignupPage() {
   return (
     <div className="mx-auto max-w-sm py-12">
       <h1 className="text-2xl font-semibold mb-6">Sign up</h1>
+      {rateLimited ? (
+        <div className="mb-6">
+          <ErrorState message="Too many sign-up attempts have come from your network. Please wait a while before trying again." />
+        </div>
+      ) : null}
       <form onSubmit={onSubmit} className="space-y-4">
         <div>
           <label htmlFor="invite_code" className="block text-sm">
@@ -146,14 +209,33 @@ export function SignupPage() {
           <FieldError name="password" message={fieldErrors.password} />
           <p className="text-xs text-gray-500 mt-1">At least 8 characters.</p>
         </div>
+        {captchaEnabled ? (
+          <TurnstileWidget key={captchaNonce} siteKey={siteKey} onToken={handleCaptchaToken} />
+        ) : null}
         {error && <p className="text-sm text-red-600">{error}</p>}
         <button
           type="submit"
           disabled={submitting}
-          className="w-full rounded bg-black text-white py-2 disabled:opacity-50"
+          // `aria-disabled` rather than `disabled` while the challenge is
+          // outstanding: a disabled button leaves the tab order, taking the
+          // explanation of why it is disabled with it — the dead button AC 3
+          // exists to prevent. Focusable means the description is announced,
+          // and pressing it hits the guard in `onSubmit`, which says the same
+          // thing in the banner.
+          aria-disabled={captchaBlocked || undefined}
+          aria-describedby={captchaBlocked ? "captcha-gate-help" : undefined}
+          className={cn(
+            "w-full rounded bg-black text-white py-2 disabled:opacity-50",
+            captchaBlocked && "opacity-50",
+          )}
         >
           {submitting ? "Creating account…" : "Sign up"}
         </button>
+        {captchaBlocked ? (
+          <p id="captcha-gate-help" className="text-xs text-gray-500">
+            Complete the verification check above to continue.
+          </p>
+        ) : null}
       </form>
       <p className="mt-4 text-sm">
         Already have an account?{" "}

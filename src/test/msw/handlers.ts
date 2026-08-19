@@ -100,6 +100,23 @@ export const handlers = [
   http.get(`${base}/episodes/:id/friends/ratings`, () =>
     HttpResponse.json({ avg: null, count: 0, items: [] }),
   ),
+  // Signup succeeds by default. The Turnstile token is optional on the wire —
+  // the backend decides that "verification enabled means required" and answers
+  // 400 `captcha_required` itself (NEU-1160 §7) — so this handler accepts a
+  // request with or without one, and tests that want a refusal serve it.
+  http.post(`${base}/auth/signup`, async ({ request }) => {
+    const body = (await request.json().catch(() => ({}))) as { email?: string };
+    return HttpResponse.json(
+      {
+        id: "u1",
+        email: body.email ?? "x@y.com",
+        display_name: "X",
+        created_at: new Date().toISOString(),
+        csrf_token: "test-csrf",
+      },
+      { status: 201 },
+    );
+  }),
   http.post(`${base}/me/feedback`, async ({ request }) => {
     const body = (await request.json().catch(() => ({}))) as {
       subject?: string;

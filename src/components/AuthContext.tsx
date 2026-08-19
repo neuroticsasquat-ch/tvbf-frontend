@@ -13,6 +13,7 @@ type AuthContextValue = {
     password: string,
     displayName: string,
     inviteCode: string,
+    turnstileToken?: string,
   ) => Promise<void>;
   logout: () => Promise<void>;
   changePassword: (currentPassword: string, newPassword: string) => Promise<void>;
@@ -61,6 +62,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       password: string;
       display_name: string;
       invite_code: string;
+      turnstile_token?: string;
     }) => authApi.signup(vars),
     onSuccess: (user) => {
       setCsrfToken(user.csrf_token);
@@ -106,12 +108,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       login: async (email, password) => {
         await loginMut.mutateAsync({ email, password });
       },
-      signup: async (email, password, displayName, inviteCode) => {
+      signup: async (email, password, displayName, inviteCode, turnstileToken) => {
         await signupMut.mutateAsync({
           email,
           password,
           display_name: displayName,
           invite_code: inviteCode,
+          turnstile_token: turnstileToken,
         });
       },
       logout: async () => {

@@ -5,6 +5,7 @@ import { http, HttpResponse } from "msw";
 import { MemoryRouter, Routes, Route } from "react-router";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { server } from "@/test/msw/server";
+import { renderedTurnstileWidgetCount } from "@/test/turnstile";
 import { env } from "@/env";
 import { AuthProvider } from "@/components/AuthContext";
 import { SignupPage } from "./SignupPage";
@@ -85,6 +86,60 @@ describe("SignupPage", () => {
     await fillCommonFields("bogus-code");
     await userEvent.click(screen.getByRole("button", { name: /sign up/i }));
     await waitFor(() => expect(screen.getByText(/invite code is invalid/i)).toBeInTheDocument());
+  });
+
+  it("renders no verification widget when no site key is configured", async () => {
+    renderAt("/signup");
+    await fillCommonFields();
+    // The backend's own default is verification off (NEU-1160 §6), so an
+    // unconfigured SPA must submit exactly as it did before rather than
+    // demanding a challenge it has no key to draw.
+    expect(renderedTurnstileWidgetCount()).toBe(0);
+    expect(screen.getByRole("button", { name: /sign up/i })).toBeEnabled();
+  });
+
+  it("reports a temporary outage when the backend wants a token this build cannot draw", async () => {
+    server.use(
+      http.get(`${env.apiBaseUrl}/me`, () =>
+        HttpResponse.json({ detail: "auth_required" }, { status: 401 }),
+      ),
+      http.post(`${env.apiBaseUrl}/auth/signup`, () =>
+        HttpResponse.json({ detail: "captcha_required" }, { status: 400 }),
+      ),
+    );
+    renderAt("/signup");
+    await fillCommonFields();
+    await userEvent.click(screen.getByRole("button", { name: /sign up/i }));
+
+    // Verification is on server-side but no site key is configured here, so
+    // there is no widget to point at — telling the user to complete one would
+    // be the silently-unusable form the ticket calls the worst outcome.
+    expect(await screen.findByText(/temporarily unavailable/i)).toBeInTheDocument();
+    expect(screen.queryByText(/complete the verification check/i)).not.toBeInTheDocument();
+  });
+
+  it("shows a page-level error state for the IP throttle's 429", async () => {
+    server.use(
+      http.get(`${env.apiBaseUrl}/me`, () =>
+        HttpResponse.json({ detail: "auth_required" }, { status: 401 }),
+      ),
+      http.post(`${env.apiBaseUrl}/auth/signup`, () =>
+        HttpResponse.json(
+          { detail: "rate_limited" },
+          { status: 429, headers: { "Retry-After": "3600" } },
+        ),
+      ),
+    );
+    renderAt("/signup");
+    await fillCommonFields();
+    await userEvent.click(screen.getByRole("button", { name: /sign up/i }));
+
+    const alert = await screen.findByRole("alert");
+    expect(alert).toHaveTextContent(/too many sign-up attempts/i);
+    // Distinct from a validation error: the machine token never reaches the
+    // page, and nothing is marked invalid.
+    expect(screen.queryByText("rate_limited")).not.toBeInTheDocument();
+    expect(screen.getByLabelText(/email/i)).not.toHaveAttribute("aria-invalid");
   });
 
   it("pre-fills the invite code from the ?invite= query param", () => {
@@ -233,9 +288,7 @@ describe("SignupPage", () => {
 
     const username = screen.getByLabelText(/username/i);
     await userEvent.type(username, "y");
-    expect(
-      screen.queryByText("display_name must not be an email address"),
-    ).not.toBeInTheDocument();
+    expect(screen.queryByText("display_name must not be an email address")).not.toBeInTheDocument();
     expect(username).not.toHaveAttribute("aria-invalid");
 
     // A different field's message is untouched by that edit.
