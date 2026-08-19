@@ -22,6 +22,26 @@ export class ApiError extends Error {
   }
 }
 
+/** The one place in the SPA that knows the wire shape of the verification
+ * refusal NEU-1161 §4 publishes: `403 {"detail": "email_not_verified"}`.
+ *
+ * Both halves are checked. `csrf_invalid` and `admin_required` are also 403s
+ * from the same `deps.py` vocabulary — one of them on the very route this
+ * guards — and reporting either as a verification problem would send a user to
+ * their inbox over a session fault.
+ *
+ * It deliberately does **not** know *which* routes are gated. That is one
+ * definition on the server (`require_verified_user`), exactly as
+ * `recommendations/exclusion.py` is for suppression, and a client-side list of
+ * gated routes is a second expression of it that drifts. */
+export function isEmailNotVerified(e: unknown): boolean {
+  return (
+    e instanceof ApiError &&
+    e.status === 403 &&
+    (e.body as { detail?: unknown } | null)?.detail === "email_not_verified"
+  );
+}
+
 /** The location prefixes FastAPI puts ahead of the field name in `loc`. */
 const LOC_PREFIXES = new Set(["body", "query", "path", "header", "cookie"]);
 

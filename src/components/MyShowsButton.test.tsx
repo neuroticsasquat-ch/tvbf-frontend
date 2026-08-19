@@ -6,6 +6,7 @@ import { useState } from "react";
 
 import { env } from "@/env";
 import { server } from "@/test/msw/server";
+import { meHandler } from "@/test/msw/me";
 import { renderWithProviders } from "@/test/renderWithProviders";
 import { MyShowsButton } from "./MyShowsButton";
 
@@ -198,5 +199,25 @@ describe("MyShowsButton", () => {
       ).toBeInTheDocument(),
     );
     expect(removed).toEqual([]);
+  });
+
+  it("adds a show for an unverified viewer — verification gates social, not tracking", async () => {
+    // NEU-1161 gates `POST /connection-requests` and search visibility, and
+    // nothing else. My Shows, watch tracking and browse are untouched, which is
+    // the half of the change nobody would notice breaking until a new signup
+    // could not track a show.
+    server.use(meHandler(null));
+    let put = 0;
+    server.use(
+      http.put(`${env.apiBaseUrl}/me/shows/7`, () => {
+        put += 1;
+        return new HttpResponse(null, { status: 204 });
+      }),
+    );
+    renderWithProviders(<MyShowsButton showId={7} showName="The Bear" inMyShows={false} />);
+
+    await userEvent.click(screen.getByRole("button", { name: "Add The Bear to My Shows" }));
+
+    await waitFor(() => expect(put).toBe(1));
   });
 });
