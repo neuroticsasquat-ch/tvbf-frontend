@@ -1,7 +1,12 @@
-import { screen } from "@testing-library/react";
+import { screen, waitFor, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { http, HttpResponse } from "msw";
 import { beforeEach, describe, expect, it } from "vitest";
 
 import type { MyShowEntry, ShowSummary } from "@/api/types";
+import { env } from "@/env";
+import { server } from "@/test/msw/server";
+import { useMyShows, useRecommendations } from "@/api/me";
 import { renderWithProviders } from "@/test/renderWithProviders";
 import { LibraryActiveList } from "./LibraryActiveList";
 import type { CallerLibrary } from "./callerLibrary";
@@ -132,7 +137,9 @@ describe("LibraryActiveList ownership", () => {
   });
 
   it("labels the viewer's own rating as theirs on their own library", () => {
-    // AC 5: self mode is untouched — same label, same place (the action row).
+    // NEU-1181 AC 5: same label. Its *place* moved to the poster's top-right
+    // in NEU-1187 §3.4, which the assertion below is deliberately silent about
+    // — the corner is `ShowPoster.test.tsx`'s to assert.
     renderWithProviders(<LibraryActiveList data={[makeEntry()]} isLoading={false} />);
     expect(screen.getByRole("img", { name: "Your rating: 4.0 out of 5" })).toBeInTheDocument();
     expect(screen.getByText("Progress: 38/46")).toBeInTheDocument();
@@ -160,5 +167,159 @@ describe("LibraryActiveList ownership", () => {
     renderWithProviders(<LibraryActiveList data={[makeEntry()]} isLoading={false} />);
     expect(SELF.kind).toBe("self");
     expect(screen.queryByText("You: 12/46")).not.toBeInTheDocument();
+  });
+});
+
+describe("LibraryActiveList self-mode controls (NEU-1187)", () => {
+  beforeEach(() => window.localStorage.clear());
+
+  for (const view of ["list", "grid"] as const) {
+    it(`carries no action-row control and no library mark in ${view} view`, () => {
+      // AC 2. Every row on this tab is in My Shows by definition, so the
+      // labelled "✓ My Shows" chip could only say one thing and the mark could
+      // only be true.
+      setView("my-shows", view);
+      renderWithProviders(<LibraryActiveList data={[makeEntry()]} isLoading={false} />);
+
+      // No labelled chip: the labelled variant is the only one with visible
+      // text, and its whole cost was the line it occupied.
+      expect(screen.queryByText("My Shows")).not.toBeInTheDocument();
+      expect(screen.queryByRole("img", { name: "In your My Shows" })).not.toBeInTheDocument();
+    });
+
+    it(`offers removal as one activation in ${view} view`, async () => {
+      // AC 3: the compact chip in the poster's bottom-right, on the page.
+      let deleted = 0;
+      server.use(
+        http.delete(`${env.apiBaseUrl}/me/shows/1`, () => {
+          deleted += 1;
+          return new HttpResponse(null, { status: 204 });
+        }),
+      );
+      setView("my-shows", view);
+      const { container } = renderWithProviders(
+        <LibraryActiveList data={[makeEntry()]} isLoading={false} />,
+      );
+
+      const chip = screen.getByRole("button", { name: "Remove The Bear from My Shows" });
+      expect(container.querySelector("[data-show-poster]")?.contains(chip)).toBe(true);
+
+      await userEvent.click(chip);
+      await waitFor(() => expect(deleted).toBe(1));
+    });
+  }
+
+  it("puts the viewer's own rating on the row poster, not in an action row", () => {
+    // AC 4's other half (§2.4): stripping the button alone leaves a rated row
+    // its `RatingBadge` line and its height. NEU-1183's last holdout.
+    const { container } = renderWithProviders(
+      <LibraryActiveList data={[makeEntry()]} isLoading={false} />,
+    );
+    const poster = container.querySelector("[data-show-poster]");
+    const badge = screen.getByRole("img", { name: "Your rating: 4.0 out of 5" });
+    expect(poster?.contains(badge)).toBe(true);
+  });
+
+  it("keeps the friend row's labelled button and its action row", () => {
+    // Adding is possible on a friend's library, so the control stays labelled
+    // and stays in the action row (§3.6).
+    renderWithProviders(
+      <LibraryActiveList
+        data={[makeEntry()]}
+        isLoading={false}
+        viewerContext={JEANNE}
+        callerLibrary={callerLibrary}
+        storagePrefix="friend-active"
+      />,
+    );
+    const button = screen.getByRole("button", { name: "Remove The Bear from My Shows" });
+    expect(button).toHaveTextContent("My Shows");
+    expect(button.closest("[data-show-poster]")).toBeNull();
+  });
+
+  it("moves focus to the chip that took the freed slot", async () => {
+    // AC 7. The card unmounts on `onMutate`, so focus would otherwise fall to
+    // `<body>` on the one surface where removing several shows is expected.
+    //
+    // The list is driven by `useMyShows()` rather than by a prop, and that is
+    // the whole point of the test: `useRemoveShow` is optimistic, so the row
+    // leaves the list *before* the request settles. A prop-fed harness updates
+    // the list only after the click has been awaited, which is the one ordering
+    // under which reporting the removal on success would also look correct.
+    const three = [
+      makeEntry({ show: makeShow({ id: 1, name: "Andor" }) }),
+      makeEntry({ show: makeShow({ id: 2, name: "The Bear" }) }),
+      makeEntry({ show: makeShow({ id: 3, name: "Slow Horses" }) }),
+    ];
+    let remaining = three;
+    server.use(
+      http.get(`${env.apiBaseUrl}/me/shows`, () => HttpResponse.json(remaining)),
+      http.delete(`${env.apiBaseUrl}/me/shows/2`, () => {
+        remaining = [three[0], three[2]];
+        return new HttpResponse(null, { status: 204 });
+      }),
+    );
+
+    function Harness() {
+      const { data, isLoading } = useMyShows();
+      return <LibraryActiveList data={data} isLoading={isLoading} />;
+    }
+    renderWithProviders(<Harness />);
+    await screen.findByText("Slow Horses");
+
+    // The *middle* row, deliberately: removing the first lands on chip 0
+    // whether the index is right or wrong, which is the assertion this test
+    // exists not to make.
+    await userEvent.click(screen.getByRole("button", { name: "Remove The Bear from My Shows" }));
+
+    await waitFor(() =>
+      expect(
+        screen.getByRole("button", { name: "Remove Slow Horses from My Shows" }),
+      ).toHaveFocus(),
+    );
+  });
+
+  it("focuses the results container when the last row goes", async () => {
+    server.use(
+      http.delete(`${env.apiBaseUrl}/me/shows/1`, () => new HttpResponse(null, { status: 204 })),
+    );
+    const { container, rerender } = renderWithProviders(
+      <LibraryActiveList data={[makeEntry()]} isLoading={false} />,
+    );
+
+    await userEvent.click(screen.getByRole("button", { name: "Remove The Bear from My Shows" }));
+    rerender(<LibraryActiveList data={[]} isLoading={false} />);
+
+    await waitFor(() => {
+      const results = container.querySelector<HTMLElement>('[tabindex="-1"]');
+      expect(results).not.toBeNull();
+      expect(results).toHaveFocus();
+      expect(within(results!).getByText("No shows match the current filters.")).toBeInTheDocument();
+    });
+  });
+
+  it("invalidates the recommendations grid when a show leaves My Shows", async () => {
+    // AC 5. `GET /me/recommendations` suppresses a suggestion the viewer has a
+    // record for as a live join (NEU-1175), so a removal changes that body —
+    // and the rule lives in `api/me.ts`, not in any component.
+    let recommendationFetches = 0;
+    server.use(
+      http.delete(`${env.apiBaseUrl}/me/shows/1`, () => new HttpResponse(null, { status: 204 })),
+      http.get(`${env.apiBaseUrl}/me/recommendations`, () => {
+        recommendationFetches += 1;
+        return HttpResponse.json({ recommendations: [] });
+      }),
+    );
+
+    function Harness() {
+      useRecommendations();
+      return <LibraryActiveList data={[makeEntry()]} isLoading={false} />;
+    }
+    renderWithProviders(<Harness />);
+    await waitFor(() => expect(recommendationFetches).toBe(1));
+
+    await userEvent.click(screen.getByRole("button", { name: "Remove The Bear from My Shows" }));
+
+    await waitFor(() => expect(recommendationFetches).toBe(2));
   });
 });

@@ -123,8 +123,10 @@ describe("FriendProfilePage", () => {
     await waitFor(() => expect(get).toHaveBeenCalledWith(FRIEND_ID, expect.any(Object)));
     await waitFor(() => expect(screen.getByText("Severance")).toBeInTheDocument());
     // Caller's My Shows is empty (default MSW handler) → Add button shown.
-    expect(screen.getByRole("button", { name: /add to my shows/i })).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /remove from my shows/i })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^add .+ to my shows$/i })).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /^remove .+ from my shows$/i }),
+    ).not.toBeInTheDocument();
   });
 
   it("Active tab renders the shared toolbar (sort + filters + view toggle)", async () => {

@@ -351,7 +351,7 @@ function WatchedRow({
             viewerContext={viewerContext}
             callerLibrary={callerLibrary}
           />
-          <MyShowsButton showId={entry.show.id} inMyShows={upstream} />
+          <MyShowsButton showId={entry.show.id} showName={entry.show.name} inMyShows={upstream} />
           {viewerContext.kind === "self" && (
             <Button
               type="button"
