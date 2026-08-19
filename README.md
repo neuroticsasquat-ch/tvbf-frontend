@@ -80,6 +80,17 @@ src/
 Copy `.env.example` to `.env.local` (gitignored) to override:
 
 - `VITE_API_BASE_URL` — defaults to `https://api.tvbf.localhost`.
+- `VITE_TURNSTILE_SITE_KEY` — Cloudflare Turnstile's public site key. Blank (the default)
+  renders no verification widget on the signup form, which matches the backend shipping
+  with `TURNSTILE_ENABLED=False`. Production sets it in the Cloudflare Pages build
+  environment. The two switches live in different systems: turning verification on
+  server-side without setting this key leaves signup answering 400 `captcha_required`
+  for everyone, which the form reports as a temporary outage.
+
+  The page sets no Content-Security-Policy (checked 2026-08-19 — no meta CSP in
+  `index.html`, and `public/staticwebapp.config.json` sets only `navigationFallback`),
+  so the widget's script from `challenges.cloudflare.com` needs no allowlist entry. Add
+  `script-src`/`frame-src` for that host if a CSP is ever introduced.
 
 ## Testing
 
