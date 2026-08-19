@@ -57,7 +57,10 @@ function premiereLabel(dateStr: string | null, display: PremiereDisplay): string
  * This card is shared by trending, most anticipated, similar shows, search and
  * browse, so an affordance that belongs to *one* surface arrives as an opt-in
  * prop threaded through `ShowGrid` rather than as a default every grid then has
- * to opt out of. Only `RecommendedForYou` passes it today.
+ * to opt out of. Two surfaces pass it: `RecommendedForYou`, and search since
+ * NEU-1192 — where the control lands on the grid **and** the list at once,
+ * because a capability present in one view only is the parity defect NEU-1188
+ * exists to remove.
  *
  * `dismissible` is the same seam one control further along (NEU-1179), and it
  * is independent of `addable`: the one surface that passes either passes both,
@@ -156,18 +159,20 @@ export function ShowCard({
       </ShowPoster>
       {addable && (
         // The button reads the card's own `inMyShows`, so it can never
-        // contradict the badge above it. On the one surface that passes
-        // `addable` that value is false by construction — the server
-        // suppresses any show the viewer already has a record for, so a
-        // tracked show never renders there — but taking the answer from the
-        // card rather than hard-coding it is what keeps the next `addable`
-        // surface from showing a "tracked" badge beside an "Add" button.
+        // contradict the badge above it. That mattered in the abstract while
+        // recommendations were the only `addable` surface — the server
+        // suppresses any show the viewer already has a record for there, so a
+        // tracked show never rendered — and it is load-bearing on search,
+        // where the mark is a mark and never a filter, so a tracked show
+        // routinely renders with a badge that the chip must agree with.
         //
-        // The button's own optimistic override supplies the "✓ My Shows" beat
-        // between the click and the card disappearing, which is the only
-        // feedback there is: the card vanishing is the confirmation, so there
-        // is no success state, and a failed add reverts and leaves the card in
-        // place.
+        // What confirms the add differs by surface, which is why neither is
+        // decided here. A recommendation card *vanishes*, so its only feedback
+        // is the optimistic override's "✓ My Shows" beat before it goes; a
+        // search result stays put, so the chip's state change is the whole
+        // confirmation and `api/me.ts` flips the cached `in_my_shows` beside it
+        // so the badge does not lag it (NEU-1192 §3.3). A failed add reverts
+        // both and leaves the card in place either way.
         <div className="px-1.5 pb-1.5">
           <MyShowsButton showId={show.id} showName={show.name} inMyShows={inMyShows ?? false} />
         </div>

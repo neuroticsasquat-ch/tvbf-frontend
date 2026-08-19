@@ -221,13 +221,15 @@ describe("grid and list carry the same facts and controls (NEU-1188 AC 5)", () =
   it("search results", () => {
     // AC 1. The row carried no rating and no mark of any kind: the app knew the
     // show was tracked and declined to say so on the one surface where "should
-    // I add this?" is the question. No control on either view — that is
-    // NEU-1192, and it lands on both at once.
+    // I add this?" is the question. The control was absent from *both* views
+    // rather than one, which is why it was NEU-1192's rather than this
+    // ticket's — it has since landed, on both at once, so it is counted here.
     const shows = [{ ...makeShow(), in_my_shows: true }];
     expectViewParity(
-      (view) => (view === "grid" ? <ShowGrid shows={shows} /> : <ShowList shows={shows} />),
+      (view) =>
+        view === "grid" ? <ShowGrid shows={shows} addable /> : <ShowList shows={shows} addable />,
       null,
-      ["library mark", "viewer's own rating", "crowd rating"],
+      ["library mark", "viewer's own rating", "crowd rating", "add/remove control"],
     );
   });
 
