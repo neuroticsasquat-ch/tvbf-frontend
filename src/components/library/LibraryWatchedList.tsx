@@ -1,16 +1,15 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router";
-import { ArrowDown, ArrowUp, Trash2 } from "lucide-react";
+import { Trash2 } from "lucide-react";
 import { useRemoveFromHistory } from "@/api/me";
 import type { MyShowEntry, WatchedEntry } from "@/api/types";
 import { ConfirmDialog } from "@/components/connections/ConfirmDialog";
 import { Button } from "@/components/ui/button";
-import { ViewToggle } from "@/components/ViewToggle";
 import { MyShowCard } from "@/components/MyShowCard";
 import { ShowPoster } from "@/components/ShowPoster";
 import { MyShowsButton } from "@/components/MyShowsButton";
 import { WatchProgressBar } from "@/components/WatchProgressBar";
-import { FilterSheet } from "@/components/home/FilterSheet";
+import { ListingToolbar } from "@/components/home/ListingToolbar";
 import {
   CallerMembershipFilterPicker,
   CallerWatchStateFilterPicker,
@@ -139,7 +138,6 @@ export function LibraryWatchedList({
     callerLibrary,
   ]);
 
-  const sortLabel = LIBRARY_SORTS.find((s) => s.key === sort)?.label ?? "";
   const filtersActive =
     watchState !== "all" ||
     showStatus !== "all" ||
@@ -150,55 +148,51 @@ export function LibraryWatchedList({
 
   return (
     <div>
-      <div className="flex flex-wrap items-center gap-2 mb-4">
-        <ViewToggle value={view} onChange={setView} ariaLabel="Watched display" />
-        <FilterSheet
-          title="Sort Watched"
-          triggerLabel={sortLabel}
-          triggerIcon={
-            <>
-              <ArrowDown className="h-4 w-4" aria-hidden />
-              <ArrowUp className="h-4 w-4 -ml-2" aria-hidden />
-            </>
-          }
-          ariaLabel={`Sort Watched (current: ${sortLabel})`}
-          options={LIBRARY_SORTS.map((o) => ({
-            ...o,
-            disabledReason: DISABLED_SORTS[o.key],
-          }))}
-          value={sort}
-          onChange={setSort}
-        />
-      </div>
-      <div className="mb-4 flex flex-wrap items-center gap-2">
-        <WatchStateFilter
-          value={watchState}
-          onChange={setWatchState}
-          disabledOptions={DISABLED_WATCH_STATES}
-        />
-        <ShowStatusFilterPicker value={showStatus} onChange={setShowStatus} />
-        <InMyShowsFilterPicker value={inMyShows} onChange={setInMyShows} />
-        {viewerContext.kind === "friend" && (
+      <ListingToolbar
+        view={{ value: view, onChange: setView, ariaLabel: "Watched display" }}
+        sort={{
+          label: "Watched",
+          options: LIBRARY_SORTS.map((o) => ({ ...o, disabledReason: DISABLED_SORTS[o.key] })),
+          value: sort,
+          onChange: setSort,
+        }}
+        filters={
           <>
-            <CallerMembershipFilterPicker value={callerMembership} onChange={setCallerMembership} />
-            <CallerWatchStateFilterPicker value={callerWatchState} onChange={setCallerWatchState} />
+            <WatchStateFilter
+              value={watchState}
+              onChange={setWatchState}
+              disabledOptions={DISABLED_WATCH_STATES}
+            />
+            <ShowStatusFilterPicker value={showStatus} onChange={setShowStatus} />
+            <InMyShowsFilterPicker value={inMyShows} onChange={setInMyShows} />
+            {viewerContext.kind === "friend" && (
+              <>
+                <CallerMembershipFilterPicker
+                  value={callerMembership}
+                  onChange={setCallerMembership}
+                />
+                <CallerWatchStateFilterPicker
+                  value={callerWatchState}
+                  onChange={setCallerWatchState}
+                />
+              </>
+            )}
+            <GenreFilter value={genre} onChange={setGenre} />
+            {filtersActive && (
+              <ClearFiltersButton
+                onClear={() => {
+                  setWatchState("all");
+                  setShowStatus("all");
+                  setInMyShows("all");
+                  setCallerMembership("all");
+                  setCallerWatchState("all");
+                  setGenre("all");
+                }}
+              />
+            )}
           </>
-        )}
-        <GenreFilter value={genre} onChange={setGenre} />
-        {filtersActive && (
-          <ClearFiltersButton
-            onClear={() => {
-              setWatchState("all");
-              setShowStatus("all");
-              setInMyShows("all");
-              setCallerMembership("all");
-              setCallerWatchState("all");
-              setGenre("all");
-            }}
-          />
-        )}
-      </div>
-
+        }
+      />
       {isLoading && <p className="text-sm text-muted-foreground">Loading…</p>}
       {isError && <p className="text-sm text-destructive">Failed to load watch history.</p>}
       {!isLoading && !isError && filteredAndSorted && filteredAndSorted.length === 0 && (

@@ -1,12 +1,12 @@
 import { useMemo } from "react";
 import { Link } from "react-router";
-import { ArrowDown, ArrowUp, Tv } from "lucide-react";
 import { useUpcomingSeasons } from "@/api/me";
 import { seasonLabel } from "@/lib/season";
 import type { UpcomingSort } from "@/api/types";
 import { usePersistedSort } from "@/hooks/usePersistedSort";
 import { usePersistedString } from "@/hooks/usePersistedString";
-import { FilterSheet } from "@/components/home/FilterSheet";
+import { ShowPoster } from "@/components/ShowPoster";
+import { ListingToolbar } from "@/components/home/ListingToolbar";
 import {
   ClearFiltersButton,
   GenreFilter,
@@ -61,38 +61,25 @@ export function UpcomingSeasonsList() {
       .filter((e) => matchesGenre(e.show, genre));
   }, [data, status, genre]);
 
-  const sortLabel = SORTS.find((s) => s.key === sort)?.label ?? "";
-
   return (
     <div>
-      <div className="flex items-baseline justify-between mb-4">
-        <FilterSheet
-          title="Sort Upcoming Seasons"
-          triggerLabel={sortLabel}
-          triggerIcon={
-            <>
-              <ArrowDown className="h-4 w-4" aria-hidden />
-              <ArrowUp className="h-4 w-4 -ml-2" aria-hidden />
-            </>
-          }
-          ariaLabel={`Sort Upcoming Seasons (current: ${sortLabel})`}
-          options={SORTS}
-          value={sort}
-          onChange={setSort}
-        />
-      </div>
-      <div className="flex flex-wrap items-center gap-2 mb-4">
-        <ShowStatusFilterPicker value={status} onChange={setStatus} />
-        <GenreFilter value={genre} onChange={setGenre} />
-        {(status !== "all" || genre !== "all") && (
-          <ClearFiltersButton
-            onClear={() => {
-              setStatus("all");
-              setGenre("all");
-            }}
-          />
-        )}
-      </div>
+      <ListingToolbar
+        sort={{ label: "Upcoming Seasons", options: SORTS, value: sort, onChange: setSort }}
+        filters={
+          <>
+            <ShowStatusFilterPicker value={status} onChange={setStatus} />
+            <GenreFilter value={genre} onChange={setGenre} />
+            {(status !== "all" || genre !== "all") && (
+              <ClearFiltersButton
+                onClear={() => {
+                  setStatus("all");
+                  setGenre("all");
+                }}
+              />
+            )}
+          </>
+        }
+      />
       {isLoading && <p>Loading…</p>}
       {!isLoading && filtered && filtered.length === 0 && (
         <p className="text-muted-foreground">
@@ -106,28 +93,19 @@ export function UpcomingSeasonsList() {
           {filtered.map((entry) => (
             <li
               key={`${entry.show.id}-${entry.season_number}`}
-              className="border border-border rounded p-3 hover:bg-accent"
+              className="border border-border rounded p-3 flex items-center gap-3 sm:gap-4 hover:bg-accent"
             >
+              <ShowPoster
+                to={`/shows/${entry.show.id}`}
+                src={entry.show.image_medium}
+                linkLabel={entry.show.name}
+                size="row"
+              />
               <Link
                 to={`/shows/${entry.show.id}/episodes?season=${entry.season_number}`}
-                className="flex min-w-0 flex-1 items-center gap-4"
+                className="min-w-0 flex-1"
               >
-                {entry.show.image_medium ? (
-                  <img
-                    src={entry.show.image_medium}
-                    alt=""
-                    className="w-16 aspect-[210/295] object-cover rounded shrink-0"
-                    loading="lazy"
-                  />
-                ) : (
-                  <div
-                    aria-hidden
-                    className="w-16 aspect-[210/295] rounded shrink-0 bg-muted text-muted-foreground flex items-center justify-center"
-                  >
-                    <Tv className="h-6 w-6" />
-                  </div>
-                )}
-                <div className="flex-1 min-w-0">
+                <div className="min-w-0">
                   <p className="text-sm font-semibold text-foreground leading-tight truncate">
                     {entry.show.name}
                   </p>
