@@ -79,4 +79,83 @@ describe("ResetPasswordPage", () => {
     renderWithProviders(<ResetPasswordPage />, { route: "/reset-password" });
     expect(await screen.findByText(/missing its reset token/i)).toBeInTheDocument();
   });
+
+  it("shows a field message against the new-password input", async () => {
+    server.use(
+      http.post(`${env.apiBaseUrl}/reset-password`, () =>
+        HttpResponse.json(
+          {
+            detail: [
+              {
+                type: "value_error",
+                loc: ["body", "new_password"],
+                msg: "Value error, new_password is too common",
+              },
+            ],
+          },
+          { status: 422 },
+        ),
+      ),
+    );
+    renderWithProviders(<ResetPasswordPage />, { route: "/reset-password?token=good" });
+    await userEvent.type(screen.getByLabelText(/^new password$/i), "password1234");
+    await userEvent.type(screen.getByLabelText(/confirm new password/i), "password1234");
+    await userEvent.click(screen.getByRole("button", { name: /save new password/i }));
+
+    const message = await screen.findByText("new_password is too common");
+    const input = screen.getByLabelText(/^new password$/i);
+    expect(input).toHaveAttribute("aria-invalid", "true");
+    // The message is announced alongside the length hint the input already had.
+    expect(input.getAttribute("aria-describedby")).toBe(`${message.id} pw-help`);
+    expect(screen.queryByText(/isn't allowed/i)).not.toBeInTheDocument();
+  });
+
+  it("puts a message about the token in the banner, not under an input", async () => {
+    server.use(
+      http.post(`${env.apiBaseUrl}/reset-password`, () =>
+        HttpResponse.json(
+          { detail: [{ type: "missing", loc: ["body", "token"], msg: "Field required" }] },
+          { status: 422 },
+        ),
+      ),
+    );
+    renderWithProviders(<ResetPasswordPage />, { route: "/reset-password?token=good" });
+    await userEvent.type(screen.getByLabelText(/^new password$/i), "brandnew12345");
+    await userEvent.type(screen.getByLabelText(/confirm new password/i), "brandnew12345");
+    await userEvent.click(screen.getByRole("button", { name: /save new password/i }));
+
+    expect(await screen.findByText("Field required")).toBeInTheDocument();
+    expect(screen.getByLabelText(/^new password$/i)).not.toHaveAttribute("aria-invalid");
+  });
+
+  it("clears the field message once the user edits the password", async () => {
+    server.use(
+      http.post(`${env.apiBaseUrl}/reset-password`, () =>
+        HttpResponse.json(
+          {
+            detail: [
+              {
+                type: "value_error",
+                loc: ["body", "new_password"],
+                msg: "Value error, new_password is too common",
+              },
+            ],
+          },
+          { status: 422 },
+        ),
+      ),
+    );
+    renderWithProviders(<ResetPasswordPage />, { route: "/reset-password?token=good" });
+    const input = screen.getByLabelText(/^new password$/i);
+    await userEvent.type(input, "password1234");
+    await userEvent.type(screen.getByLabelText(/confirm new password/i), "password1234");
+    await userEvent.click(screen.getByRole("button", { name: /save new password/i }));
+    await screen.findByText("new_password is too common");
+
+    await userEvent.type(input, "x");
+    expect(screen.queryByText("new_password is too common")).not.toBeInTheDocument();
+    expect(input).not.toHaveAttribute("aria-invalid");
+    // The length hint it always had is still announced.
+    expect(input.getAttribute("aria-describedby")).toBe("pw-help");
+  });
 });
