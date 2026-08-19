@@ -25,20 +25,12 @@ import type { ViewerContext } from "./library/viewerContext";
  *
  * Five surfaces, because both library lists run in self **and** friend mode.
  *
- * **One known asymmetry, asserted rather than omitted.** My Shows · Watched's
- * list row carries a "Watch History" removal the card does not. It is
- * destructive, sits behind a confirm dialog, and a ~97px card has no room for a
- * third labelled control — drawing an icon-only one would be a fifth treatment
- * of an act NEU-1187 spent a ticket unifying, with no placement rule to put it
- * under (`ShowPoster` exposes one control slot). NEU-1193 owns that removal
- * path and is where it should get a card drawing.
- *
- * So the rule is not fully satisfied on that surface, and the honest way to say
- * so in a test is `knownAsymmetries` — which asserts the item **is** in the list
- * view and **is not** in the grid. Leaving it out of the probe set instead
- * would have been the same deviation, silently: nothing would notice when
- * NEU-1193 puts it on the card, and nothing would notice if it vanished from
- * the row either.
+ * **The one known asymmetry is closed.** My Shows · Watched's list row carried
+ * a "Watch History" removal the card did not, and this file asserted it in both
+ * directions through `knownAsymmetries` rather than omitting it from the probe
+ * set — which is what made NEU-1193 adding the card drawing a *failing* test
+ * here rather than a silent improvement. The mechanism stays for the next such
+ * gap; nothing passes it today.
  */
 
 /** The parity items: every control, and every fact that belongs to a person.
@@ -280,10 +272,10 @@ describe("grid and list carry the same facts and controls (NEU-1188 AC 5)", () =
         "owner progress",
         "last watched",
         "add/remove control",
+        // Closed by NEU-1193: the compact variant in the poster's bottom-right
+        // corner, which is the position that means remove-only (NEU-1187 §3.1).
+        "watch-history removal",
       ],
-      // The one control the rule does not yet reach on this surface — see the
-      // note at the top of this file. NEU-1193 is where it closes.
-      ["watch-history removal"],
     );
   });
 

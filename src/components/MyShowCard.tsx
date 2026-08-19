@@ -1,6 +1,7 @@
 import type { MyShowEntry } from "@/api/types";
 import { MyShowsButton } from "@/components/MyShowsButton";
 import { OwnerFacts } from "@/components/OwnerFacts";
+import { RemoveWatchHistoryButton } from "@/components/RemoveWatchHistoryButton";
 import { ShowPoster } from "@/components/ShowPoster";
 import { WatchProgressBar } from "@/components/WatchProgressBar";
 import { isEndedStatus } from "@/components/home/filterTypes";
@@ -30,6 +31,7 @@ export function MyShowCard({
   inMyShows,
   callerRelationship,
   removable,
+  historyRemovable,
   onRemoved,
 }: {
   entry: MyShowEntry;
@@ -71,9 +73,23 @@ export function MyShowCard({
    * arrives as an opt-in, not as a hole any caller can fill. Only the viewer's
    * own My Shows · Active passes it (NEU-1187 §3.3). */
   removable?: boolean;
+  /** Opt-in: draw the compact **watch-history** removal in the poster's
+   * bottom-right corner. The sibling of `removable`, and no surface passes
+   * both — `ShowPoster` exposes one control slot, Active passes `removable`
+   * and Watched passes this (NEU-1193). That is a property of the callers, not
+   * of the type: passing both draws this one and drops the other silently,
+   * which is why the pair is worth stating rather than trusting.
+   *
+   * It is a second boolean rather than a widening of `removable` because the
+   * two remove different things — one stops tracking a show, the other deletes
+   * every episode the viewer marked — and a card that took "removable" and
+   * decided which from its tab would be the decision-inside-the-component this
+   * seam exists to avoid. */
+  historyRemovable?: boolean;
   /** Reports a landed removal back to the surface, so it can move focus once
-   * this card unmounts. One function reference for every card; the card hands
-   * its own id back (NEU-1187 §3.5). */
+   * this card unmounts — whichever of the two removals the card was opted into,
+   * since only one can be drawn. One function reference for every card; the
+   * card hands its own id back (NEU-1187 §3.5). */
   onRemoved?: (showId: number) => void;
 }) {
   // Same predicate as the list view (NEU-101 decision 2): show is over AND
@@ -107,7 +123,16 @@ export function MyShowCard({
           // hands this card to NEU-1188 and a friend-mode control is exactly
           // what that ticket adds — in an action row, and needing the caller's
           // own relationship, which this card is not given.
-          removable && ratingOwner.kind === "own" ? (
+          historyRemovable && ratingOwner.kind === "own" ? (
+            // Same guard, same reason: a friend's Watched card carries the
+            // friend's history, which is not the viewer's to delete.
+            <RemoveWatchHistoryButton
+              showId={entry.show.id}
+              showName={entry.show.name}
+              variant="compact"
+              onRemoved={onRemoved}
+            />
+          ) : removable && ratingOwner.kind === "own" ? (
             // `true`, not this card's `inMyShows`: that prop is the *poster
             // mark*, which is a claim about the viewer's library and is
             // deliberately `false` on the one surface that passes `removable`.

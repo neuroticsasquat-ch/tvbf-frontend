@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo } from "react";
 import { Link } from "react-router";
 import type { MyShowEntry } from "@/api/types";
+import { useFocusAfterRemoval } from "@/hooks/useFocusAfterRemoval";
 import { usePersistedSort } from "@/hooks/usePersistedSort";
 import { usePersistedString } from "@/hooks/usePersistedString";
 import { usePersistedView } from "@/hooks/usePersistedView";
@@ -49,6 +50,10 @@ import { SELF, ratingOwnerFor, type ViewerContext } from "./viewerContext";
 // a no-op (every Active row is in My Shows by definition) and `Not in My
 // Shows` would always be empty. Disable the whole picker (NEU-131).
 const IN_MY_SHOWS_DISABLED_REASON = "All Active shows are in My Shows.";
+
+/** Module scope so it is one stable reference across renders — it lands in
+ * `useFocusAfterRemoval`'s effect dependencies. */
+const showIdOf = (e: MyShowEntry) => e.show.id;
 
 interface Props {
   data: MyShowEntry[] | undefined;
@@ -143,39 +148,17 @@ export function LibraryActiveList({
     rated,
   ]);
 
-  // Focus after a removal unmounts a card (NEU-1187 §3.5). `useRemoveShow`
-  // filters the entry out of every `["my-shows"]` query in `onMutate`, so the
-  // card is gone by the time the click settles and focus falls to `<body>` —
-  // on the one surface where removing several shows in a sitting is the
-  // expected use. Mirrors `RecommendedForYou` (NEU-1179 §3.4), including the
-  // part that is easy to get wrong: the effect waits until the id has actually
-  // left the list before moving focus, rather than running on the callback
-  // alone, which keeps it correct if the list changed meanwhile.
-  const resultsRef = useRef<HTMLDivElement>(null);
-  const [removed, setRemoved] = useState<{ showId: number; index: number } | null>(null);
-
-  // One reference for every card and row; the control hands its own id back.
-  const onRemoved = useCallback(
-    (showId: number) => {
-      const index = filteredAndSorted?.findIndex((e) => e.show.id === showId) ?? -1;
-      setRemoved({ showId, index: index < 0 ? 0 : index });
-    },
-    [filteredAndSorted],
+  // Focus after a removal unmounts a card (NEU-1187 §3.5), through the hook
+  // that owns the mechanism (NEU-1193). `useRemoveShow` filters the entry out
+  // of every `["my-shows"]` query in `onMutate`, so the card is gone by the
+  // time the click settles and focus falls to `<body>` — on the one surface
+  // where removing several shows in a sitting is the expected use. No empty
+  // selector: when the last row goes, the results container itself takes focus.
+  const { containerRef: resultsRef, onRemoved } = useFocusAfterRemoval<MyShowEntry, HTMLDivElement>(
+    filteredAndSorted,
+    showIdOf,
+    "[data-remove-from-my-shows]",
   );
-
-  useEffect(() => {
-    if (!removed) return;
-    if (filteredAndSorted?.some((e) => e.show.id === removed.showId)) return;
-    const root = resultsRef.current;
-    setRemoved(null);
-    if (!root) return;
-    const chips = root.querySelectorAll<HTMLElement>("[data-remove-from-my-shows]");
-    if (chips.length > 0) {
-      chips[Math.min(removed.index, chips.length - 1)].focus();
-      return;
-    }
-    root.focus();
-  }, [removed, filteredAndSorted]);
 
   const filtersActive =
     watchState !== "all" ||
