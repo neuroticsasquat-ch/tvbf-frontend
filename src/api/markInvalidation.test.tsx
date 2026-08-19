@@ -124,3 +124,125 @@ describe("a show rating refreshes the similar list", () => {
     await waitFor(() => expect(shows()).toBe(2));
   });
 });
+
+/** A promise a test resolves by hand, so a mutation can be held in flight. */
+function deferred() {
+  let resolve!: () => void;
+  const promise = new Promise<void>((r) => (resolve = r));
+  return { promise, resolve };
+}
+
+/** One show, marked however the caller says — and the only body the server ever
+ * sends in a given test, so a mark that reads the *other* way can only be
+ * ours. */
+const onePage = (inMyShows: boolean) => ({
+  items: [
+    {
+      id: SHOW_ID,
+      name: "The Bear",
+      type: "Scripted",
+      status: "Returning Series",
+      language: "en",
+      premiered: "2022-06-23",
+      ended: null,
+      image_medium: null,
+      image_original: null,
+      network: null,
+      web_channel: null,
+      genres: [],
+      matched_aka: null,
+      rating_average: null,
+      my_rating: null,
+      in_my_shows: inMyShows,
+    },
+  ],
+  page: 1,
+  per_page: 50,
+  total: 1,
+  total_pages: 1,
+});
+
+/** NEU-1192 §3.3 — **the mark moves with the control, in the cache.**
+ *
+ * Invalidation alone leaves the poster's library mark saying nothing for a
+ * `PUT` plus a refetch of a fifty-item search page, while the chip beside it
+ * already reads "✓ My Shows". That was invisible until search grew a control:
+ * the recommendations card *vanishes* on add, so nothing stayed on screen to
+ * disagree with.
+ *
+ * Both tests hold the server still — the mutation is gated, and every refetch
+ * after the first hangs — so what they observe can only be the optimistic
+ * write and its snapshot restore, never a body the server sent.
+ */
+describe.each([
+  {
+    direction: "add",
+    /** The state the surface starts in, and the one it must reach. */
+    from: false,
+    to: true,
+    method: http.put,
+    useMutation: () => useAddShow(),
+  },
+  {
+    direction: "remove",
+    from: true,
+    to: false,
+    method: http.delete,
+    useMutation: () => useRemoveShow(),
+  },
+])("the library mark flips optimistically on a browse page ($direction)", (c) => {
+  /** First GET answers; every later one hangs, so a refetch cannot supply (or
+   * quietly restore) the value under test. */
+  function frozenAfterFirstLoad(respond: () => Promise<Response> | Response) {
+    let served = 0;
+    server.use(
+      http.get(`${env.apiBaseUrl}/shows`, async () => {
+        served += 1;
+        if (served > 1) await new Promise(() => {});
+        return HttpResponse.json(onePage(c.from));
+      }),
+      c.method(`${env.apiBaseUrl}/me/shows/:id`, () => respond()),
+    );
+    return makeWrapper();
+  }
+
+  function mountFrozen(respond: () => Promise<Response> | Response) {
+    return renderHook(() => ({ browse: useShows({ page: 1 }), fire: c.useMutation() }), {
+      wrapper: frozenAfterFirstLoad(respond),
+    });
+  }
+
+  it("moves the mark before the request settles (AC 3)", async () => {
+    const gate = deferred();
+    const { result } = mountFrozen(async () => {
+      await gate.promise;
+      return new HttpResponse(null, { status: 204 });
+    });
+    await waitFor(() => expect(result.current.browse.data?.items[0].in_my_shows).toBe(c.from));
+
+    result.current.fire.mutate(SHOW_ID);
+
+    await waitFor(() => expect(result.current.browse.data?.items[0].in_my_shows).toBe(c.to));
+    // Still in flight, so no response can have supplied that.
+    expect(result.current.fire.isPending).toBe(true);
+    gate.resolve();
+  });
+
+  it("puts the mark back when the request fails (AC 6)", async () => {
+    const gate = deferred();
+    const { result } = mountFrozen(async () => {
+      await gate.promise;
+      return new HttpResponse(null, { status: 500 });
+    });
+    await waitFor(() => expect(result.current.browse.data?.items[0].in_my_shows).toBe(c.from));
+
+    result.current.fire.mutate(SHOW_ID);
+    await waitFor(() => expect(result.current.browse.data?.items[0].in_my_shows).toBe(c.to));
+
+    gate.resolve();
+
+    await waitFor(() => expect(result.current.fire.isError).toBe(true));
+    // The snapshot restore, not a refetch: every GET after the first hangs.
+    await waitFor(() => expect(result.current.browse.data?.items[0].in_my_shows).toBe(c.from));
+  });
+});

@@ -13,6 +13,7 @@ import type {
   Rating,
   RecommendationsResponse,
   ShowDetail,
+  ShowListPage,
   UpcomingEntry,
   UpcomingSeasonEntry,
   UpcomingShowEntry,
@@ -190,6 +191,40 @@ function invalidateRecommendations(qc: ReturnType<typeof useQueryClient>) {
   qc.invalidateQueries({ queryKey: ["me-recommendations"] });
 }
 
+/** Flip `in_my_shows` on every cached browse page that holds this show
+ * (NEU-1192 §3.3).
+ *
+ * Search is the first surface where a control sits **beside** the mark on a
+ * result that stays on screen through the toggle, so the lag between the chip's
+ * own optimistic state and the mark's became visible: the chip reads "✓ My
+ * Shows" beside a poster still saying nothing, for a `PUT` plus a refetch of a
+ * fifty-item page. Both signals confirming the add is also the stronger answer
+ * to "does this read as a completed action rather than a no-op?".
+ *
+ * A page that does **not** hold the show is returned unchanged, so a toggle
+ * does not break referential equality for every cached search page and
+ * re-render grids nothing happened to.
+ *
+ * Scoped to `["shows"]` deliberately: `["trending"]`, `["anticipated"]` and
+ * `["show-similar"]` carry the same mark and the same invalidate-on-settled
+ * behaviour, and the lag is only *observable* where a control sits beside a
+ * mark — which is search alone until those surfaces grow one.
+ */
+function setBrowseMembership(
+  qc: ReturnType<typeof useQueryClient>,
+  showId: number,
+  inMyShows: boolean,
+) {
+  qc.setQueriesData<ShowListPage>({ queryKey: ["shows"] }, (prev) =>
+    prev?.items.some((s) => s.id === showId)
+      ? {
+          ...prev,
+          items: prev.items.map((s) => (s.id === showId ? { ...s, in_my_shows: inMyShows } : s)),
+        }
+      : prev,
+  );
+}
+
 function placeholderMyShowEntry(showId: number): MyShowEntry {
   return {
     show: {
@@ -228,16 +263,29 @@ export function useAddShow() {
   return useMutation({
     mutationFn: (showId: number) => apiFetch<void>(`/me/shows/${showId}`, { method: "PUT" }),
     onMutate: async (showId: number) => {
+      // Both keys are cancelled before either is patched, for the reason the
+      // `["my-shows"]` cancel already existed: an in-flight search response
+      // landing after the patch would write the pre-toggle body back and
+      // reintroduce exactly the flicker being removed. A cancelled search fetch
+      // is not lost — `invalidateAll` refetches it in `onSettled`.
       await qc.cancelQueries({ queryKey: ["my-shows"] });
-      const snapshots = qc.getQueriesData<MyShowEntry[]>({ queryKey: ["my-shows"] });
+      await qc.cancelQueries({ queryKey: ["shows"] });
+      const snapshots = [
+        ...qc.getQueriesData<MyShowEntry[]>({ queryKey: ["my-shows"] }),
+        ...qc.getQueriesData<ShowListPage>({ queryKey: ["shows"] }),
+      ];
       qc.setQueriesData<MyShowEntry[]>({ queryKey: ["my-shows"] }, (prev) => {
         if (!prev) return prev;
         if (prev.some((e) => e.show.id === showId)) return prev;
         return [placeholderMyShowEntry(showId), ...prev];
       });
+      setBrowseMembership(qc, showId, true);
       return { snapshots };
     },
     onError: (_err, _showId, ctx) => {
+      // Snapshot-and-restore rather than an inverse flip: that is the shape
+      // this mutation already used for `["my-shows"]`, and an inverse flip
+      // would be a second expression of the same guess.
       ctx?.snapshots.forEach(([key, data]) => qc.setQueryData(key, data));
     },
     onSettled: () => invalidateAll(qc),
@@ -250,10 +298,15 @@ export function useRemoveShow() {
     mutationFn: (showId: number) => apiFetch<void>(`/me/shows/${showId}`, { method: "DELETE" }),
     onMutate: async (showId: number) => {
       await qc.cancelQueries({ queryKey: ["my-shows"] });
-      const snapshots = qc.getQueriesData<MyShowEntry[]>({ queryKey: ["my-shows"] });
+      await qc.cancelQueries({ queryKey: ["shows"] });
+      const snapshots = [
+        ...qc.getQueriesData<MyShowEntry[]>({ queryKey: ["my-shows"] }),
+        ...qc.getQueriesData<ShowListPage>({ queryKey: ["shows"] }),
+      ];
       qc.setQueriesData<MyShowEntry[]>({ queryKey: ["my-shows"] }, (prev) =>
         prev?.filter((e) => e.show.id !== showId),
       );
+      setBrowseMembership(qc, showId, false);
       return { snapshots };
     },
     onError: (_err, _showId, ctx) => {

@@ -205,7 +205,16 @@ export function SearchOverlay({ search }: { search: string }) {
 
     return section(
       <>
-        {view === "grid" ? <ShowGrid shows={data.items} /> : <ShowList shows={data.items} />}
+        {/* `addable` on both views, never one (NEU-1192): search is the one
+            surface where "should I add this?" is the question being asked, and
+            a control present in only one view would reintroduce the parity
+            defect NEU-1188 exists to remove. `data.items` is `BrowseShow[]`,
+            so the chip and the mark are fed from one field on one object. */}
+        {view === "grid" ? (
+          <ShowGrid shows={data.items} addable />
+        ) : (
+          <ShowList shows={data.items} addable />
+        )}
         <Pagination page={data.page} totalPages={data.total_pages} onPageChange={setPage} />
       </>,
       data.total,

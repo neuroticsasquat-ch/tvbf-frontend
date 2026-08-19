@@ -1,5 +1,6 @@
 import { Link } from "react-router";
 import type { ShowSummary } from "@/api/types";
+import { MyShowsButton } from "@/components/MyShowsButton";
 import { RatingBadge } from "@/components/RatingBadge";
 import { ShowPoster } from "@/components/ShowPoster";
 import { tenPointToFiveStar } from "@/lib/rating";
@@ -34,8 +35,27 @@ function year(dateStr: string | null): string {
  * corner are `ShowPoster`'s (NEU-1183 §3.4), and the aggregate goes inline
  * beside the title because another crowd's number never occupies a corner
  * (§3.5) — the same three positions `ShowCard` gets by the same rule.
+ *
+ * `addable` mirrors `ShowGrid`'s prop exactly (NEU-1176, NEU-1192): an opt-in
+ * boolean defaulting to no control, so the component stays shared and every
+ * caller that says nothing keeps the default. Search is the one surface that
+ * passes it — membership genuinely varies there, which is the whole reason the
+ * mark is on the row, so adding is possible and the variant is the labelled
+ * action-row chip rather than the poster overlay (NEU-1187 §3.1: the
+ * *position* is what says whether adding is possible).
+ *
+ * The action-row container is verbatim the one every other row control in the
+ * app already uses — `WatchedRow` and the friend Active row — `pt-1` included.
+ * A row control that placed itself differently from those would be a new
+ * inconsistency landed inside the UI-consistency milestone.
  */
-export function ShowList({ shows }: { shows: (ShowSummary & { in_my_shows?: boolean })[] }) {
+export function ShowList({
+  shows,
+  addable,
+}: {
+  shows: (ShowSummary & { in_my_shows?: boolean })[];
+  addable?: boolean;
+}) {
   if (shows.length === 0) {
     return <p className="py-16 text-center text-muted-foreground">No shows match your filters.</p>;
   }
@@ -78,6 +98,22 @@ export function ShowList({ shows }: { shows: (ShowSummary & { in_my_shows?: bool
                 <p className="text-xs text-muted-foreground leading-tight">
                   {show.genres.join(", ")}
                 </p>
+              )}
+              {addable && (
+                // The chip reads the row's own `in_my_shows`, the same field
+                // the poster's mark reads, so the two cannot disagree about
+                // one show — and `["shows"]` is patched optimistically by both
+                // mutations, so they do not disagree in flight either
+                // (`api/me.ts`, NEU-1192 §3.3). The fallback to `false`
+                // matches `ShowCard`'s: the field is optional on the way in,
+                // so a payload without it renders a row offering to add.
+                <div className="flex flex-wrap items-center justify-end gap-2 pt-1">
+                  <MyShowsButton
+                    showId={show.id}
+                    showName={show.name}
+                    inMyShows={show.in_my_shows ?? false}
+                  />
+                </div>
               )}
             </div>
           </li>

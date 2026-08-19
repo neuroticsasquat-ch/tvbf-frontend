@@ -64,6 +64,35 @@ describe("ShowList", () => {
     expect(screen.queryByRole("img", { name: "In your My Shows" })).not.toBeInTheDocument();
   });
 
+  it("renders no My Shows control unless `addable` is passed", () => {
+    // NEU-1192 AC 5. The prop is opt-in for `ShowGrid`'s reason: the component
+    // is shared, and every caller that says nothing keeps the default.
+    renderWithProviders(<ShowList shows={[makeShow()]} />);
+    expect(screen.queryByRole("button", { name: /My Shows/i })).not.toBeInTheDocument();
+  });
+
+  it("offers to add an untracked show, and to remove a tracked one, when `addable`", () => {
+    // The labelled chip's two states are the completed-action feedback: a
+    // search result stays on screen after the add, so the state change is the
+    // only confirmation there is. The name is in the accessible name because
+    // fifty identical "Add to My Shows" buttons are unnavigable (NEU-1187 §D3).
+    const { rerender } = renderWithProviders(
+      <ShowList shows={[{ ...makeShow(), in_my_shows: false }]} addable />,
+    );
+    const add = screen.getByRole("button", { name: "Add Kastanjemanden to My Shows" });
+    expect(add).toBeInTheDocument();
+    // The **labelled** variant, asserted on its visible text: the compact chip
+    // is icon-only and shares this accessible-name shape, so the name alone
+    // would pass for the variant NEU-1187 §3.1 reserves for surfaces where
+    // adding is impossible — which search is not.
+    expect(add).toHaveTextContent("My Shows");
+
+    rerender(<ShowList shows={[{ ...makeShow(), in_my_shows: true }]} addable />);
+    expect(
+      screen.getByRole("button", { name: "Remove Kastanjemanden from My Shows" }),
+    ).toHaveTextContent("My Shows");
+  });
+
   it("draws its poster through ShowPoster rather than hand-rolling one", () => {
     // NEU-1183's tripwire: the corner each badge lands in is asserted once, in
     // `ShowPoster.test.tsx`, and this row inherits it rather than restating it.
