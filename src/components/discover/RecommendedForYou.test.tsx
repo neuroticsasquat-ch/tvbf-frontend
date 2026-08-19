@@ -98,7 +98,7 @@ describe("RecommendedForYou", () => {
     expect(await screen.findByText("Severance")).toBeInTheDocument();
     expect(screen.queryByText("Andor")).not.toBeInTheDocument();
 
-    const cards = screen.getAllByRole("button", { name: "Add to My Shows" });
+    const cards = screen.getAllByRole("button", { name: /^Add .+ to My Shows$/ });
     await userEvent.click(cards[0]);
 
     await waitFor(() => expect(screen.queryByText("Severance")).not.toBeInTheDocument());
@@ -170,7 +170,7 @@ describe("RecommendedForYou", () => {
     renderWithProviders(<RecommendedForYou />);
 
     await screen.findByText("Severance");
-    await userEvent.click(screen.getByRole("button", { name: "Add to My Shows" }));
+    await userEvent.click(screen.getByRole("button", { name: /^Add .+ to My Shows$/ }));
 
     expect(await screen.findByText(/new recommendations on Sunday/i)).toBeInTheDocument();
     expect(screen.queryByRole("link")).not.toBeInTheDocument();
@@ -205,10 +205,10 @@ describe("RecommendedForYou", () => {
     renderWithProviders(<RecommendedForYou />);
 
     await screen.findByText("Severance");
-    await userEvent.click(screen.getByRole("button", { name: "Add to My Shows" }));
+    await userEvent.click(screen.getByRole("button", { name: /^Add .+ to My Shows$/ }));
 
     await waitFor(() =>
-      expect(screen.getByRole("button", { name: "Add to My Shows" })).toBeInTheDocument(),
+      expect(screen.getByRole("button", { name: /^Add .+ to My Shows$/ })).toBeInTheDocument(),
     );
     expect(screen.getByText("Severance")).toBeInTheDocument();
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();

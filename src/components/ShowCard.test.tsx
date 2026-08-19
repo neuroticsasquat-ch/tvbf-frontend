@@ -112,7 +112,9 @@ describe("ShowCard", () => {
     // to one surface is opt-in and absent by default. Asserted here, in the
     // shared component, rather than once per grid.
     renderWithProviders(<ShowCard show={makeShow()} addable />);
-    expect(screen.getByRole("button", { name: "Add to My Shows" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Add Kastanjemanden to My Shows" }),
+    ).toBeInTheDocument();
   });
 
   it("renders no add control by default", () => {
@@ -124,7 +126,7 @@ describe("ShowCard", () => {
     // A `<button>` inside an `<a>` is invalid content nesting and a real
     // focus-order problem, so activating it can never navigate.
     renderWithProviders(<ShowCard show={makeShow()} addable />);
-    const button = screen.getByRole("button", { name: "Add to My Shows" });
+    const button = screen.getByRole("button", { name: "Add Kastanjemanden to My Shows" });
     expect(button.closest("a")).toBeNull();
   });
 

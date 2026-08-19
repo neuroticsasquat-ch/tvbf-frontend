@@ -169,7 +169,7 @@ export function ShowCard({
         // is no success state, and a failed add reverts and leaves the card in
         // place.
         <div className="px-1.5 pb-1.5">
-          <MyShowsButton showId={show.id} inMyShows={inMyShows ?? false} />
+          <MyShowsButton showId={show.id} showName={show.name} inMyShows={inMyShows ?? false} />
         </div>
       )}
     </div>

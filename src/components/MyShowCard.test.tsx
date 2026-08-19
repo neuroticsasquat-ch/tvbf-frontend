@@ -52,12 +52,12 @@ const JEANNE: RatingOwner = { kind: "other", ownerName: "Jeanne" };
 
 describe("MyShowCard", () => {
   it("renders my-rating badge when my_rating is set", () => {
-    renderWithProviders(<MyShowCard entry={makeEntry(4)} ratingOwner={YOU} />);
+    renderWithProviders(<MyShowCard entry={makeEntry(4)} ratingOwner={YOU} inMyShows />);
     expect(screen.getByRole("img", { name: "Your rating: 4.0 out of 5" })).toBeInTheDocument();
   });
 
   it("hides my-rating badge when my_rating is null", () => {
-    renderWithProviders(<MyShowCard entry={makeEntry(null)} ratingOwner={YOU} />);
+    renderWithProviders(<MyShowCard entry={makeEntry(null)} ratingOwner={YOU} inMyShows />);
     expect(screen.queryByRole("img", { name: /rating:/ })).not.toBeInTheDocument();
   });
 
@@ -66,7 +66,7 @@ describe("MyShowCard", () => {
     // claim, one picture. This card drew its own emerald ✓ until the three
     // definitions were unified on `InMyShowsBadge`, and emerald means *watched*
     // everywhere else in the app.
-    renderWithProviders(<MyShowCard entry={makeEntry(null)} ratingOwner={YOU} />);
+    renderWithProviders(<MyShowCard entry={makeEntry(null)} ratingOwner={YOU} inMyShows />);
     expect(screen.getByRole("img", { name: "In your My Shows" })).toBeInTheDocument();
   });
 
@@ -74,7 +74,7 @@ describe("MyShowCard", () => {
     // NEU-1181 AC 1/2 at grid density. The friend endpoint hydrates `my_rating`
     // for the *friend's* user id, and this card is the surface that used to
     // render it under a hard-coded "Your rating".
-    renderWithProviders(<MyShowCard entry={makeEntry(4)} ratingOwner={JEANNE} />);
+    renderWithProviders(<MyShowCard entry={makeEntry(4)} ratingOwner={JEANNE} inMyShows />);
     expect(screen.getByRole("img", { name: "Jeanne's rating: 4.0 out of 5" })).toBeInTheDocument();
     expect(screen.queryByRole("img", { name: /your rating/i })).not.toBeInTheDocument();
   });
@@ -84,6 +84,7 @@ describe("MyShowCard", () => {
       <MyShowCard
         entry={makeEntry(4, { watched_episode_count: 3, aired_episode_count: 10 })}
         ratingOwner={JEANNE}
+        inMyShows
       />,
     );
     expect(screen.getAllByText("Jeanne:")).toHaveLength(1);
@@ -102,8 +103,39 @@ describe("MyShowCard", () => {
     // top-right to top-left and the rating from bottom-left to top-right, and
     // neither is stated here — which is the point.
     const { container } = renderWithProviders(
-      <MyShowCard entry={makeEntry(4)} ratingOwner={YOU} />,
+      <MyShowCard entry={makeEntry(4)} ratingOwner={YOU} inMyShows />,
     );
     expect(container.querySelector("[data-show-poster]")).not.toBeNull();
+  });
+
+  it("draws the compact remove chip when the surface opts in", () => {
+    // NEU-1187 §3.3 — through the poster, which is what assigns the corner.
+    const { container } = renderWithProviders(
+      <MyShowCard entry={makeEntry(null)} ratingOwner={YOU} inMyShows={false} removable />,
+    );
+    const poster = container.querySelector("[data-show-poster]");
+    expect(poster?.querySelector("[data-remove-from-my-shows]")).not.toBeNull();
+    expect(
+      screen.getByRole("button", { name: "Remove Test Show from My Shows" }),
+    ).toBeInTheDocument();
+  });
+
+  it("renders no remove chip on a friend's card, even when the surface asks", () => {
+    // The card is shared with a friend's library, where the entry is in *their*
+    // My Shows: a chip there would offer to remove a show the viewer may never
+    // have had, and would DELETE one they do.
+    const { container } = renderWithProviders(
+      <MyShowCard entry={makeEntry(null)} ratingOwner={JEANNE} inMyShows={false} removable />,
+    );
+    expect(container.querySelector("[data-remove-from-my-shows]")).toBeNull();
+  });
+
+  it("renders no remove chip by default", () => {
+    // The containment-seam assertion, per `ShowCard.test.tsx`'s pattern: an
+    // affordance belonging to one surface is absent everywhere else.
+    const { container } = renderWithProviders(
+      <MyShowCard entry={makeEntry(null)} ratingOwner={YOU} inMyShows={false} />,
+    );
+    expect(container.querySelector("[data-remove-from-my-shows]")).toBeNull();
   });
 });

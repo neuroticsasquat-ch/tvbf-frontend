@@ -208,7 +208,7 @@ describe("DiscoverPage", () => {
     renderWithProviders(<DiscoverPage />);
 
     await screen.findByRole("tab", { name: "My Recommendations" });
-    await userEvent.click(await screen.findByRole("button", { name: "Add to My Shows" }));
+    await userEvent.click(await screen.findByRole("button", { name: /^Add .+ to My Shows$/ }));
 
     // The list empties; the tab stays, still selected, and the pane says its
     // one line rather than going blank.
@@ -236,7 +236,7 @@ describe("DiscoverPage", () => {
     renderWithProviders(<DiscoverPage />);
 
     await screen.findByRole("tab", { name: "My Recommendations" });
-    await userEvent.click(await screen.findByRole("button", { name: "Add to My Shows" }));
+    await userEvent.click(await screen.findByRole("button", { name: /^Add .+ to My Shows$/ }));
     expect(await screen.findByText(/new recommendations on Sunday/i)).toBeInTheDocument();
 
     await userEvent.click(screen.getByRole("tab", { name: "Trending" }));
