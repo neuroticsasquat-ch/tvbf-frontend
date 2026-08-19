@@ -25,16 +25,23 @@ export class ApiError extends Error {
 /** The location prefixes FastAPI puts ahead of the field name in `loc`. */
 const LOC_PREFIXES = new Set(["body", "query", "path", "header", "cookie"]);
 
-/** Pydantic v2 stamps the exception class onto the message it was raised with.
- * That prefix is an implementation detail of the validator, not something the
- * backend wrote for a user to read, so it is stripped. */
-const PYDANTIC_PREFIX = /^(?:Value error|Assertion failed), /;
+/** Pydantic v2 stamps the exception class onto the message it was raised with,
+ * so a schema's `raise ValueError("...")` arrives as `Value error, ...`. That
+ * prefix is the validator's, not the sentence the backend wrote for a user to
+ * read, so it is stripped. Only this one form is stripped: it is the shape
+ * measured against the live API, and Pydantic's other stamps have never
+ * appeared on this wire. */
+const PYDANTIC_PREFIX = /^Value error, /;
 
 function locKey(loc: readonly unknown[]): string | null {
   const parts = loc.filter((p) => typeof p === "string" || typeof p === "number").map(String);
   if (parts.length === 0) return null;
   // Drop the "body"/"query"/... prefix so a form can index by its own field
   // name; a whole-body error (loc is the prefix alone) keeps it as the key.
+  // This collapses namespaces on purpose — a `page` in the query and a `page`
+  // in the body key alike, and the first one wins. No endpoint here validates
+  // one name at both locations, and a form that knows only its own field names
+  // is what the shape is for.
   const named = parts.length > 1 && LOC_PREFIXES.has(parts[0]) ? parts.slice(1) : parts;
   return named.join(".");
 }

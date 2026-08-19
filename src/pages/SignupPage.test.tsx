@@ -180,4 +180,65 @@ describe("SignupPage", () => {
     await userEvent.click(screen.getByRole("button", { name: /sign up/i }));
     expect(await screen.findByText("Field required")).toBeInTheDocument();
   });
+
+  it("renders field messages on a non-422 carrying the list shape", async () => {
+    server.use(
+      http.get(`${env.apiBaseUrl}/me`, () =>
+        HttpResponse.json({ detail: "auth_required" }, { status: 401 }),
+      ),
+      http.post(`${env.apiBaseUrl}/auth/signup`, () =>
+        HttpResponse.json(
+          {
+            detail: [
+              { type: "value_error", loc: ["body", "email"], msg: "Value error, already taken" },
+            ],
+          },
+          { status: 409 },
+        ),
+      ),
+    );
+    renderAt("/signup");
+    await fillCommonFields();
+    await userEvent.click(screen.getByRole("button", { name: /sign up/i }));
+
+    expect(await screen.findByText("already taken")).toBeInTheDocument();
+    expect(screen.getByLabelText(/email/i)).toHaveAttribute("aria-invalid", "true");
+    expect(screen.queryByText(/already registered/i)).not.toBeInTheDocument();
+  });
+
+  it("clears a field's message once the user edits that field", async () => {
+    server.use(
+      http.get(`${env.apiBaseUrl}/me`, () =>
+        HttpResponse.json({ detail: "auth_required" }, { status: 401 }),
+      ),
+      http.post(`${env.apiBaseUrl}/auth/signup`, () =>
+        HttpResponse.json(
+          {
+            detail: [
+              {
+                type: "value_error",
+                loc: ["body", "display_name"],
+                msg: "Value error, display_name must not be an email address",
+              },
+            ],
+          },
+          { status: 422 },
+        ),
+      ),
+    );
+    renderAt("/signup");
+    await fillCommonFields();
+    await userEvent.click(screen.getByRole("button", { name: /sign up/i }));
+    await screen.findByText("display_name must not be an email address");
+
+    const username = screen.getByLabelText(/username/i);
+    await userEvent.type(username, "y");
+    expect(
+      screen.queryByText("display_name must not be an email address"),
+    ).not.toBeInTheDocument();
+    expect(username).not.toHaveAttribute("aria-invalid");
+
+    // A different field's message is untouched by that edit.
+    expect(screen.getByLabelText(/email/i)).not.toHaveAttribute("aria-invalid");
+  });
 });

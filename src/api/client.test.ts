@@ -169,6 +169,16 @@ describe("apiFetch — field validation errors", () => {
     expect(err.fieldErrors).toEqual({ email: "Field required", password: "Field required" });
   });
 
+  it("leaves a message Pydantic did not stamp alone", async () => {
+    respond({
+      detail: [
+        { type: "assertion_error", loc: ["body", "email"], msg: "Assertion failed, nope" },
+      ],
+    });
+    const err = await reject();
+    expect(err.fieldErrors).toEqual({ email: "Assertion failed, nope" });
+  });
+
   it("keeps the first message when one field errors twice", async () => {
     respond({
       detail: [

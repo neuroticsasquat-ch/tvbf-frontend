@@ -6,7 +6,7 @@ import { useAuth } from "@/components/AuthContext";
 
 /** The request fields this form has an input for. A 422 naming anything else
  * falls back to the banner rather than being dropped silently. */
-const OWN_FIELDS = ["invite_code", "email", "display_name", "password"] as const;
+const OWN_FIELDS = new Set(["invite_code", "email", "display_name", "password"]);
 
 function FieldError({ id, message }: { id: string; message: string | undefined }) {
   if (!message) return null;
@@ -29,6 +29,12 @@ export function SignupPage() {
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
 
+  function clearFieldError(name: string) {
+    setFieldErrors((prev) =>
+      name in prev ? Object.fromEntries(Object.entries(prev).filter(([k]) => k !== name)) : prev,
+    );
+  }
+
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
@@ -46,21 +52,24 @@ export function SignupPage() {
       await signup(email, password, displayName, inviteCode.trim());
       navigate("/my-shows");
     } catch (err) {
-      if (err instanceof ApiError && err.status === 403) {
-        setError("Invite code is invalid, already used, or doesn't match this email.");
-      } else if (err instanceof ApiError && err.status === 409) {
-        setError("This email is already registered.");
-      } else if (err instanceof ApiError && err.status === 422) {
-        const fields = err.fieldErrors ?? {};
-        setFieldErrors(fields);
-        const unowned = Object.entries(fields).filter(
-          ([name]) => !(OWN_FIELDS as readonly string[]).includes(name),
+      // Field messages first, and on the shape rather than the status: the
+      // client fills `fieldErrors` for any response carrying the list, and a
+      // schema-level refusal need not arrive as a 422 (NEU-1163's taken handle
+      // may well be a 409). Checking the status first would drop it.
+      if (err instanceof ApiError && err.fieldErrors) {
+        setFieldErrors(err.fieldErrors);
+        const unowned = Object.entries(err.fieldErrors).filter(
+          ([name]) => !OWN_FIELDS.has(name),
         );
         // Every message reaches the user: the ones this form has an input for
         // land against it, anything else keeps the banner.
         if (unowned.length > 0) setError(unowned.map(([, msg]) => msg).join(" "));
-        else if (Object.keys(fields).length === 0)
-          setError("Please check your input and try again.");
+      } else if (err instanceof ApiError && err.status === 403) {
+        setError("Invite code is invalid, already used, or doesn't match this email.");
+      } else if (err instanceof ApiError && err.status === 409) {
+        setError("This email is already registered.");
+      } else if (err instanceof ApiError && err.status === 422) {
+        setError("Please check your input and try again.");
       } else {
         setError("Something went wrong. Please try again.");
       }
@@ -82,7 +91,10 @@ export function SignupPage() {
             type="text"
             required
             value={inviteCode}
-            onChange={(e) => setInviteCode(e.target.value)}
+            onChange={(e) => {
+              setInviteCode(e.target.value);
+              clearFieldError("invite_code");
+            }}
             aria-invalid={fieldErrors.invite_code ? true : undefined}
             aria-describedby={fieldErrors.invite_code ? "invite_code-error" : undefined}
             className="mt-1 w-full rounded border px-3 py-2"
@@ -100,7 +112,10 @@ export function SignupPage() {
             type="email"
             required
             value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            onChange={(e) => {
+              setEmail(e.target.value);
+              clearFieldError("email");
+            }}
             aria-invalid={fieldErrors.email ? true : undefined}
             aria-describedby={fieldErrors.email ? "email-error email-help" : "email-help"}
             className="mt-1 w-full rounded border px-3 py-2"
@@ -121,7 +136,10 @@ export function SignupPage() {
             required
             maxLength={100}
             value={displayName}
-            onChange={(e) => setDisplayName(e.target.value)}
+            onChange={(e) => {
+              setDisplayName(e.target.value);
+              clearFieldError("display_name");
+            }}
             aria-invalid={fieldErrors.display_name ? true : undefined}
             aria-describedby={
               fieldErrors.display_name ? "display_name-error display-name-help" : "display-name-help"
@@ -143,7 +161,10 @@ export function SignupPage() {
             required
             minLength={8}
             value={password}
-            onChange={(e) => setPassword(e.target.value)}
+            onChange={(e) => {
+              setPassword(e.target.value);
+              clearFieldError("password");
+            }}
             aria-invalid={fieldErrors.password ? true : undefined}
             aria-describedby={fieldErrors.password ? "password-error" : undefined}
             className="mt-1 w-full rounded border px-3 py-2"
