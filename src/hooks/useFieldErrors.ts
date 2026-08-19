@@ -14,8 +14,13 @@ export function fieldErrorId(name: string): string {
  * through to whatever it says about a status. */
 export interface FieldErrorCapture {
   handled: boolean;
-  /** Messages naming a field this form has no input for, joined — the caller's
-   * banner text. Null when every message landed on an input. */
+  /** Messages naming a field this form has no input for, keyed by name. A
+   * caller with its own copy for one of those conditions reads it from here;
+   * the schema's own sentence is written for a developer, and a form that
+   * already says something better about the same refusal should say that. */
+  unowned: Record<string, string>;
+  /** `unowned` joined — the default banner text, for a caller with nothing
+   * better to say. Null when every message landed on an input. */
   banner: string | null;
 }
 
@@ -35,13 +40,24 @@ export interface FieldErrorCapture {
  * carries fields a form does not render — the reset token comes from the URL —
  * and a message about one of those must still reach the user, so it goes to the
  * banner rather than being dropped.
+ *
+ * **Extracted at the second copy, where this codebase's stated threshold is the
+ * third** (`useFocusAfterRemoval`, NEU-1193). The departure is deliberate and
+ * narrow: the third partial consumer, `SettingsPage`'s display-name editor, has
+ * one field and its own single-error state, so it is left alone rather than bent
+ * to fit. What forced the extraction early is that a code review named the
+ * `aria-describedby` join as the specific thing a hand-written copy gets wrong,
+ * one commit before a second copy was written — the threshold exists to stop
+ * premature abstraction, not to require a known-fragile shape be copied first.
  */
 export function useFieldErrors(ownFields: readonly string[]) {
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   // `ownFields` is a literal at every call site, so it is a new array on every
   // render; keying the set on its contents keeps the callbacks stable.
   const key = ownFields.join(" ");
-  const own = useMemo(() => new Set(key.split(" ")), [key]);
+  // Guarded rather than a bare split: `"".split(" ")` is `[""]`, which would
+  // read an empty field name as owned.
+  const own = useMemo(() => new Set(key ? key.split(" ") : []), [key]);
 
   const reset = useCallback(() => setFieldErrors({}), []);
 
@@ -61,11 +77,14 @@ export function useFieldErrors(ownFields: readonly string[]) {
    * status first would drop it. */
   const capture = useCallback(
     (err: unknown): FieldErrorCapture => {
-      if (!(err instanceof ApiError) || !err.fieldErrors) return { handled: false, banner: null };
+      if (!(err instanceof ApiError) || !err.fieldErrors) {
+        return { handled: false, unowned: {}, banner: null };
+      }
       setFieldErrors(err.fieldErrors);
       const unowned = Object.entries(err.fieldErrors).filter(([name]) => !own.has(name));
       return {
         handled: true,
+        unowned: Object.fromEntries(unowned),
         banner: unowned.length > 0 ? unowned.map(([, msg]) => msg).join(" ") : null,
       };
     },

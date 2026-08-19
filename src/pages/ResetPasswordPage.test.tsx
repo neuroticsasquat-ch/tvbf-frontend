@@ -110,7 +110,7 @@ describe("ResetPasswordPage", () => {
     expect(screen.queryByText(/isn't allowed/i)).not.toBeInTheDocument();
   });
 
-  it("puts a message about the token in the banner, not under an input", async () => {
+  it("answers a schema complaint about the token with the bad-link copy", async () => {
     server.use(
       http.post(`${env.apiBaseUrl}/reset-password`, () =>
         HttpResponse.json(
@@ -124,7 +124,10 @@ describe("ResetPasswordPage", () => {
     await userEvent.type(screen.getByLabelText(/confirm new password/i), "brandnew12345");
     await userEvent.click(screen.getByRole("button", { name: /save new password/i }));
 
-    expect(await screen.findByText("Field required")).toBeInTheDocument();
+    // Not the raw `Field required`: it names a field with no input on this
+    // page, and it would replace the only copy saying what to do next.
+    expect(await screen.findByText(/invalid or has expired/i)).toBeInTheDocument();
+    expect(screen.queryByText("Field required")).not.toBeInTheDocument();
     expect(screen.getByLabelText(/^new password$/i)).not.toHaveAttribute("aria-invalid");
   });
 

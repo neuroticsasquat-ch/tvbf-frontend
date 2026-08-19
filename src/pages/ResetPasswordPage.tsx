@@ -9,6 +9,8 @@ import { useFieldErrors } from "@/hooks/useFieldErrors";
 const MIN_PASSWORD = 8;
 const MAX_PASSWORD = 128;
 
+const BAD_LINK = "This reset link is invalid or has expired. Request a new one.";
+
 /** The request fields this form has an input for. `token` is deliberately not
  * one: it comes from the link the user followed, so a message about it belongs
  * in the banner beside the expired-link copy rather than under an input the
@@ -60,9 +62,13 @@ export function ResetPasswordPage() {
       // password broke, where the generic one below can only guess.
       const captured = capture(e);
       if (captured.handled) {
-        setError(captured.banner);
+        // `token` is the one field here with no input, and a schema complaint
+        // about it is the same condition the 400 branch already has copy for —
+        // so it gets that sentence. The raw one names a field the user cannot
+        // see and would replace the only text telling them what to do next.
+        setError(captured.unowned.token ? BAD_LINK : captured.banner);
       } else if (e instanceof ApiError && e.status === 400) {
-        setError("This reset link is invalid or has expired. Request a new one.");
+        setError(BAD_LINK);
       } else if (e instanceof ApiError && e.status === 422) {
         setError("That password isn't allowed. Pick a different one.");
       } else {
