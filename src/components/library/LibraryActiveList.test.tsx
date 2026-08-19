@@ -294,7 +294,9 @@ describe("LibraryActiveList self-mode controls (NEU-1187)", () => {
       const results = container.querySelector<HTMLElement>('[tabindex="-1"]');
       expect(results).not.toBeNull();
       expect(results).toHaveFocus();
-      expect(within(results!).getByText("No shows match the current filters.")).toBeInTheDocument();
+      expect(
+        within(results!).getByText("You're not tracking any shows yet."),
+      ).toBeInTheDocument();
     });
   });
 
@@ -321,5 +323,70 @@ describe("LibraryActiveList self-mode controls (NEU-1187)", () => {
     await userEvent.click(screen.getByRole("button", { name: "Remove The Bear from My Shows" }));
 
     await waitFor(() => expect(recommendationFetches).toBe(2));
+  });
+});
+
+describe("LibraryActiveList empty states (NEU-1190 §2)", () => {
+  beforeEach(() => window.localStorage.clear());
+
+  it("says the viewer tracks nothing when their own library is empty", () => {
+    // AC 4. This read "No shows match the current filters." with every picker
+    // on "All" — the one list of six that never split the two states.
+    renderWithProviders(<LibraryActiveList data={[]} isLoading={false} />);
+    expect(screen.getByText("You're not tracking any shows yet.")).toBeInTheDocument();
+  });
+
+  it("names the friend when their library is empty", () => {
+    renderWithProviders(
+      <LibraryActiveList
+        data={[]}
+        isLoading={false}
+        viewerContext={JEANNE}
+        storagePrefix="friend-active"
+      />,
+    );
+    expect(screen.getByText("Jeanne isn't tracking any shows.")).toBeInTheDocument();
+  });
+
+  for (const [label, prefix, props] of [
+    ["self", "my-shows", {}],
+    ["a friend's", "friend-active", { viewerContext: JEANNE, storagePrefix: "friend-active" }],
+  ] as const) {
+    it(`still says so distinctly when filters exclude everything on ${label} library`, () => {
+      // AC 5. The filters are the viewer's own in both modes, so this sentence
+      // claims nothing about whose library it is and needs no attribution.
+      // The filter is set through the persisted state the pickers write, which
+      // is what makes the assertion about the message rather than about the
+      // picker's option list.
+      window.localStorage.setItem(`tvbf:sort:${prefix}-status`, "ended");
+      renderWithProviders(<LibraryActiveList data={[makeEntry()]} isLoading={false} {...props} />);
+
+      expect(screen.getByText("No shows match the current filters.")).toBeInTheDocument();
+    });
+  }
+});
+
+describe("LibraryActiveList row links (NEU-1190 §1)", () => {
+  beforeEach(() => window.localStorage.clear());
+
+  it("exposes exactly one link per row, and it is the show's name", () => {
+    // AC 1. The poster and the title were two links to `/shows/1`, identically
+    // named.
+    renderWithProviders(<LibraryActiveList data={[makeEntry()]} isLoading={false} />);
+    const links = screen.getAllByRole("link");
+    expect(links).toHaveLength(1);
+    expect(links[0]).toHaveAttribute("href", "/shows/1");
+    expect(links[0]).toHaveTextContent("The Bear");
+  });
+
+  it("keeps the poster's rating badge announced, and its control working", () => {
+    // The reason the poster drops its link rather than being `aria-hidden`
+    // (§1.3) — and the compact My Shows chip rides the same poster, as a
+    // sibling of the link that is no longer there.
+    renderWithProviders(<LibraryActiveList data={[makeEntry()]} isLoading={false} />);
+    expect(screen.getByRole("img", { name: "Your rating: 4.0 out of 5" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Remove The Bear from My Shows" }),
+    ).toBeInTheDocument();
   });
 });

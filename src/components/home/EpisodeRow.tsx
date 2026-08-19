@@ -38,9 +38,19 @@ function formatAirdate(iso: string): string {
  * inside a link is invalid. Given it is a separate link either way, it points
  * at the show, because its accessible name is the show's name and a link
  * announced as "Ted Lasso" that lands on an episode page is a defect. The row's
- * text is the episode's link. This is the shape every list row in the app
- * already has (`LibraryActiveList`), including the extra tab stop NEU-1190 §1
- * is scheduled to collapse across all of them at once.
+ * text is the episode's link.
+ *
+ * **Both links stay, and this row is deliberately exempt from NEU-1190 §1.2.**
+ * That ticket collapses the row surfaces whose poster and text are two links
+ * with the *same* accessible name to the *same* destination — a second tab stop
+ * that offers nothing. This row is not one of them: its two links are named
+ * differently and land differently, which is a row offering two things rather
+ * than a duplicate. Collapsing it would delete the only keyboard route from
+ * here to the show page in exchange for a tab stop that confused nobody, so
+ * this poster keeps its `to` / `linkLabel` while the four duplicate rows drop
+ * theirs. (An earlier revision of this docstring said §1 would "collapse [the
+ * extra tab stop] across all of them at once"; that was wrong about what the
+ * ticket does, and correcting it is part of the ticket.)
  */
 export function EpisodeRow({
   show,

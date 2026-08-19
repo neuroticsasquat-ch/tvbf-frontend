@@ -43,6 +43,7 @@ import { watchedCallerRelationship, type CallerLibrary } from "./callerLibrary";
 import { matchesCallerMembership, matchesCallerWatchState } from "./callerFilters";
 import { CallerProgressNote } from "./LibraryRowIndicators";
 import { SELF, ratingOwnerFor, type ViewerContext } from "./viewerContext";
+import { watchedEmptyMessage } from "./emptyStates";
 
 // Disabled options on All Watched per NEU-121:
 // - Watch State: "Not Started" — every entry has at least one watched episode.
@@ -216,9 +217,7 @@ export function LibraryWatchedList({
         {isError && <p className="text-sm text-destructive">Failed to load watch history.</p>}
         {!isLoading && !isError && filteredAndSorted && filteredAndSorted.length === 0 && (
           <p className="text-sm text-muted-foreground">
-            {data && data.length === 0
-              ? "No watch history yet."
-              : "No matches in your watch history."}
+            {watchedEmptyMessage(viewerContext, data?.length === 0)}
           </p>
         )}
         {!isLoading &&
@@ -353,10 +352,10 @@ function WatchedRow({
 
   return (
     <li className="border border-border rounded p-3 flex items-start gap-3 sm:gap-4">
+      {/* Presentational — the show's name below is the row's one link
+        (NEU-1190 §1). */}
       <ShowPoster
-        to={`/shows/${entry.show.id}`}
         src={entry.show.image_medium}
-        linkLabel={entry.show.name}
         size="row"
         // The viewer's own membership, not `callerPosterMark` — which
         // hard-returns `false` in self mode, correctly on Active where every

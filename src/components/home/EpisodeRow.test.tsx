@@ -65,6 +65,18 @@ describe("EpisodeRow (NEU-1189 AC 3)", () => {
     );
   });
 
+  it("keeps both links, and is exempt from the one-link-per-row collapse", () => {
+    // NEU-1190 AC 2, and the tripwire against a later tidy-up. The four rows
+    // that collapsed had two links with the *same* accessible name to the
+    // *same* destination. This row's differ on both counts, so collapsing it
+    // would delete the only keyboard route from here to the show page in
+    // exchange for a tab stop that confused nobody (§1.2).
+    renderWithProviders(<EpisodeRow show={SHOW} episode={EPISODE} />);
+    const links = screen.getAllByRole("link");
+    expect(links).toHaveLength(2);
+    expect(new Set(links.map((l) => l.getAttribute("href"))).size).toBe(2);
+  });
+
   it("carries the episode's number, title and airdate", () => {
     renderWithProviders(<EpisodeRow show={SHOW} episode={EPISODE} />);
     expect(screen.getByText("S4E3")).toBeInTheDocument();

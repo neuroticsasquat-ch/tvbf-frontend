@@ -94,12 +94,9 @@ export function UpcomingShowsList() {
               key={entry.show.id}
               className="border border-border rounded p-3 flex items-center gap-3 sm:gap-4 hover:bg-accent"
             >
-              <ShowPoster
-                to={`/shows/${entry.show.id}`}
-                src={entry.show.image_medium}
-                linkLabel={entry.show.name}
-                size="row"
-              />
+              {/* Presentational — the row's text beside it is the one link
+                to the show (NEU-1190 §1). */}
+              <ShowPoster src={entry.show.image_medium} size="row" />
               <Link to={`/shows/${entry.show.id}`} className="min-w-0 flex-1">
                 <div className="min-w-0">
                   <p className="text-sm font-semibold text-foreground leading-tight truncate">

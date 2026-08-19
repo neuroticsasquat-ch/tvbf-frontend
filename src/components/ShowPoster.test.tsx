@@ -150,4 +150,56 @@ describe("ShowPoster", () => {
     renderWithProviders(<ShowPoster to="/shows/42" src={null} linkLabel="Silo" size="row" />);
     expect(screen.getByRole("link", { name: "Silo" })).toHaveAttribute("href", "/shows/42");
   });
+
+  describe("presentational form (NEU-1190 §1.3)", () => {
+    it("renders no link at all when the pair is omitted", () => {
+      renderWithProviders(<ShowPoster src={null} size="row" />);
+      expect(screen.queryByRole("link")).not.toBeInTheDocument();
+    });
+
+    it("keeps both fact badges in the accessibility tree, with their labels", () => {
+      // The whole reason the poster drops its link rather than being
+      // `aria-hidden`: hiding the subtree would delete these two from the
+      // accessibility tree on every row, trading one a11y defect for a worse
+      // one.
+      renderWithProviders(<ShowPoster src={null} size="row" inMyShows ownRating={4.5} />);
+      expect(screen.getByRole("img", { name: "In your My Shows" })).toBeInTheDocument();
+      expect(screen.getByRole("img", { name: "Your rating: 4.5 out of 5" })).toBeInTheDocument();
+    });
+
+    it("keeps the corner rule and the fallback image", () => {
+      const { container } = renderWithProviders(
+        <ShowPoster src={null} size="row" inMyShows ownRating={3.5} />,
+      );
+      expect(screen.getByRole("img", { name: "In your My Shows" }).className).toContain("left-1");
+      expect(screen.getByRole("img", { name: "Your rating: 3.5 out of 5" }).className).toContain(
+        "right-1",
+      );
+      expect(container.querySelector("img")?.getAttribute("src")).toMatch(/^data:image\/svg\+xml/);
+    });
+
+    it("still places a control in the bottom-right, outside any link", () => {
+      // `ActiveRow`'s compact My Shows chip rides a presentational poster, and
+      // the control layer is a sibling of the link either way — so dropping
+      // the link changes nothing about it.
+      renderWithProviders(
+        <ShowPoster src={null} size="row" control={<button type="button">Remove</button>} />,
+      );
+      const control = screen.getByRole("button", { name: "Remove" });
+      expect(control.parentElement?.className).toContain("bottom-0");
+      expect(control.parentElement?.className).toContain("right-0");
+      expect(control.closest("a")).toBeNull();
+    });
+
+    it("refuses half a link at the type level", () => {
+      // AC 3. `to` and `linkLabel` are jointly optional, so a caller cannot
+      // keep one while dropping the other — which is what would go stale.
+      // @ts-expect-error `to` without `linkLabel`
+      const withoutLabel = <ShowPoster to="/shows/1" src={null} size="row" />;
+      // @ts-expect-error `linkLabel` without `to`
+      const withoutTo = <ShowPoster linkLabel="Silo" src={null} size="row" />;
+      expect(withoutLabel).toBeTruthy();
+      expect(withoutTo).toBeTruthy();
+    });
+  });
 });

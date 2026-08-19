@@ -95,6 +95,12 @@ export function UpcomingSeasonsList() {
               key={`${entry.show.id}-${entry.season_number}`}
               className="border border-border rounded p-3 flex items-center gap-3 sm:gap-4 hover:bg-accent"
             >
+              {/* Two links, and deliberately exempt from NEU-1190 §1.2: the
+                poster goes to the show, the text beside it to that season's
+                episode list. They are named differently and land differently,
+                which is a row offering two things rather than a duplicate —
+                collapsing it would delete the only keyboard route from here to
+                the show page. */}
               <ShowPoster
                 to={`/shows/${entry.show.id}`}
                 src={entry.show.image_medium}

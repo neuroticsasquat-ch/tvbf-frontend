@@ -11,7 +11,7 @@ function makeShow(overrides: Partial<ShowSummary> = {}): ShowSummary {
     name: "Kastanjemanden",
     type: "Scripted",
     status: "Ended",
-    language: "Danish",
+    language: "da",
     premiered: "2021-09-29",
     ended: null,
     image_medium: null,
@@ -100,12 +100,58 @@ describe("ShowList", () => {
     expect(container.querySelector("[data-show-poster]")).not.toBeNull();
   });
 
-  it("keeps the poster and the name pointing at the show", () => {
-    // The row was one `<Link>` over everything and is now two, because
-    // `ShowPoster` owns its own link and an `<a>` inside an `<a>` is invalid.
+  it("exposes exactly one link per row, and it is the show's name", () => {
+    // NEU-1190 AC 1. NEU-1188 left the poster and the name as two links with
+    // the same accessible name to the same destination — one tab stop per row
+    // that offered nothing. The poster is presentational now.
     renderWithProviders(<ShowList shows={[makeShow()]} />);
-    for (const link of screen.getAllByRole("link")) {
-      expect(link).toHaveAttribute("href", "/shows/1");
-    }
+    const links = screen.getAllByRole("link");
+    expect(links).toHaveLength(1);
+    expect(links[0]).toHaveAttribute("href", "/shows/1");
+    expect(links[0]).toHaveTextContent("Kastanjemanden");
+  });
+
+  it("keeps the poster's badges announced even though it is no longer a link", () => {
+    // The reason the poster drops its link rather than being `aria-hidden`
+    // (§1.3): hiding the subtree would delete both labels from every row.
+    renderWithProviders(
+      <ShowList shows={[{ ...makeShow({ my_rating: 4.5 }), in_my_shows: true }]} />,
+    );
+    expect(screen.getByRole("img", { name: "In your My Shows" })).toBeInTheDocument();
+    expect(screen.getByRole("img", { name: "Your rating: 4.5 out of 5" })).toBeInTheDocument();
+    expect(screen.getAllByRole("link")).toHaveLength(1);
+  });
+
+  it("prints the language as an English name, never its ISO code", () => {
+    // AC 6. `show.language` has carried `original_language` since NEU-1047, so
+    // this line read `NBC · Ended · en`.
+    renderWithProviders(
+      <ShowList shows={[makeShow({ language: "en", status: "Ended", network: null })]} />,
+    );
+    expect(screen.getByText("Ended · English")).toBeInTheDocument();
+  });
+
+  it("omits the language segment for a code it cannot map, separators intact", () => {
+    // TMDB's non-standard `cn` for Cantonese. Printing it back is exactly what
+    // AC 6 forbids, so the segment is absent rather than raw — and the segments
+    // either side of it keep their one `·`, which is why this row carries a
+    // network: with a single remaining segment a dangling separator could not
+    // show up at all.
+    renderWithProviders(
+      <ShowList
+        shows={[makeShow({ language: "cn", status: "Ended", network: { id: 9, name: "NBC" } })]}
+      />,
+    );
+    expect(screen.getByText("NBC · Ended")).toBeInTheDocument();
+    expect(screen.queryByText(/\bcn\b/)).not.toBeInTheDocument();
+  });
+
+  it("renders no language segment when the show has none", () => {
+    renderWithProviders(
+      <ShowList
+        shows={[makeShow({ language: null, status: "Ended", network: { id: 9, name: "NBC" } })]}
+      />,
+    );
+    expect(screen.getByText("NBC · Ended")).toBeInTheDocument();
   });
 });
