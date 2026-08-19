@@ -1,13 +1,10 @@
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { Link } from "react-router";
-import { Trash2 } from "lucide-react";
-import { useRemoveFromHistory } from "@/api/me";
 import type { MyShowEntry, WatchedEntry } from "@/api/types";
-import { ConfirmDialog } from "@/components/connections/ConfirmDialog";
-import { Button } from "@/components/ui/button";
 import { MyShowCard } from "@/components/MyShowCard";
 import { ShowPoster } from "@/components/ShowPoster";
 import { MyShowsButton } from "@/components/MyShowsButton";
+import { RemoveWatchHistoryButton } from "@/components/RemoveWatchHistoryButton";
 import { WatchProgressBar } from "@/components/WatchProgressBar";
 import { ListingToolbar } from "@/components/home/ListingToolbar";
 import {
@@ -37,6 +34,7 @@ import {
   compareLibraryEntries,
   type LibrarySort,
 } from "@/components/home/librarySort";
+import { useFocusAfterRemoval } from "@/hooks/useFocusAfterRemoval";
 import { usePersistedSort } from "@/hooks/usePersistedSort";
 import { usePersistedString } from "@/hooks/usePersistedString";
 import { usePersistedView } from "@/hooks/usePersistedView";
@@ -55,6 +53,10 @@ const DISABLED_WATCH_STATES: Partial<Record<WatchState, string>> = {
 const DISABLED_SORTS: Partial<Record<LibrarySort, string>> = {
   added_desc: "Available on the Active tab.",
 };
+
+/** Module scope so it is one stable reference across renders — it lands in
+ * `useFocusAfterRemoval`'s effect dependencies. */
+const showIdOf = (e: WatchedEntry) => e.show.id;
 
 interface Props {
   data: WatchedEntry[] | undefined;
@@ -138,6 +140,18 @@ export function LibraryWatchedList({
     callerLibrary,
   ]);
 
+  // Focus after a watch-history removal unmounts a row or card (NEU-1193).
+  // `useRemoveFromHistory` filters the entry out of every `["my-watched"]`
+  // query in `onMutate`, so the control is gone before the request settles and
+  // focus falls to `<body>` — three histories in a sitting meant three trips
+  // back through the page from the top. Same hook as the Active tab and the
+  // recommendations grid, and no empty selector: when the last entry goes, the
+  // results container itself takes focus.
+  const { containerRef: resultsRef, onRemoved } = useFocusAfterRemoval<
+    WatchedEntry,
+    HTMLDivElement
+  >(filteredAndSorted, showIdOf, "[data-remove-watch-history]");
+
   const filtersActive =
     watchState !== "all" ||
     showStatus !== "all" ||
@@ -193,47 +207,55 @@ export function LibraryWatchedList({
           </>
         }
       />
-      {isLoading && <p className="text-sm text-muted-foreground">Loading…</p>}
-      {isError && <p className="text-sm text-destructive">Failed to load watch history.</p>}
-      {!isLoading && !isError && filteredAndSorted && filteredAndSorted.length === 0 && (
-        <p className="text-sm text-muted-foreground">
-          {data && data.length === 0
-            ? "No watch history yet."
-            : "No matches in your watch history."}
-        </p>
-      )}
-      {!isLoading &&
-        !isError &&
-        filteredAndSorted &&
-        filteredAndSorted.length > 0 &&
-        view === "grid" && (
-          <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-8">
-            {filteredAndSorted.map((entry) => (
-              <WatchedCard
-                key={entry.show.id}
-                entry={entry}
-                viewerContext={viewerContext}
-                callerLibrary={callerLibrary}
-              />
-            ))}
-          </div>
+      {/* One focusable container across both views, so the post-removal focus
+        move has somewhere to land when the last entry goes — and one query root
+        for the controls. `tabIndex={-1}` keeps it out of the tab order. Same
+        shape as the Active tab's. */}
+      <div ref={resultsRef} tabIndex={-1} className="outline-none">
+        {isLoading && <p className="text-sm text-muted-foreground">Loading…</p>}
+        {isError && <p className="text-sm text-destructive">Failed to load watch history.</p>}
+        {!isLoading && !isError && filteredAndSorted && filteredAndSorted.length === 0 && (
+          <p className="text-sm text-muted-foreground">
+            {data && data.length === 0
+              ? "No watch history yet."
+              : "No matches in your watch history."}
+          </p>
         )}
-      {!isLoading &&
-        !isError &&
-        filteredAndSorted &&
-        filteredAndSorted.length > 0 &&
-        view === "list" && (
-          <ul className="space-y-3">
-            {filteredAndSorted.map((entry) => (
-              <WatchedRow
-                key={entry.show.id}
-                entry={entry}
-                viewerContext={viewerContext}
-                callerLibrary={callerLibrary}
-              />
-            ))}
-          </ul>
-        )}
+        {!isLoading &&
+          !isError &&
+          filteredAndSorted &&
+          filteredAndSorted.length > 0 &&
+          view === "grid" && (
+            <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-8">
+              {filteredAndSorted.map((entry) => (
+                <WatchedCard
+                  key={entry.show.id}
+                  entry={entry}
+                  viewerContext={viewerContext}
+                  callerLibrary={callerLibrary}
+                  onRemoved={onRemoved}
+                />
+              ))}
+            </div>
+          )}
+        {!isLoading &&
+          !isError &&
+          filteredAndSorted &&
+          filteredAndSorted.length > 0 &&
+          view === "list" && (
+            <ul className="space-y-3">
+              {filteredAndSorted.map((entry) => (
+                <WatchedRow
+                  key={entry.show.id}
+                  entry={entry}
+                  viewerContext={viewerContext}
+                  callerLibrary={callerLibrary}
+                  onRemoved={onRemoved}
+                />
+              ))}
+            </ul>
+          )}
+      </div>
     </div>
   );
 }
@@ -271,22 +293,23 @@ function watchedToMyShowEntry(e: WatchedEntry): MyShowEntry {
  * twice is what let the two views disagree: the grid could not add a show to My
  * Shows at all, and the list never drew the library mark (NEU-1188 AC 2/6).
  *
- * **One deliberate asymmetry remains**, and it is not this rule weakening: the
- * list row's "Watch History" removal has no counterpart here. It is a
- * destructive control behind a confirm dialog, and the ~97px card has no room
- * for a third labelled affordance — drawing an icon-only one would be a fifth
- * treatment of an act NEU-1187 spent a ticket unifying, with no placement rule
- * to put it under (`ShowPoster` exposes one control slot). NEU-1193 already
- * owns that removal path; it is the ticket to give it a card drawing.
+ * **The one asymmetry NEU-1188 left open is closed here** (NEU-1193): the list
+ * row's "Watch History" removal now has a counterpart, as the compact variant
+ * in the poster's bottom-right corner. That is the position NEU-1187 §3.1
+ * reserves for a control that can only remove, which this act always is — there
+ * is no "add watch history" — so it needed a variant rather than the fifth
+ * ad-hoc treatment NEU-1188 declined to invent.
  */
 function WatchedCard({
   entry,
   viewerContext,
   callerLibrary,
+  onRemoved,
 }: {
   entry: WatchedEntry;
   viewerContext: ViewerContext;
   callerLibrary?: CallerLibrary;
+  onRemoved?: (showId: number) => void;
 }) {
   const caller = watchedCallerRelationship(entry, viewerContext, callerLibrary);
   return (
@@ -298,6 +321,11 @@ function WatchedCard({
       // contradict each other.
       inMyShows={caller.inMyShows}
       callerRelationship={caller}
+      // Self mode only, the same guard the row applies: a friend's watch
+      // history is not the viewer's to delete. The card re-checks it against
+      // `ratingOwner`, so passing it in friend mode would still draw nothing.
+      historyRemovable={viewerContext.kind === "self"}
+      onRemoved={onRemoved}
     />
   );
 }
@@ -306,10 +334,12 @@ function WatchedRow({
   entry,
   viewerContext,
   callerLibrary,
+  onRemoved,
 }: {
   entry: WatchedEntry;
   viewerContext: ViewerContext;
   callerLibrary?: CallerLibrary;
+  onRemoved?: (showId: number) => void;
 }) {
   // The same resolver the grid card asks (NEU-1188). For self,
   // `entry.in_my_shows` is the viewer's own relationship; for friend the
@@ -317,9 +347,6 @@ function WatchedRow({
   // library. `MyShowsButton` takes that answer rather than the sources.
   const caller = watchedCallerRelationship(entry, viewerContext, callerLibrary);
   const owner = ratingOwnerFor(viewerContext);
-
-  const removeHistory = useRemoveFromHistory();
-  const [confirmingRemoveHistory, setConfirmingRemoveHistory] = useState(false);
 
   const status = libraryStatusFor(entry);
   const upcoming = Math.max(0, entry.total_episode_count - entry.aired_episode_count);
@@ -388,34 +415,17 @@ function WatchedRow({
             inMyShows={caller.inMyShows}
           />
           {viewerContext.kind === "self" && (
-            <Button
-              type="button"
-              size="sm"
-              variant="ghost"
-              onClick={() => setConfirmingRemoveHistory(true)}
-              aria-label={`Remove ${entry.show.name} watch history`}
-              className="h-7 px-2 gap-1 text-xs text-muted-foreground hover:text-destructive"
-            >
-              <Trash2 className="h-3.5 w-3.5" aria-hidden />
-              Watch History
-            </Button>
+            // The labelled variant, unchanged from where this control has
+            // always been: adding is possible in this action row (the My Shows
+            // button beside it), so the row keeps its text (NEU-1187 §3.1).
+            <RemoveWatchHistoryButton
+              showId={entry.show.id}
+              showName={entry.show.name}
+              onRemoved={onRemoved}
+            />
           )}
         </div>
       </div>
-      {confirmingRemoveHistory && (
-        <ConfirmDialog
-          title="Remove from history"
-          description={`Remove all watch history for ${entry.show.name}? This cannot be undone.`}
-          confirmLabel="Confirm"
-          destructive
-          pending={removeHistory.isPending}
-          onConfirm={() => {
-            removeHistory.mutate({ showId: entry.show.id });
-            setConfirmingRemoveHistory(false);
-          }}
-          onClose={() => setConfirmingRemoveHistory(false)}
-        />
-      )}
     </li>
   );
 }

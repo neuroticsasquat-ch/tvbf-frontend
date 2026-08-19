@@ -1,8 +1,14 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useMemo } from "react";
 
 import { useRecommendations } from "@/api/me";
+import type { Recommendation } from "@/api/types";
 import { ShowGrid } from "@/components/ShowGrid";
+import { useFocusAfterRemoval } from "@/hooks/useFocusAfterRemoval";
 import { useLatched } from "@/hooks/useLatched";
+
+/** Module scope so it is one stable reference across renders — it lands in
+ * `useFocusAfterRemoval`'s effect dependencies. */
+const showIdOf = (r: Recommendation) => r.id;
 
 /** The "My Recommendations" tab of the Discover page (NEU-1114).
  *
@@ -57,68 +63,36 @@ import { useLatched } from "@/hooks/useLatched";
  * renders this panel on its own. It covers a dismissal for free, because it
  * latches on *had rows* rather than on why they went away.
  *
- * **This panel owns where focus goes after a dismissal** (NEU-1179 §3.4).
- * There is no optimistic removal — the replacement is the server's choice from
- * the stored set and the client cannot know it — so the sequence is: activate
- * the chip, `POST`, invalidate, refetch, the row leaves the array, the card
- * unmounts, and focus falls to `<body>`. From there a keyboard or
- * screen-reader user is ~25 tab stops from where they were, on the one action
- * this surface expects to be repeated.
+ * **This panel owns where focus goes after a dismissal** (NEU-1179 §3.4),
+ * through `useFocusAfterRemoval`, which is where the mechanism now lives —
+ * this was its first copy of three (NEU-1193). There is no optimistic removal
+ * here — the replacement is the server's choice from the stored set and the
+ * client cannot know it — so the sequence is: activate the chip, `POST`,
+ * invalidate, refetch, the row leaves the array, the card unmounts, and focus
+ * falls to `<body>`. From there a keyboard or screen-reader user is ~25 tab
+ * stops from where they were, on the one action this surface expects to be
+ * repeated. What this panel decides is the two selectors: the chip that took
+ * the freed slot, or the sign-off line when none remain, so what a reader
+ * hears is the line explaining what they just spent.
  *
- * **The absence gate is the part that is easy to get wrong.** `onSuccess`
- * fires *before* the refetch resolves, so an effect running on the callback
- * alone would focus the card that is about to unmount. The effect therefore
- * waits until the dismissed id has actually left the list, which is also what
- * keeps it correct when the refetch is slow or the list changed meanwhile. It
- * then focuses the chip that shifted up into the freed slot — clamped to the
- * last chip when the dismissed card was the last one — or the sign-off line
- * when none remain, so what a reader hears is the line explaining what they
- * just spent.
- *
- * Reaching into the rendered card by `data-dismiss-recommendation` is a real
- * coupling, chosen over forwarding refs through `ShowGrid` and `ShowCard` —
- * three levels of plumbing across components shared by five surfaces that need
- * none of it, plus a ref collection keyed by index that has to survive the
- * array changing under it. The attribute is what makes the coupling explicit
- * rather than incidental. No `aria-live`: moving focus to a chip whose
- * accessible name is "Don't recommend {next show} again" already announces the
- * new context, and a live region would double-speak it.
+ * No `aria-live`: moving focus to a chip whose accessible name is "Don't
+ * recommend {next show} again" already announces the new context, and a live
+ * region would double-speak it.
  */
 export function RecommendedForYou({ everHadRows = false }: { everHadRows?: boolean } = {}) {
   const { data } = useRecommendations();
   const recommendations = useMemo(() => data?.recommendations ?? [], [data]);
   const hadRows = useLatched(recommendations.length > 0) || everHadRows;
 
-  const sectionRef = useRef<HTMLElement>(null);
-  // The dismissed show and where it sat when it was dismissed. Held as state
-  // rather than a ref so the effect below re-runs when it is recorded.
-  const [dismissed, setDismissed] = useState<{ showId: number; index: number } | null>(null);
-
-  // One reference for every card, per §3.3 — the card hands its own id back,
-  // so nothing here is per-row.
-  const onDismissed = useCallback(
-    (showId: number) => {
-      const index = recommendations.findIndex((r) => r.id === showId);
-      setDismissed({ showId, index: index < 0 ? 0 : index });
-    },
-    [recommendations],
+  // The post-dismissal focus move, one hook shared with both library tabs
+  // (NEU-1193). The absence gate matters most here: there is no optimistic
+  // removal, so the row leaves only when the refetch lands.
+  const { containerRef: sectionRef, onRemoved: onDismissed } = useFocusAfterRemoval(
+    recommendations,
+    showIdOf,
+    "[data-dismiss-recommendation]",
+    "[data-recommendations-signoff]",
   );
-
-  useEffect(() => {
-    if (!dismissed) return;
-    // The absence gate: wait for the refetch to actually drop the row, or we
-    // focus the card that is about to unmount.
-    if (recommendations.some((r) => r.id === dismissed.showId)) return;
-    const root = sectionRef.current;
-    setDismissed(null);
-    if (!root) return;
-    const chips = root.querySelectorAll<HTMLElement>("[data-dismiss-recommendation]");
-    if (chips.length > 0) {
-      chips[Math.min(dismissed.index, chips.length - 1)].focus();
-      return;
-    }
-    root.querySelector<HTMLElement>("[data-recommendations-signoff]")?.focus();
-  }, [dismissed, recommendations]);
 
   if (recommendations.length === 0) {
     if (!hadRows) return null;

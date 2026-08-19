@@ -196,4 +196,38 @@ describe("MyShowCard", () => {
     );
     expect(container.querySelector("[data-remove-from-my-shows]")).toBeNull();
   });
+
+  it("draws the compact watch-history removal when the surface opts in", () => {
+    // NEU-1193 — the same seam one control over, and through the poster, which
+    // is what assigns the corner.
+    const { container } = renderWithProviders(
+      <MyShowCard entry={makeEntry(null)} ratingOwner={YOU} inMyShows={false} historyRemovable />,
+    );
+    const poster = container.querySelector("[data-show-poster]");
+    expect(poster?.querySelector("[data-remove-watch-history]")).not.toBeNull();
+    expect(
+      screen.getByRole("button", { name: "Remove Test Show watch history" }),
+    ).toBeInTheDocument();
+  });
+
+  it("renders no watch-history removal on a friend's card, even when asked", () => {
+    // A friend's watch history is not the viewer's to delete — the same guard
+    // `removable` carries, and for a strictly worse failure if it were missing.
+    const { container } = renderWithProviders(
+      <MyShowCard
+        entry={makeEntry(null)}
+        ratingOwner={JEANNE}
+        inMyShows={false}
+        historyRemovable
+      />,
+    );
+    expect(container.querySelector("[data-remove-watch-history]")).toBeNull();
+  });
+
+  it("renders no watch-history removal by default", () => {
+    const { container } = renderWithProviders(
+      <MyShowCard entry={makeEntry(null)} ratingOwner={YOU} inMyShows={false} />,
+    );
+    expect(container.querySelector("[data-remove-watch-history]")).toBeNull();
+  });
 });

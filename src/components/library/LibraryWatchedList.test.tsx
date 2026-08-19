@@ -1,5 +1,6 @@
 import { describe, expect, it, beforeEach } from "vitest";
 import { fireEvent, screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { http, HttpResponse } from "msw";
 import { renderWithProviders } from "@/test/renderWithProviders";
 import { server } from "@/test/msw/server";
@@ -236,5 +237,158 @@ describe("LibraryWatchedList row UI", () => {
     await waitFor(() => expect(screen.getByText("Deadwood")).toBeInTheDocument());
     const link = screen.getByText("Deadwood").closest("a");
     expect(link).toHaveAttribute("href", "/shows/105");
+  });
+});
+
+describe("watch-history removal, and where focus goes after it (NEU-1193)", () => {
+  let watchedResponse: WatchedEntry[];
+
+  beforeEach(() => {
+    window.localStorage.clear();
+    watchedResponse = [];
+    server.use(http.get(`${env.apiBaseUrl}/me/watched`, () => HttpResponse.json(watchedResponse)));
+  });
+
+  /** The list is driven by `useMyWatched()` rather than by a prop, and that is
+   * the point: `useRemoveFromHistory` is optimistic, so the entry leaves the
+   * cache *before* the request settles. A prop-fed harness updates the list
+   * only after the click has been awaited, which is the one ordering under
+   * which reporting the removal on success would also look correct. */
+  function seedThree() {
+    const three = [
+      makeWatched(1, "Andor"),
+      makeWatched(2, "The Bear"),
+      makeWatched(3, "Slow Horses"),
+    ];
+    watchedResponse = three;
+    server.use(
+      http.delete(
+        `${env.apiBaseUrl}/me/shows/:id/watched`,
+        () => new HttpResponse(null, { status: 204 }),
+      ),
+    );
+    return three;
+  }
+
+  async function confirmRemoval(name: RegExp) {
+    await userEvent.click(screen.getByRole("button", { name }));
+    await userEvent.click(await screen.findByRole("button", { name: /^confirm$/i }));
+  }
+
+  it("moves focus to the control that took the freed slot, in list view", async () => {
+    seedThree();
+    renderWithProviders(<Harness />);
+    await screen.findByText("Slow Horses");
+
+    // The *middle* row, deliberately: removing the first lands on control 0
+    // whether the index is right or wrong, which is the assertion this test
+    // exists not to make.
+    await confirmRemoval(/^remove the bear watch history$/i);
+
+    await waitFor(() =>
+      expect(
+        screen.getByRole("button", { name: "Remove Slow Horses watch history" }),
+      ).toHaveFocus(),
+    );
+  });
+
+  it("moves focus to the control that took the freed slot, in grid view", async () => {
+    // The grid drawing is NEU-1193's own — NEU-1188 left this surface without
+    // one at all, so before this ticket there was nothing here to focus.
+    window.localStorage.setItem("tvbf:view:watched", "grid");
+    seedThree();
+    const { container } = renderWithProviders(<Harness />);
+    await screen.findByText("Slow Horses");
+    expect(container.querySelector('button[aria-label="Grid view"]')).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+
+    await confirmRemoval(/^remove the bear watch history$/i);
+
+    await waitFor(() =>
+      expect(
+        screen.getByRole("button", { name: "Remove Slow Horses watch history" }),
+      ).toHaveFocus(),
+    );
+  });
+
+  it("clamps to the last control when the removed entry was last", async () => {
+    seedThree();
+    renderWithProviders(<Harness />);
+    await screen.findByText("Slow Horses");
+
+    await confirmRemoval(/^remove slow horses watch history$/i);
+
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: "Remove The Bear watch history" })).toHaveFocus(),
+    );
+  });
+
+  it("focuses the results container when the last entry goes", async () => {
+    watchedResponse = [makeWatched(1, "Andor")];
+    server.use(
+      http.delete(
+        `${env.apiBaseUrl}/me/shows/1/watched`,
+        () => new HttpResponse(null, { status: 204 }),
+      ),
+    );
+    renderWithProviders(<Harness />);
+    await screen.findByText("Andor");
+
+    await confirmRemoval(/^remove andor watch history$/i);
+
+    await waitFor(() => {
+      // Reached from the empty-state copy rather than by taking the first
+      // `[tabindex="-1"]` in the document, so the assertion cannot drift onto
+      // some other unfocusable node the toolbar happens to render first.
+      const results = screen.getByText("No watch history yet.").closest('[tabindex="-1"]');
+      expect(results).not.toBeNull();
+      expect(results).toHaveFocus();
+    });
+  });
+
+  it("focuses the results container when the last entry goes, in grid view too", async () => {
+    // The container is one region across both views, so this is the same node
+    // — but the grid's control is this ticket's own code, so the path to it is
+    // not the one the list test walks.
+    window.localStorage.setItem("tvbf:view:watched", "grid");
+    watchedResponse = [makeWatched(1, "Andor")];
+    server.use(
+      http.delete(
+        `${env.apiBaseUrl}/me/shows/1/watched`,
+        () => new HttpResponse(null, { status: 204 }),
+      ),
+    );
+    renderWithProviders(<Harness />);
+    await screen.findByText("Andor");
+
+    await confirmRemoval(/^remove andor watch history$/i);
+
+    await waitFor(() => {
+      const results = screen.getByText("No watch history yet.").closest('[tabindex="-1"]');
+      expect(results).not.toBeNull();
+      expect(results).toHaveFocus();
+    });
+  });
+
+  it("moves nobody's focus when the removal fails", async () => {
+    // `useRemoveFromHistory` restores its snapshot and raises its own toast, so
+    // the row comes back — and because the report hangs off `onSuccess`, focus
+    // is never moved into the restored list.
+    seedThree();
+    server.use(
+      http.delete(
+        `${env.apiBaseUrl}/me/shows/2/watched`,
+        () => new HttpResponse(null, { status: 500 }),
+      ),
+    );
+    renderWithProviders(<Harness />);
+    await screen.findByText("Slow Horses");
+
+    await confirmRemoval(/^remove the bear watch history$/i);
+
+    await waitFor(() => expect(screen.getByText("The Bear")).toBeInTheDocument());
+    expect(document.body).toHaveFocus();
   });
 });
