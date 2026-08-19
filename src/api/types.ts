@@ -399,6 +399,16 @@ export interface WatchedEntry {
   first_watched_at: string | null;
   in_my_shows: boolean;
   status: WatchedStatus;
+  /** **The row owner's rating, not the requester's** (NEU-1191). The two are
+   * the same user on `GET /me/watched` and differ on `GET /users/{id}/watched`,
+   * where the value is the *friend's* rating and is null when the friend has
+   * not rated a show however the caller rated it. `MyShowEntry.my_rating`
+   * behaves identically, and both are attributed through `ratingOwnerFor`
+   * (NEU-1181) rather than assumed to be the viewer's.
+   *
+   * It is top-level rather than on `show`, because `ShowSummary.my_rating`
+   * means the *requester's* rating everywhere it is filled. */
+  my_rating: number | null;
 }
 
 export interface User {

@@ -42,7 +42,7 @@ import { usePersistedSort } from "@/hooks/usePersistedSort";
 import { usePersistedString } from "@/hooks/usePersistedString";
 import { usePersistedView } from "@/hooks/usePersistedView";
 import { OwnerFacts } from "@/components/OwnerFacts";
-import { callerPosterMark, type CallerLibrary } from "./callerLibrary";
+import { watchedCallerRelationship, type CallerLibrary } from "./callerLibrary";
 import { matchesCallerMembership, matchesCallerWatchState } from "./callerFilters";
 import { CallerProgressNote } from "./LibraryRowIndicators";
 import { SELF, ratingOwnerFor, type ViewerContext } from "./viewerContext";
@@ -215,19 +215,11 @@ export function LibraryWatchedList({
         view === "grid" && (
           <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-8">
             {filteredAndSorted.map((entry) => (
-              <MyShowCard
+              <WatchedCard
                 key={entry.show.id}
-                entry={watchedToMyShowEntry(entry)}
-                // The seam is installed here even though `watchedToMyShowEntry`
-                // hard-codes `my_rating: null` today: that is NEU-1188's defect,
-                // and the moment it is fixed this grid starts rendering a rating
-                // that is the friend's in friend mode (NEU-1182 §2.8).
-                ratingOwner={ratingOwnerFor(viewerContext)}
-                inMyShows={
-                  viewerContext.kind === "friend"
-                    ? (callerLibrary?.get(entry.show.id)?.in_my_shows ?? false)
-                    : entry.in_my_shows
-                }
+                entry={entry}
+                viewerContext={viewerContext}
+                callerLibrary={callerLibrary}
               />
             ))}
           </div>
@@ -253,8 +245,14 @@ export function LibraryWatchedList({
 }
 
 /** Adapter so the existing `MyShowCard` (built for MyShowEntry) can render
- * WatchedEntry rows in grid view. The card only reads `show`, the watched/aired
- * counts, and `upcoming_episode_count` — which we derive. */
+ * WatchedEntry rows in grid view.
+ *
+ * It is a **pass-through**, and stayed one: `my_rating` was hard-coded `null`
+ * here, which was an honest statement about a field the server did not send
+ * until NEU-1191 added it to `WatchedEntry` as a top-level field with the same
+ * meaning `MyShowEntry.my_rating` has — **the row owner's** rating, so a
+ * friend's on a friend's library. Both payloads being structurally identical is
+ * what keeps this a copy rather than a translation layer (NEU-1188 AC 4). */
 function watchedToMyShowEntry(e: WatchedEntry): MyShowEntry {
   const upcoming = Math.max(0, e.total_episode_count - e.aired_episode_count);
   return {
@@ -268,8 +266,46 @@ function watchedToMyShowEntry(e: WatchedEntry): MyShowEntry {
     first_watched_at: e.first_watched_at,
     next_episode: null,
     added_at: e.first_watched_at ?? new Date(0).toISOString(),
-    my_rating: null,
+    my_rating: e.my_rating,
   };
+}
+
+/** One Watched grid card.
+ *
+ * Its own component rather than an inline `MyShowCard`, because the card now
+ * needs the same two resolved answers `WatchedRow` needs and deriving them
+ * twice is what let the two views disagree: the grid could not add a show to My
+ * Shows at all, and the list never drew the library mark (NEU-1188 AC 2/6).
+ *
+ * **One deliberate asymmetry remains**, and it is not this rule weakening: the
+ * list row's "Watch History" removal has no counterpart here. It is a
+ * destructive control behind a confirm dialog, and the ~97px card has no room
+ * for a third labelled affordance — drawing an icon-only one would be a fifth
+ * treatment of an act NEU-1187 spent a ticket unifying, with no placement rule
+ * to put it under (`ShowPoster` exposes one control slot). NEU-1193 already
+ * owns that removal path; it is the ticket to give it a card drawing.
+ */
+function WatchedCard({
+  entry,
+  viewerContext,
+  callerLibrary,
+}: {
+  entry: WatchedEntry;
+  viewerContext: ViewerContext;
+  callerLibrary?: CallerLibrary;
+}) {
+  const caller = watchedCallerRelationship(entry, viewerContext, callerLibrary);
+  return (
+    <MyShowCard
+      entry={watchedToMyShowEntry(entry)}
+      ratingOwner={ratingOwnerFor(viewerContext)}
+      // The viewer's own membership, which on this tab genuinely varies in both
+      // modes — the mark and the button therefore read one boolean and cannot
+      // contradict each other.
+      inMyShows={caller.inMyShows}
+      callerRelationship={caller}
+    />
+  );
 }
 
 function WatchedRow({
@@ -281,15 +317,12 @@ function WatchedRow({
   viewerContext: ViewerContext;
   callerLibrary?: CallerLibrary;
 }) {
-  // For self, `entry.in_my_shows` is the caller's relationship. For friend, the
-  // friend endpoint reports the friend's relationship there — drive the button
-  // off `callerLibrary` instead. `MyShowsButton` takes this answer rather than
-  // the sources, because this choice is the row's and not the button's
-  // (NEU-1176).
-  const upstream =
-    viewerContext.kind === "friend"
-      ? (callerLibrary?.get(entry.show.id)?.in_my_shows ?? false)
-      : entry.in_my_shows;
+  // The same resolver the grid card asks (NEU-1188). For self,
+  // `entry.in_my_shows` is the viewer's own relationship; for friend the
+  // endpoint reports the *friend's* there, so the viewer's comes from their own
+  // library. `MyShowsButton` takes that answer rather than the sources.
+  const caller = watchedCallerRelationship(entry, viewerContext, callerLibrary);
+  const owner = ratingOwnerFor(viewerContext);
 
   const removeHistory = useRemoveFromHistory();
   const [confirmingRemoveHistory, setConfirmingRemoveHistory] = useState(false);
@@ -304,7 +337,14 @@ function WatchedRow({
         src={entry.show.image_medium}
         linkLabel={entry.show.name}
         size="row"
-        inMyShows={callerPosterMark(entry.show.id, viewerContext, callerLibrary)}
+        // The viewer's own membership, not `callerPosterMark` — which
+        // hard-returns `false` in self mode, correctly on Active where every
+        // row is tracked by definition and wrongly here, where membership
+        // varies and the tab offers a filter on it (NEU-1188 AC 6).
+        inMyShows={caller.inMyShows}
+        // Only the viewer's own rating may occupy a poster corner; a friend's
+        // stays in the group that carries their name (NEU-1182 §3.5).
+        ownRating={owner.kind === "own" ? entry.my_rating : null}
       />
       <div className="flex-1 min-w-0 flex flex-col gap-2">
         <div className="flex items-baseline gap-2 flex-wrap">
@@ -329,7 +369,7 @@ function WatchedRow({
           />
         )}
         <OwnerFacts
-          owner={ratingOwnerFor(viewerContext)}
+          owner={owner}
           layout="inline"
           status={status}
           progress={
@@ -337,21 +377,22 @@ function WatchedRow({
               ? { watched: entry.watched_episode_count, aired: entry.aired_episode_count }
               : null
           }
-          // `WatchedEntry` carries no rating at all — the friend's rating
-          // reaches this surface only once NEU-1188 lands.
-          rating={null}
+          // `my_rating` is the *row owner's* rating (NEU-1191). In self mode it
+          // sits on the poster above; in friend mode it belongs to the group
+          // that carries their name (NEU-1181 §6.2).
+          rating={owner.kind === "own" ? null : entry.my_rating}
           lastWatchedAt={entry.last_watched_at}
         />
         {status !== "finished" && upcoming > 0 && (
           <p className="text-xs text-muted-foreground">{upcoming} upcoming</p>
         )}
         <div className="flex flex-wrap items-center justify-end gap-2 pt-1">
-          <CallerProgressNote
+          <CallerProgressNote progress={caller.progress} />
+          <MyShowsButton
             showId={entry.show.id}
-            viewerContext={viewerContext}
-            callerLibrary={callerLibrary}
+            showName={entry.show.name}
+            inMyShows={caller.inMyShows}
           />
-          <MyShowsButton showId={entry.show.id} showName={entry.show.name} inMyShows={upstream} />
           {viewerContext.kind === "self" && (
             <Button
               type="button"

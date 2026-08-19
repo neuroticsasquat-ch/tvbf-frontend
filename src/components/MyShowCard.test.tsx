@@ -130,6 +130,64 @@ describe("MyShowCard", () => {
     expect(container.querySelector("[data-remove-from-my-shows]")).toBeNull();
   });
 
+  it("renders no action row by default", () => {
+    // NEU-1188's opt-in seam, asserted absent here rather than once per grid:
+    // the containment pattern `ShowCard.test.tsx` established for `addable`.
+    renderWithProviders(<MyShowCard entry={makeEntry(null)} ratingOwner={YOU} inMyShows={false} />);
+    expect(screen.queryByRole("button", { name: /My Shows$/ })).not.toBeInTheDocument();
+    expect(screen.queryByText(/^You: /)).not.toBeInTheDocument();
+  });
+
+  it("draws the labelled button and the viewer's comparison when the surface opts in", () => {
+    // NEU-1188 AC 2/3. The Watched grid could not add a show to My Shows at
+    // all, and a friend's grid offered neither control nor comparison — both
+    // of which its list rows have always carried.
+    const { container } = renderWithProviders(
+      <MyShowCard
+        entry={makeEntry(null)}
+        ratingOwner={JEANNE}
+        inMyShows={false}
+        callerRelationship={{ inMyShows: false, progress: { watched: 3, aired: 10 } }}
+      />,
+    );
+    const button = screen.getByRole("button", { name: "Add Test Show to My Shows" });
+    expect(button).toHaveTextContent("My Shows");
+    // Adding is possible here, so the control is labelled and sits *outside*
+    // the poster — the position is what says which (NEU-1187 §3.1).
+    expect(button.closest("[data-show-poster]")).toBeNull();
+    expect(container.contains(button)).toBe(true);
+    expect(screen.getByText("You: 3/10")).toBeInTheDocument();
+  });
+
+  it("omits the comparison when the viewer has watched nothing", () => {
+    renderWithProviders(
+      <MyShowCard
+        entry={makeEntry(null)}
+        ratingOwner={JEANNE}
+        inMyShows
+        callerRelationship={{ inMyShows: true, progress: null }}
+      />,
+    );
+    expect(
+      screen.getByRole("button", { name: "Remove Test Show from My Shows" }),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/^You: /)).not.toBeInTheDocument();
+  });
+
+  it("carries the last-watched date, which is a per-person fact", () => {
+    // NEU-1188 AC 7. It was hard-coded `null` on the grounds that this is the
+    // densest surface — an argument for thinning *ownerless* metadata, which
+    // this is not, and on Watched it is the tab's default sort key.
+    renderWithProviders(
+      <MyShowCard
+        entry={makeEntry(null, { last_watched_at: "2026-04-15T00:00:00Z" })}
+        ratingOwner={YOU}
+        inMyShows
+      />,
+    );
+    expect(screen.getByText(/Last Watched:/i)).toBeInTheDocument();
+  });
+
   it("renders no remove chip by default", () => {
     // The containment-seam assertion, per `ShowCard.test.tsx`'s pattern: an
     // affordance belonging to one surface is absent everywhere else.
