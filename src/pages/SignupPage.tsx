@@ -4,6 +4,19 @@ import { Link, useNavigate, useSearchParams } from "react-router";
 import { ApiError } from "@/api/client";
 import { useAuth } from "@/components/AuthContext";
 
+/** The request fields this form has an input for. A 422 naming anything else
+ * falls back to the banner rather than being dropped silently. */
+const OWN_FIELDS = new Set(["invite_code", "email", "display_name", "password"]);
+
+function FieldError({ id, message }: { id: string; message: string | undefined }) {
+  if (!message) return null;
+  return (
+    <p id={id} role="alert" className="text-sm text-red-600 mt-1">
+      {message}
+    </p>
+  );
+}
+
 export function SignupPage() {
   const { signup } = useAuth();
   const navigate = useNavigate();
@@ -13,11 +26,19 @@ export function SignupPage() {
   const [password, setPassword] = useState("");
   const [inviteCode, setInviteCode] = useState(() => params.get("invite") ?? "");
   const [error, setError] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
+
+  function clearFieldError(name: string) {
+    setFieldErrors((prev) =>
+      name in prev ? Object.fromEntries(Object.entries(prev).filter(([k]) => k !== name)) : prev,
+    );
+  }
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
+    setFieldErrors({});
     if (password.length < 8) {
       setError("Password must be at least 8 characters.");
       return;
@@ -31,7 +52,19 @@ export function SignupPage() {
       await signup(email, password, displayName, inviteCode.trim());
       navigate("/my-shows");
     } catch (err) {
-      if (err instanceof ApiError && err.status === 403) {
+      // Field messages first, and on the shape rather than the status: the
+      // client fills `fieldErrors` for any response carrying the list, and a
+      // schema-level refusal need not arrive as a 422 (NEU-1163's taken handle
+      // may well be a 409). Checking the status first would drop it.
+      if (err instanceof ApiError && err.fieldErrors) {
+        setFieldErrors(err.fieldErrors);
+        const unowned = Object.entries(err.fieldErrors).filter(
+          ([name]) => !OWN_FIELDS.has(name),
+        );
+        // Every message reaches the user: the ones this form has an input for
+        // land against it, anything else keeps the banner.
+        if (unowned.length > 0) setError(unowned.map(([, msg]) => msg).join(" "));
+      } else if (err instanceof ApiError && err.status === 403) {
         setError("Invite code is invalid, already used, or doesn't match this email.");
       } else if (err instanceof ApiError && err.status === 409) {
         setError("This email is already registered.");
@@ -58,10 +91,16 @@ export function SignupPage() {
             type="text"
             required
             value={inviteCode}
-            onChange={(e) => setInviteCode(e.target.value)}
+            onChange={(e) => {
+              setInviteCode(e.target.value);
+              clearFieldError("invite_code");
+            }}
+            aria-invalid={fieldErrors.invite_code ? true : undefined}
+            aria-describedby={fieldErrors.invite_code ? "invite_code-error" : undefined}
             className="mt-1 w-full rounded border px-3 py-2"
             autoComplete="off"
           />
+          <FieldError id="invite_code-error" message={fieldErrors.invite_code} />
           <p className="text-xs text-gray-500 mt-1">TV BingeFriend is invite-only during beta.</p>
         </div>
         <div>
@@ -73,10 +112,15 @@ export function SignupPage() {
             type="email"
             required
             value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            aria-describedby="email-help"
+            onChange={(e) => {
+              setEmail(e.target.value);
+              clearFieldError("email");
+            }}
+            aria-invalid={fieldErrors.email ? true : undefined}
+            aria-describedby={fieldErrors.email ? "email-error email-help" : "email-help"}
             className="mt-1 w-full rounded border px-3 py-2"
           />
+          <FieldError id="email-error" message={fieldErrors.email} />
           <p id="email-help" className="text-xs text-gray-500 mt-1">
             Your email won't be shown to other users, but they can find you with it to send a
             connection request.
@@ -92,10 +136,17 @@ export function SignupPage() {
             required
             maxLength={100}
             value={displayName}
-            onChange={(e) => setDisplayName(e.target.value)}
-            aria-describedby="display-name-help"
+            onChange={(e) => {
+              setDisplayName(e.target.value);
+              clearFieldError("display_name");
+            }}
+            aria-invalid={fieldErrors.display_name ? true : undefined}
+            aria-describedby={
+              fieldErrors.display_name ? "display_name-error display-name-help" : "display-name-help"
+            }
             className="mt-1 w-full rounded border px-3 py-2"
           />
+          <FieldError id="display_name-error" message={fieldErrors.display_name} />
           <p id="display-name-help" className="text-xs text-gray-500 mt-1">
             This is the name other users will see on the site.
           </p>
@@ -110,9 +161,15 @@ export function SignupPage() {
             required
             minLength={8}
             value={password}
-            onChange={(e) => setPassword(e.target.value)}
+            onChange={(e) => {
+              setPassword(e.target.value);
+              clearFieldError("password");
+            }}
+            aria-invalid={fieldErrors.password ? true : undefined}
+            aria-describedby={fieldErrors.password ? "password-error" : undefined}
             className="mt-1 w-full rounded border px-3 py-2"
           />
+          <FieldError id="password-error" message={fieldErrors.password} />
           <p className="text-xs text-gray-500 mt-1">At least 8 characters.</p>
         </div>
         {error && <p className="text-sm text-red-600">{error}</p>}
