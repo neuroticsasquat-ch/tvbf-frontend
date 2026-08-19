@@ -1,11 +1,10 @@
 import { useMemo } from "react";
-import { Link } from "react-router";
-import { ArrowDown, ArrowUp, Tv } from "lucide-react";
 import { useUpcoming } from "@/api/me";
 import type { UpcomingSort } from "@/api/types";
 import { usePersistedSort } from "@/hooks/usePersistedSort";
 import { usePersistedString } from "@/hooks/usePersistedString";
-import { FilterSheet } from "@/components/home/FilterSheet";
+import { EpisodeRow } from "@/components/home/EpisodeRow";
+import { ListingToolbar } from "@/components/home/ListingToolbar";
 import {
   ClearFiltersButton,
   GenreFilter,
@@ -23,18 +22,6 @@ import {
 } from "@/components/home/filterTypes";
 
 const ACTIVE_WATCH_STATE_KEYS = ACTIVE_WATCH_STATES.map((s) => s.key);
-
-const DATE_FMT = new Intl.DateTimeFormat("en-US", {
-  weekday: "short",
-  month: "short",
-  day: "numeric",
-  year: "numeric",
-});
-
-function formatAirdate(iso: string): string {
-  const [y, m, d] = iso.split("-").map(Number);
-  return DATE_FMT.format(new Date(y, m - 1, d));
-}
 
 const SORTS: { key: UpcomingSort; label: string }[] = [
   { key: "airdate_asc", label: "Next Air Date" },
@@ -67,44 +54,31 @@ export function UpcomingList() {
       .filter((e) => matchesGenre(e.show, genre));
   }, [data, watchState, status, genre]);
 
-  const sortLabel = SORTS.find((s) => s.key === sort)?.label ?? "";
-
   return (
     <div>
-      <div className="flex items-baseline justify-between mb-4">
-        <FilterSheet
-          title="Sort Upcoming"
-          triggerLabel={sortLabel}
-          triggerIcon={
-            <>
-              <ArrowDown className="h-4 w-4" aria-hidden />
-              <ArrowUp className="h-4 w-4 -ml-2" aria-hidden />
-            </>
-          }
-          ariaLabel={`Sort Upcoming (current: ${sortLabel})`}
-          options={SORTS}
-          value={sort}
-          onChange={setSort}
-        />
-      </div>
-      <div className="flex flex-wrap items-center gap-2 mb-4">
-        <WatchStateFilter
-          value={watchState}
-          onChange={setWatchState}
-          options={ACTIVE_WATCH_STATES}
-        />
-        <ShowStatusFilterPicker value={status} onChange={setStatus} />
-        <GenreFilter value={genre} onChange={setGenre} />
-        {(watchState !== "all" || status !== "all" || genre !== "all") && (
-          <ClearFiltersButton
-            onClear={() => {
-              setWatchState("all");
-              setStatus("all");
-              setGenre("all");
-            }}
-          />
-        )}
-      </div>
+      <ListingToolbar
+        sort={{ label: "Upcoming", options: SORTS, value: sort, onChange: setSort }}
+        filters={
+          <>
+            <WatchStateFilter
+              value={watchState}
+              onChange={setWatchState}
+              options={ACTIVE_WATCH_STATES}
+            />
+            <ShowStatusFilterPicker value={status} onChange={setStatus} />
+            <GenreFilter value={genre} onChange={setGenre} />
+            {(watchState !== "all" || status !== "all" || genre !== "all") && (
+              <ClearFiltersButton
+                onClear={() => {
+                  setWatchState("all");
+                  setStatus("all");
+                  setGenre("all");
+                }}
+              />
+            )}
+          </>
+        }
+      />
       {isLoading && <p>Loading…</p>}
       {!isLoading && filtered && filtered.length === 0 && (
         <p className="text-muted-foreground">
@@ -116,56 +90,7 @@ export function UpcomingList() {
       {!isLoading && filtered && filtered.length > 0 && (
         <ul className="space-y-3">
           {filtered.map((entry) => (
-            <li key={entry.show.id} className="border border-border rounded p-3 hover:bg-accent">
-              <div className="flex items-center gap-4">
-                <Link
-                  to={`/episodes/${entry.episode.id}`}
-                  className="flex min-w-0 flex-1 items-center gap-4"
-                >
-                  {entry.show.image_medium ? (
-                    <img
-                      src={entry.show.image_medium}
-                      alt=""
-                      className="w-16 aspect-[210/295] object-cover rounded shrink-0"
-                      loading="lazy"
-                    />
-                  ) : (
-                    <div
-                      aria-hidden
-                      className="w-16 aspect-[210/295] rounded shrink-0 bg-muted text-muted-foreground flex items-center justify-center"
-                    >
-                      <Tv className="h-6 w-6" />
-                    </div>
-                  )}
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-foreground leading-tight truncate">
-                      {entry.show.name}
-                      {entry.show.premiered && (
-                        <span className="font-normal text-muted-foreground">
-                          {" "}
-                          ({entry.show.premiered.slice(0, 4)})
-                        </span>
-                      )}
-                    </p>
-                    <p className="text-xs text-muted-foreground leading-tight">
-                      S{entry.episode.season}E{entry.episode.number}
-                    </p>
-                    {entry.episode.name && (
-                      <p className="text-sm text-foreground leading-tight truncate">
-                        {entry.episode.name}
-                      </p>
-                    )}
-                    {(entry.episode.airdate || entry.episode.runtime) && (
-                      <p className="text-xs text-muted-foreground leading-tight">
-                        {entry.episode.airdate ? formatAirdate(entry.episode.airdate) : ""}
-                        {entry.episode.airdate && entry.episode.runtime ? " · " : ""}
-                        {entry.episode.runtime ? `${entry.episode.runtime} min` : ""}
-                      </p>
-                    )}
-                  </div>
-                </Link>
-              </div>
-            </li>
+            <EpisodeRow key={entry.show.id} show={entry.show} episode={entry.episode} />
           ))}
         </ul>
       )}

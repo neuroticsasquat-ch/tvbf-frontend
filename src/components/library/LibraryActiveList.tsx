@@ -1,16 +1,14 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router";
-import { ArrowDown, ArrowUp } from "lucide-react";
 import type { MyShowEntry } from "@/api/types";
 import { usePersistedSort } from "@/hooks/usePersistedSort";
 import { usePersistedString } from "@/hooks/usePersistedString";
 import { usePersistedView } from "@/hooks/usePersistedView";
 import { WatchProgressBar } from "@/components/WatchProgressBar";
-import { ViewToggle } from "@/components/ViewToggle";
 import { MyShowCard } from "@/components/MyShowCard";
 import { ShowPoster } from "@/components/ShowPoster";
 import { MyShowsButton } from "@/components/MyShowsButton";
-import { FilterSheet } from "@/components/home/FilterSheet";
+import { ListingToolbar } from "@/components/home/ListingToolbar";
 import {
   CallerMembershipFilterPicker,
   CallerWatchStateFilterPicker,
@@ -179,7 +177,6 @@ export function LibraryActiveList({
     root.focus();
   }, [removed, filteredAndSorted]);
 
-  const sortLabel = LIBRARY_SORTS.find((s) => s.key === sort)?.label ?? "";
   const filtersActive =
     watchState !== "all" ||
     status !== "all" ||
@@ -191,53 +188,48 @@ export function LibraryActiveList({
 
   return (
     <div>
-      <div className="flex flex-wrap items-center gap-2 mb-4">
-        <ViewToggle value={view} onChange={setView} ariaLabel="My Shows display" />
-        <FilterSheet
-          title="Sort My Shows"
-          triggerLabel={sortLabel}
-          triggerIcon={
-            <>
-              <ArrowDown className="h-4 w-4" aria-hidden />
-              <ArrowUp className="h-4 w-4 -ml-2" aria-hidden />
-            </>
-          }
-          ariaLabel={`Sort My Shows (current: ${sortLabel})`}
-          options={LIBRARY_SORTS}
-          value={sort}
-          onChange={setSort}
-        />
-      </div>
-      <div className="mb-4 flex flex-wrap items-center gap-2">
-        <WatchStateFilter value={watchState} onChange={setWatchState} />
-        <ShowStatusFilterPicker value={status} onChange={setStatus} />
-        <InMyShowsFilterPicker
-          value={inMyShows}
-          onChange={setInMyShows}
-          disabledReason={IN_MY_SHOWS_DISABLED_REASON}
-        />
-        {viewerContext.kind === "friend" && (
+      <ListingToolbar
+        view={{ value: view, onChange: setView, ariaLabel: "My Shows display" }}
+        sort={{ label: "My Shows", options: LIBRARY_SORTS, value: sort, onChange: setSort }}
+        filters={
           <>
-            <CallerMembershipFilterPicker value={callerMembership} onChange={setCallerMembership} />
-            <CallerWatchStateFilterPicker value={callerWatchState} onChange={setCallerWatchState} />
+            <WatchStateFilter value={watchState} onChange={setWatchState} />
+            <ShowStatusFilterPicker value={status} onChange={setStatus} />
+            <InMyShowsFilterPicker
+              value={inMyShows}
+              onChange={setInMyShows}
+              disabledReason={IN_MY_SHOWS_DISABLED_REASON}
+            />
+            {viewerContext.kind === "friend" && (
+              <>
+                <CallerMembershipFilterPicker
+                  value={callerMembership}
+                  onChange={setCallerMembership}
+                />
+                <CallerWatchStateFilterPicker
+                  value={callerWatchState}
+                  onChange={setCallerWatchState}
+                />
+              </>
+            )}
+            {viewerContext.kind === "self" && <RatedOnlyFilter value={rated} onChange={setRated} />}
+            <GenreFilter value={genre} onChange={setGenre} />
+            {filtersActive && (
+              <ClearFiltersButton
+                onClear={() => {
+                  setWatchState("all");
+                  setStatus("all");
+                  setInMyShows("all");
+                  setCallerMembership("all");
+                  setCallerWatchState("all");
+                  setGenre("all");
+                  setRated("all");
+                }}
+              />
+            )}
           </>
-        )}
-        {viewerContext.kind === "self" && <RatedOnlyFilter value={rated} onChange={setRated} />}
-        <GenreFilter value={genre} onChange={setGenre} />
-        {filtersActive && (
-          <ClearFiltersButton
-            onClear={() => {
-              setWatchState("all");
-              setStatus("all");
-              setInMyShows("all");
-              setCallerMembership("all");
-              setCallerWatchState("all");
-              setGenre("all");
-              setRated("all");
-            }}
-          />
-        )}
-      </div>
+        }
+      />
       {/* The results region is one focusable container across both views, so
         the post-removal focus move has somewhere to land when the last row
         goes — and one query root for the chips. `tabIndex={-1}` keeps it out
