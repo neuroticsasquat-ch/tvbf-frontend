@@ -392,3 +392,79 @@ describe("watch-history removal, and where focus goes after it (NEU-1193)", () =
     expect(document.body).toHaveFocus();
   });
 });
+
+const JEANNE = { kind: "friend", name: "Jeanne" } as const;
+
+describe("LibraryWatchedList empty states (NEU-1190 §2)", () => {
+  beforeEach(() => window.localStorage.clear());
+
+  it("says the viewer has no history when their own is empty", () => {
+    renderWithProviders(<LibraryWatchedList data={[]} isLoading={false} />);
+    expect(screen.getByText("No watch history yet.")).toBeInTheDocument();
+  });
+
+  it("names the friend when theirs is empty", () => {
+    // AC 4. No list was viewer-aware before this: a friend's empty Watched tab
+    // read "No watch history yet." without saying whose.
+    renderWithProviders(
+      <LibraryWatchedList
+        data={[]}
+        isLoading={false}
+        viewerContext={JEANNE}
+        storagePrefix="friend-watched"
+      />,
+    );
+    expect(screen.getByText("Jeanne has no watch history yet.")).toBeInTheDocument();
+  });
+
+  it("says the viewer's filters excluded everything", () => {
+    // AC 5. This one *does* take attribution, because "your watch history" is
+    // a false statement on a friend's page.
+    window.localStorage.setItem("tvbf:sort:watched-show-status", "returning_series");
+    renderWithProviders(
+      <LibraryWatchedList data={[makeWatched(1, "The Bear")]} isLoading={false} />,
+    );
+    expect(screen.getByText("No matches in your watch history.")).toBeInTheDocument();
+  });
+
+  it("says the friend's filters excluded everything, by name", () => {
+    window.localStorage.setItem("tvbf:sort:friend-watched-show-status", "returning_series");
+    renderWithProviders(
+      <LibraryWatchedList
+        data={[makeWatched(1, "The Bear")]}
+        isLoading={false}
+        viewerContext={JEANNE}
+        storagePrefix="friend-watched"
+      />,
+    );
+    expect(screen.getByText("No matches in Jeanne's watch history.")).toBeInTheDocument();
+  });
+});
+
+describe("LibraryWatchedList row links (NEU-1190 §1)", () => {
+  beforeEach(() => window.localStorage.clear());
+
+  it("exposes exactly one link per row, and it is the show's name", () => {
+    // AC 1. The poster and the title were two links to `/shows/1`, identically
+    // named.
+    renderWithProviders(
+      <LibraryWatchedList data={[makeWatched(1, "The Bear")]} isLoading={false} />,
+    );
+    const links = screen.getAllByRole("link");
+    expect(links).toHaveLength(1);
+    expect(links[0]).toHaveAttribute("href", "/shows/1");
+    expect(links[0]).toHaveTextContent("The Bear");
+  });
+
+  it("keeps the poster's badges announced even though it is no longer a link", () => {
+    renderWithProviders(
+      <LibraryWatchedList
+        data={[makeWatched(1, "The Bear", { in_my_shows: true, my_rating: 4.5 })]}
+        isLoading={false}
+      />,
+    );
+    expect(screen.getByRole("img", { name: "In your My Shows" })).toBeInTheDocument();
+    expect(screen.getByRole("img", { name: "Your rating: 4.5 out of 5" })).toBeInTheDocument();
+    expect(screen.getAllByRole("link")).toHaveLength(1);
+  });
+});

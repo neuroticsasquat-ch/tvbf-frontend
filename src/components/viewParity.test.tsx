@@ -314,7 +314,9 @@ describe("the rule's other half: ownerless metadata may thin out", () => {
     const shows = [{ ...makeShow(), in_my_shows: true }];
 
     const list = renderWithProviders(<ShowList shows={shows} />);
-    expect(list.container.textContent).toContain("Hulu · Returning Series · en");
+    // The language is a display name rather than the ISO code the field
+    // carries (NEU-1190 §3); the line itself is what this test is about.
+    expect(list.container.textContent).toContain("Hulu · Returning Series · English");
     expect(list.container.textContent).toContain("Comedy, Drama");
     cleanup();
 

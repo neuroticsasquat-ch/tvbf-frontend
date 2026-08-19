@@ -3,6 +3,7 @@ import type { ShowSummary } from "@/api/types";
 import { MyShowsButton } from "@/components/MyShowsButton";
 import { RatingBadge } from "@/components/RatingBadge";
 import { ShowPoster } from "@/components/ShowPoster";
+import { languageName } from "@/lib/language";
 import { tenPointToFiveStar } from "@/lib/rating";
 
 function year(dateStr: string | null): string {
@@ -25,11 +26,20 @@ function year(dateStr: string | null): string {
  * as `ShowGrid` does, so `BrowseShow[]` passes through unchanged and a payload
  * without the field renders a row without the mark.
  *
- * **The row is two links, not one.** It was a single `<Link>` over the whole
- * row, which cannot hold a poster with badges: `ShowPoster` owns its own link
- * and an `<a>` inside an `<a>` is invalid. So the poster and the name are each
- * a link to the same show — the shape both library rows already have, and the
- * seam NEU-1190 §1 will use to make it one tab stop again.
+ * **The row is one link, and it is the name.** It was a single `<Link>` over
+ * the whole row, which cannot hold a poster with badges: `ShowPoster` owns its
+ * own link and an `<a>` inside an `<a>` is invalid. NEU-1188 therefore made the
+ * poster and the name two links to one show — two tab stops with the same
+ * accessible name and the same destination, which NEU-1190 §1 collapses by
+ * having the poster render presentationally. `ShowPoster` keeps drawing the
+ * badges and their labels; only its link goes.
+ *
+ * **The language is a display name, never the code** (NEU-1190 §3). Since
+ * NEU-1047 `show.language` carries `original_language`, an ISO 639-1 code, and
+ * this line printed it verbatim — `NBC · Ended · en`. `languageName` maps it,
+ * and answers null for a code it cannot map (TMDB's non-standard `cn` is the
+ * known one), which `filter(Boolean)` then drops: the segment is absent rather
+ * than raw, with the surrounding separators intact.
  *
  * Placement is stated nowhere here: the mark's corner and the viewer's rating's
  * corner are `ShowPoster`'s (NEU-1183 §3.4), and the aggregate goes inline
@@ -68,10 +78,12 @@ export function ShowList({
             key={show.id}
             className="border border-border rounded p-3 flex items-center gap-4 hover:bg-accent"
           >
+            {/* Presentational: the row's name below is the single link to
+              the show (NEU-1190 §1). The badges keep their labels — the
+              poster simply stops being a second, identically-named route to
+              the destination the title already names. */}
             <ShowPoster
-              to={`/shows/${show.id}`}
               src={show.image_medium}
-              linkLabel={show.name}
               size="row"
               inMyShows={show.in_my_shows}
               ownRating={show.my_rating}
@@ -92,7 +104,9 @@ export function ShowList({
                 </p>
               )}
               <p className="text-xs text-muted-foreground leading-tight">
-                {[show.network?.name, show.status, show.language].filter(Boolean).join(" · ")}
+                {[show.network?.name, show.status, languageName(show.language)]
+                  .filter(Boolean)
+                  .join(" · ")}
               </p>
               {show.genres.length > 0 && (
                 <p className="text-xs text-muted-foreground leading-tight">

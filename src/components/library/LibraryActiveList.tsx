@@ -45,6 +45,7 @@ import { activeCallerRelationship, callerPosterMark, type CallerLibrary } from "
 import { matchesCallerMembership, matchesCallerWatchState } from "./callerFilters";
 import { CallerProgressNote } from "./LibraryRowIndicators";
 import { SELF, ratingOwnerFor, type ViewerContext } from "./viewerContext";
+import { activeEmptyMessage } from "./emptyStates";
 
 // On Active tabs the In My Shows filter is inert end-to-end: `In My Shows` is
 // a no-op (every Active row is in My Shows by definition) and `Not in My
@@ -220,7 +221,9 @@ export function LibraryActiveList({
       <div ref={resultsRef} tabIndex={-1} className="outline-none">
         {isLoading && <p>Loading…</p>}
         {!isLoading && filteredAndSorted && filteredAndSorted.length === 0 && (
-          <p className="text-muted-foreground">No shows match the current filters.</p>
+          <p className="text-muted-foreground">
+            {activeEmptyMessage(viewerContext, data?.length === 0)}
+          </p>
         )}
         {!isLoading && filteredAndSorted && filteredAndSorted.length > 0 && view === "grid" && (
           <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-8">
@@ -301,10 +304,11 @@ function ActiveRow({
 
   return (
     <li className="border border-border rounded p-3 flex items-start gap-3 sm:gap-4">
+      {/* Presentational — the show's name below is the row's one link
+        (NEU-1190 §1). The control below is a sibling of the poster's link
+        either way, so dropping the link changes nothing about it. */}
       <ShowPoster
-        to={`/shows/${entry.show.id}`}
         src={entry.show.image_medium}
-        linkLabel={entry.show.name}
         size="row"
         inMyShows={callerPosterMark(entry.show.id, viewerContext, callerLibrary)}
         // Only the viewer's own rating may occupy a poster corner; a friend's
