@@ -247,4 +247,25 @@ describe("FindPeople — verification gate", () => {
     );
     expect(toastErrorMock).not.toHaveBeenCalledWith(expect.stringMatching(/try again/i));
   });
+
+  it("renders no report control on a search result", async () => {
+    vi.spyOn(connectionsApi, "searchUsers").mockResolvedValue([
+      { id: "u-1", display_name: "Alice" },
+    ]);
+    renderWithProviders(<FindPeople />);
+
+    fireEvent.change(screen.getByRole("searchbox", { name: /find people/i }), {
+      target: { value: "alice" },
+    });
+    act(() => {
+      vi.advanceTimersByTime(250);
+    });
+    await waitFor(() => expect(screen.getByText("Alice")).toBeInTheDocument());
+
+    // Deliberately absent (NEU-1168 §2): search is the surface people scan
+    // fastest, and the reporter's daily budget would be spendable on strangers
+    // they have never dealt with. The name links to /users/{id}, which carries
+    // the control.
+    expect(screen.queryByRole("button", { name: /^Report / })).not.toBeInTheDocument();
+  });
 });

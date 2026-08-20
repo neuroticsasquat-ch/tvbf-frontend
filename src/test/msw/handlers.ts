@@ -152,4 +152,18 @@ export const handlers = [
     }
     return new HttpResponse(null, { status: 204 });
   }),
+  // `POST /reports` succeeds by default, so any surface test that renders
+  // `ReportUserButton` does not fail on an unhandled request. Its failure paths
+  // (429 `rate_limited`, 404 `reported_user_not_found`) are per-test
+  // `server.use` overrides, for the reason the connection-request 403 is.
+  http.post(`${base}/reports`, async ({ request }) => {
+    const body = (await request.json().catch(() => ({}))) as {
+      reported_user_id?: string;
+      reason?: string;
+    };
+    if (!body.reported_user_id || !body.reason) {
+      return HttpResponse.json({ detail: "Validation error" }, { status: 422 });
+    }
+    return new HttpResponse(null, { status: 204 });
+  }),
 ];

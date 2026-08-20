@@ -431,6 +431,13 @@ export interface AdminUserRow {
   display_name: string;
   created_at: string;
   is_admin: boolean;
+  /** When moderation began, or null for an active account (NEU-1162 §7.1).
+   *
+   * The admin list is the one surface that carries it. `UserOut` and
+   * `AuthedUserOut` deliberately do not: a disabled user reaches neither, and a
+   * field saying so would be the machine-readable confirmation the backend
+   * refuses to hand an abuser (NEU-1162 §2.2). */
+  disabled_at: string | null;
 }
 
 export interface InviteRow {

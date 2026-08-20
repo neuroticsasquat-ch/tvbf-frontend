@@ -109,4 +109,17 @@ describe("ConnectionsList", () => {
     renderWithProviders(<ConnectionsList />);
     await waitFor(() => expect(screen.getByText(/find people/i)).toBeInTheDocument());
   });
+
+  it("carries a report control per row — the row is a person, not a byline", async () => {
+    vi.spyOn(connectionsApi, "listConnections").mockResolvedValue([
+      makeConn("u-1", "Alice"),
+      makeConn("u-2", "Bob"),
+    ]);
+    renderWithProviders(<ConnectionsList />);
+
+    // The flow itself is `ReportUserButton`'s to test (NEU-1168 §6); this
+    // asserts only that the surface renders it, named per person.
+    expect(await screen.findByRole("button", { name: "Report Alice" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Report Bob" })).toBeInTheDocument();
+  });
 });

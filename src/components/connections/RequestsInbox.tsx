@@ -8,7 +8,8 @@ import {
 } from "@/api/connections";
 import type { ConnectionRequestList, ConnectionRequestOut, UserBrief } from "@/api/types";
 import { Button } from "@/components/ui/button";
-import { ConfirmDialog } from "./ConfirmDialog";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
+import { ReportUserButton } from "@/components/ReportUserButton";
 import { useBlockUser } from "./useBlockUser";
 
 const REQUESTS_KEY = ["connection-requests"] as const;
@@ -127,6 +128,10 @@ function IncomingRow({ row, onBlock }: { row: ConnectionRequestOut; onBlock: () 
         <Button type="button" size="sm" variant="outline" onClick={onBlock} disabled={busy}>
           Block
         </Button>
+        {/* Incoming only. A stranger reaching you is the harassment case; an
+            outgoing request is someone you chose to contact, so its row carries
+            no report control (NEU-1168 §2). */}
+        <ReportUserButton userId={row.requester.id} userName={row.requester.display_name} />
       </div>
     </li>
   );
