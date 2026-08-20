@@ -1,5 +1,6 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
 import { fireEvent, screen, waitFor, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { Route, Routes } from "react-router";
 import { http, HttpResponse } from "msw";
 import { renderWithProviders } from "@/test/renderWithProviders";
@@ -413,5 +414,37 @@ describe("FriendProfilePage", () => {
     expect(screen.getByText("Six Feet Under")).toBeInTheDocument();
     // No new server fetch — filtering happens client-side.
     expect(watched.mock.calls.length).toBe(callsAfterLoad);
+  });
+
+  it("carries a labelled report control in the header and leaves the profile when it blocks", async () => {
+    vi.spyOn(friendsApi, "getFriendShows").mockResolvedValue([]);
+    const block = vi.spyOn(connectionsApi, "blockUser").mockResolvedValue({
+      user: { id: FRIEND_ID, display_name: "Friendly Person" },
+      blocked_at: "2026-08-20T00:00:00Z",
+    });
+    renderWithProviders(
+      <Routes>
+        <Route path="/users/:userId" element={<FriendProfilePage />} />
+        <Route path="/friends" element={<p>friends page</p>} />
+      </Routes>,
+      { route: `/users/${FRIEND_ID}` },
+    );
+    const user = userEvent.setup();
+
+    // Labelled here, compact in the three list rows (NEU-1168 §3.2).
+    const report = await screen.findByRole("button", { name: "Report Friendly Person" });
+    expect(report).toHaveTextContent("Report");
+
+    await user.click(report);
+    await user.type(screen.getByLabelText(/what happened/i), "Abusive messages.");
+    await user.click(screen.getByRole("button", { name: /send report/i }));
+    await screen.findByText(/report received/i);
+    await user.click(screen.getByRole("button", { name: /block Friendly Person/i }));
+
+    await waitFor(() => expect(block).toHaveBeenCalledWith(FRIEND_ID));
+    // This page resolves its subject out of `listConnections`, which the block
+    // empties — without the navigation the reader would land on "User not
+    // found" as the direct result of a deliberate act (AC 10).
+    await waitFor(() => expect(screen.getByText("friends page")).toBeInTheDocument());
   });
 });

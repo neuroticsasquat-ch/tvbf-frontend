@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Trash2 } from "lucide-react";
 
 import { useRemoveFromHistory } from "@/api/me";
-import { ConfirmDialog } from "@/components/connections/ConfirmDialog";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { Button } from "@/components/ui/button";
 
 /** The one control that erases a show's watch history (NEU-1193).

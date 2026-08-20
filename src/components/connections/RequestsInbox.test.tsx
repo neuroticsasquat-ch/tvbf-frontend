@@ -176,4 +176,17 @@ describe("RequestsInbox", () => {
     await waitFor(() => expect(screen.getByText(/no incoming requests/i)).toBeInTheDocument());
     expect(screen.getByText(/no outgoing requests/i)).toBeInTheDocument();
   });
+
+  it("carries a report control on incoming rows and none on outgoing ones", async () => {
+    vi.spyOn(connectionsApi, "listConnectionRequests").mockResolvedValue({
+      incoming: [makeReq("r-in", { id: "u-1", display_name: "Alice" }, "incoming")],
+      outgoing: [makeReq("r-out", { id: "u-2", display_name: "Bob" }, "outgoing")],
+    });
+    renderWithProviders(<RequestsInbox />);
+
+    // A stranger reaching you is the harassment case; an outgoing request is
+    // someone you chose to contact (NEU-1168 §2).
+    expect(await screen.findByRole("button", { name: "Report Alice" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Report Bob" })).not.toBeInTheDocument();
+  });
 });
