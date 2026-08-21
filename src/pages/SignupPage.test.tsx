@@ -30,6 +30,7 @@ async function fillCommonFields(invite = "test-invite") {
   await userEvent.type(screen.getByLabelText(/invite code/i), invite);
   await userEvent.type(screen.getByLabelText(/email/i), "x@y.com");
   await userEvent.type(screen.getByLabelText(/username/i), "X");
+  await userEvent.type(screen.getByLabelText(/^handle$/i), "x_user");
   await userEvent.type(screen.getByLabelText(/password/i), "hunter2hunter2");
 }
 
@@ -71,6 +72,89 @@ describe("SignupPage", () => {
     await fillCommonFields();
     await userEvent.click(screen.getByRole("button", { name: /sign up/i }));
     await waitFor(() => expect(screen.getByText(/already registered/i)).toBeInTheDocument());
+  });
+
+  it("distinguishes handle_unavailable from email_in_use on the same 409", async () => {
+    // Both conflicts share the status and name different fields (NEU-1163
+    // §6.3). Read as one message, a taken handle would tell the visitor their
+    // email was already registered — a refusal pointing at the wrong input, on
+    // the one form submitting both.
+    server.use(
+      http.get(`${env.apiBaseUrl}/me`, () =>
+        HttpResponse.json({ detail: "auth_required" }, { status: 401 }),
+      ),
+      http.post(`${env.apiBaseUrl}/auth/signup`, () =>
+        HttpResponse.json({ detail: "handle_unavailable" }, { status: 409 }),
+      ),
+    );
+    renderAt("/signup");
+    await fillCommonFields();
+    await userEvent.click(screen.getByRole("button", { name: /sign up/i }));
+    await waitFor(() => expect(screen.getByText(/already taken/i)).toBeInTheDocument());
+    expect(screen.queryByText(/already registered/i)).not.toBeInTheDocument();
+  });
+
+  it("puts a 422 about the handle under the handle input", async () => {
+    // The form has an input for it, so the message lands there rather than in
+    // the banner (NEU-1196). This is what NEU-1163 §2 buys by making the shape
+    // rules schema rules.
+    server.use(
+      http.get(`${env.apiBaseUrl}/me`, () =>
+        HttpResponse.json({ detail: "auth_required" }, { status: 401 }),
+      ),
+      http.post(`${env.apiBaseUrl}/auth/signup`, () =>
+        HttpResponse.json(
+          { detail: [{ loc: ["body", "handle"], msg: "handle is not available", type: "value_error" }] },
+          { status: 422 },
+        ),
+      ),
+    );
+    renderAt("/signup");
+    await fillCommonFields();
+    await userEvent.click(screen.getByRole("button", { name: /sign up/i }));
+
+    const message = await screen.findByText(/handle is not available/i);
+    expect(message).toBeInTheDocument();
+    expect(screen.getByLabelText(/^handle$/i)).toHaveAttribute(
+      "aria-describedby",
+      expect.stringContaining("handle-error"),
+    );
+  });
+
+  it("sends the handle as typed and lets the server normalise it", async () => {
+    // The server strips whitespace and one leading `@` and lowercases
+    // (NEU-1163 §1.1), so normalising here would be a second copy of a rule
+    // that already has exactly one — and a divergent one the day it changes.
+    let sent: Record<string, unknown> | null = null;
+    server.use(
+      http.get(`${env.apiBaseUrl}/me`, () =>
+        HttpResponse.json({ detail: "auth_required" }, { status: 401 }),
+      ),
+      http.post(`${env.apiBaseUrl}/auth/signup`, async ({ request }) => {
+        sent = (await request.json()) as Record<string, unknown>;
+        return HttpResponse.json(
+          {
+            id: "u1",
+            email: "x@y.com",
+            display_name: "X",
+            handle: "tomboone",
+            created_at: new Date().toISOString(),
+            csrf_token: "test-csrf",
+          },
+          { status: 201 },
+        );
+      }),
+    );
+    renderAt("/signup");
+    await userEvent.type(screen.getByLabelText(/invite code/i), "test-invite");
+    await userEvent.type(screen.getByLabelText(/email/i), "x@y.com");
+    await userEvent.type(screen.getByLabelText(/username/i), "X");
+    await userEvent.type(screen.getByLabelText(/^handle$/i), "@TomBoone");
+    await userEvent.type(screen.getByLabelText(/password/i), "hunter2hunter2");
+    await userEvent.click(screen.getByRole("button", { name: /sign up/i }));
+
+    await waitFor(() => expect(screen.getByText("my list page")).toBeInTheDocument());
+    expect(sent).toMatchObject({ handle: "@TomBoone" });
   });
 
   it("surfaces invalid_invite (403)", async () => {
@@ -161,6 +245,7 @@ describe("SignupPage", () => {
     // Fill everything EXCEPT invite code.
     await userEvent.type(screen.getByLabelText(/email/i), "x@y.com");
     await userEvent.type(screen.getByLabelText(/username/i), "X");
+  await userEvent.type(screen.getByLabelText(/^handle$/i), "x_user");
     await userEvent.type(screen.getByLabelText(/password/i), "hunter2hunter2");
     // The browser's `required` attribute prevents form submission and triggers
     // its own validation UI before any network call. The form's onSubmit never

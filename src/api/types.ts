@@ -415,6 +415,11 @@ export interface User {
   id: string;
   email: string;
   display_name: string;
+  /** The stable public identifier beside the free-text `display_name` label
+   * (NEU-1163). Lowercase, unique, `^[a-z][a-z0-9_]{2,29}$` — the server
+   * normalises case and a leading `@` rather than refusing them, so what is
+   * stored is not always what was typed. */
+  handle: string;
   created_at: string;
   email_verified_at: string | null;
 }

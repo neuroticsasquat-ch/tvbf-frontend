@@ -12,7 +12,7 @@ import { cn } from "@/lib/cn";
 
 /** The request fields this form has an input for. A 422 naming anything else
  * falls back to the banner rather than being dropped silently. */
-const OWN_FIELDS = ["invite_code", "email", "display_name", "password"];
+const OWN_FIELDS = ["invite_code", "email", "display_name", "handle", "password"];
 
 /** The backend's four abuse-gate outcomes carry a plain-string `detail`
  * (NEU-1160 §7), which is a machine token rather than a sentence — so each is
@@ -46,6 +46,7 @@ export function SignupPage() {
   const [params] = useSearchParams();
   const [email, setEmail] = useState(() => params.get("email") ?? "");
   const [displayName, setDisplayName] = useState("");
+  const [handle, setHandle] = useState("");
   const [password, setPassword] = useState("");
   const [inviteCode, setInviteCode] = useState(() => params.get("invite") ?? "");
   const [error, setError] = useState<string | null>(null);
@@ -81,7 +82,17 @@ export function SignupPage() {
     }
     setSubmitting(true);
     try {
-      await signup(email, password, displayName, inviteCode.trim(), captchaToken ?? undefined);
+      await signup({
+        email,
+        password,
+        displayName,
+        // Sent as typed. The server strips whitespace and one leading `@` and
+        // lowercases (NEU-1163 §1.1), so trimming here would be a second copy
+        // of a rule that already has exactly one.
+        handle,
+        inviteCode: inviteCode.trim(),
+        turnstileToken: captchaToken ?? undefined,
+      });
       navigate("/my-shows");
     } catch (err) {
       const detail = stringDetail(err);
@@ -101,7 +112,16 @@ export function SignupPage() {
       } else if (err instanceof ApiError && err.status === 403) {
         setError("Invite code is invalid, already used, or doesn't match this email.");
       } else if (err instanceof ApiError && err.status === 409) {
-        setError("This email is already registered.");
+        // Two conflicts share this status and they name different fields
+        // (NEU-1163 §6.3), so the branch has to read `detail`. Left as one
+        // message, a taken handle would tell the visitor their email was
+        // already registered — a refusal pointing at the wrong input, on the
+        // one form submitting both.
+        setError(
+          detail === "handle_unavailable"
+            ? "That username is already taken. Please choose another."
+            : "This email is already registered.",
+        );
       } else if (err instanceof ApiError && err.status === 422) {
         setError("Please check your input and try again.");
       } else {
@@ -187,6 +207,39 @@ export function SignupPage() {
           <FieldError name="display_name" message={fieldErrors.display_name} />
           <p id="display-name-help" className="text-xs text-gray-500 mt-1">
             This is the name other users will see on the site.
+          </p>
+        </div>
+        <div>
+          <label htmlFor="handle" className="block text-sm">
+            Handle
+          </label>
+          <div className="mt-1 flex items-center rounded border focus-within:ring-2 focus-within:ring-ring">
+            <span aria-hidden="true" className="pl-3 text-gray-500 select-none">
+              @
+            </span>
+            <input
+              id="handle"
+              type="text"
+              required
+              minLength={3}
+              maxLength={30}
+              value={handle}
+              onChange={(e) => {
+                setHandle(e.target.value);
+                clearField("handle");
+              }}
+              {...fieldProps("handle", "handle-help")}
+              className="w-full rounded-r bg-transparent px-1 py-2 focus:outline-none"
+              autoComplete="username"
+              autoCapitalize="none"
+              spellCheck={false}
+            />
+          </div>
+          <FieldError name="handle" message={fieldErrors.handle} />
+          <p id="handle-help" className="text-xs text-gray-500 mt-1">
+            3–30 characters: lowercase letters, numbers and underscores, starting with a letter.
+            This is how people tell you apart when two of you share a name, and you can change it
+            later.
           </p>
         </div>
         <div>

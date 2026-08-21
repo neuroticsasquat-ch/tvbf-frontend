@@ -7,6 +7,10 @@ export const signup = (body: {
   email: string;
   password: string;
   display_name: string;
+  /** Required (NEU-1163 §6.1). Sent as typed — the server owns the
+   * normalisation, so lowercasing here would be a second copy of a rule that
+   * already has one. */
+  handle: string;
   invite_code: string;
   /** Optional on the wire exactly as it is in `SignupRequest`: the backend
    * decides that "verification enabled means a token is required" and answers

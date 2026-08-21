@@ -8,13 +8,18 @@ type AuthContextValue = {
   user: AuthedUser | null;
   loading: boolean;
   login: (email: string, password: string) => Promise<void>;
-  signup: (
-    email: string,
-    password: string,
-    displayName: string,
-    inviteCode: string,
-    turnstileToken?: string,
-  ) => Promise<void>;
+  /** One object rather than six positional parameters (NEU-1198). Five of the
+   * six are strings, so a transposed `inviteCode` / `handle` is a defect the
+   * type checker cannot catch — and `handle` is the identifier the account is
+   * then known by, so getting it silently wrong is expensive. */
+  signup: (vars: {
+    email: string;
+    password: string;
+    displayName: string;
+    handle: string;
+    inviteCode: string;
+    turnstileToken?: string;
+  }) => Promise<void>;
   logout: () => Promise<void>;
   changePassword: (currentPassword: string, newPassword: string) => Promise<void>;
   updateDisplayName: (displayName: string) => Promise<void>;
@@ -61,6 +66,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       email: string;
       password: string;
       display_name: string;
+      handle: string;
       invite_code: string;
       turnstile_token?: string;
     }) => authApi.signup(vars),
@@ -108,11 +114,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       login: async (email, password) => {
         await loginMut.mutateAsync({ email, password });
       },
-      signup: async (email, password, displayName, inviteCode, turnstileToken) => {
+      signup: async ({ email, password, displayName, handle, inviteCode, turnstileToken }) => {
         await signupMut.mutateAsync({
           email,
           password,
           display_name: displayName,
+          handle,
           invite_code: inviteCode,
           turnstile_token: turnstileToken,
         });
