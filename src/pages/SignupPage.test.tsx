@@ -379,4 +379,87 @@ describe("SignupPage", () => {
     // A different field's message is untouched by that edit.
     expect(screen.getByLabelText(/email/i)).not.toHaveAttribute("aria-invalid");
   });
+
+  it("predicts the normalised handle, and only when normalisation changes something", async () => {
+    // The server accepts `TomBoone`, `@TomBoone` and `  @tomboone ` and stores
+    // `tomboone` for all three (NEU-1163 §1.1); this line is where a visitor
+    // finds out what they will actually be called.
+    renderAt("/signup");
+    const field = screen.getByLabelText(/^handle$/i);
+
+    await userEvent.type(field, "TomBoone");
+    expect(screen.getByText("You'll be @tomboone")).toBeInTheDocument();
+
+    await userEvent.clear(field);
+    await userEvent.type(field, "tom_b");
+    // Echoing `@tom_b` back at someone who typed `tom_b` is noise (D3).
+    expect(screen.queryByText(/You'll be/)).not.toBeInTheDocument();
+  });
+
+  it("accepts a pasted sigil without a form error", async () => {
+    renderAt("/signup");
+    const field = screen.getByLabelText(/^handle$/i);
+    await userEvent.type(field, "@tom_b");
+    await userEvent.tab();
+
+    expect(screen.getByText("You'll be @tom_b")).toBeInTheDocument();
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
+
+  it("blocks submission on a bad shape and sends no request", async () => {
+    let requests = 0;
+    server.use(
+      http.get(`${env.apiBaseUrl}/me`, () =>
+        HttpResponse.json({ detail: "auth_required" }, { status: 401 }),
+      ),
+      http.post(`${env.apiBaseUrl}/auth/signup`, () => {
+        requests += 1;
+        return HttpResponse.json({ id: "u1" }, { status: 201 });
+      }),
+    );
+    renderAt("/signup");
+    await userEvent.type(screen.getByLabelText(/invite code/i), "test-invite");
+    await userEvent.type(screen.getByLabelText(/email/i), "x@y.com");
+    await userEvent.type(screen.getByLabelText(/username/i), "X");
+    await userEvent.type(screen.getByLabelText(/^handle$/i), "tom-boone");
+    await userEvent.type(screen.getByLabelText(/password/i), "hunter2hunter2");
+    await userEvent.click(screen.getByRole("button", { name: /sign up/i }));
+
+    const message = await screen.findByRole("alert");
+    expect(message).toHaveTextContent(/3–30 characters/);
+    expect(screen.getByLabelText(/^handle$/i)).toHaveAttribute("aria-invalid", "true");
+    expect(requests).toBe(0);
+  });
+
+  it("submits a reserved word and the anonymised shape, leaving both to the server", async () => {
+    // The client stops at shape (D2): `RESERVED_HANDLES` is a snapshot nothing
+    // tracks, and a third copy would drift toward permissive.
+    const sent: string[] = [];
+    server.use(
+      http.get(`${env.apiBaseUrl}/me`, () =>
+        HttpResponse.json({ detail: "auth_required" }, { status: 401 }),
+      ),
+      http.post(`${env.apiBaseUrl}/auth/signup`, async ({ request }) => {
+        const body = (await request.json()) as { handle: string };
+        sent.push(body.handle);
+        return HttpResponse.json(
+          {
+            detail: [{ type: "value_error", loc: ["body", "handle"], msg: "Value error, handle is not available" }],
+          },
+          { status: 422 },
+        );
+      }),
+    );
+    renderAt("/signup");
+    await userEvent.type(screen.getByLabelText(/invite code/i), "test-invite");
+    await userEvent.type(screen.getByLabelText(/email/i), "x@y.com");
+    await userEvent.type(screen.getByLabelText(/username/i), "X");
+    await userEvent.type(screen.getByLabelText(/^handle$/i), "admin");
+    await userEvent.type(screen.getByLabelText(/password/i), "hunter2hunter2");
+    await userEvent.click(screen.getByRole("button", { name: /sign up/i }));
+
+    await waitFor(() => expect(sent).toEqual(["admin"]));
+    // The server's own sentence, rendered against the input it names.
+    expect(await screen.findByRole("alert")).toHaveTextContent("handle is not available");
+  });
 });

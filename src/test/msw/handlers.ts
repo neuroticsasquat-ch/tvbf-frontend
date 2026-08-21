@@ -1,5 +1,6 @@
 import { HttpResponse, http } from "msw";
 import { env } from "@/env";
+import { normaliseHandle } from "@/lib/handle";
 import {
   fixtureCast,
   fixtureCrew,
@@ -111,11 +112,32 @@ export const handlers = [
         id: "u1",
         email: body.email ?? "x@y.com",
         display_name: "X",
+        handle: "x_user",
         created_at: new Date().toISOString(),
         csrf_token: "test-csrf",
       },
       { status: 201 },
     );
+  }),
+  // `PATCH /me/handle` succeeds by default and echoes the handle back
+  // normalised, as the server does (NEU-1163 §1.1). The two refusals it can
+  // give — a 409 for a taken or previously-released handle, and a 429 carrying
+  // `Retry-After` — are served per-test, so each is exercised against the real
+  // wire shape rather than a hand-built `ApiError`.
+  http.patch(`${base}/me/handle`, async ({ request }) => {
+    const body = (await request.json().catch(() => ({}))) as { handle?: string };
+    return HttpResponse.json({
+      id: "u1",
+      email: "x@y.com",
+      display_name: "X",
+      // Through the shared normaliser, not a second copy of it: this handler
+      // stands in for the server, so a drift here would silently invalidate
+      // every test that asserts what gets stored.
+      handle: normaliseHandle(body.handle ?? ""),
+      created_at: new Date().toISOString(),
+      email_verified_at: null,
+      csrf_token: "test-csrf",
+    });
   }),
   // Social routes. `GET /users/search` answers 200 with a filtered list even
   // for an unverified caller — it never 403s (NEU-1161 §4), so the empty list
@@ -130,8 +152,8 @@ export const handlers = [
     return HttpResponse.json(
       {
         id: "req-1",
-        requester: { id: "u1", display_name: "Me" },
-        addressee: { id: body.addressee_id ?? "u2", display_name: "Them" },
+        requester: { id: "u1", display_name: "Me", handle: "me_user" },
+        addressee: { id: body.addressee_id ?? "u2", display_name: "Them", handle: "them_user" },
         state: "pending",
         created_at: new Date().toISOString(),
         responded_at: null,

@@ -39,12 +39,14 @@ function userRow(overrides: {
   id: string;
   is_admin?: boolean;
   display_name?: string;
+  handle?: string;
   disabled_at?: string | null;
 }) {
   return {
     id: overrides.id,
     email: `${overrides.id}@example.com`,
     display_name: overrides.display_name ?? overrides.id,
+    handle: overrides.handle ?? `${overrides.id}_h`,
     created_at: "2026-01-01T00:00:00Z",
     is_admin: overrides.is_admin ?? false,
     disabled_at: overrides.disabled_at ?? null,
@@ -283,5 +285,51 @@ describe("AdminPage", () => {
     const row = screen.getByTestId("admin-user-row");
     expect(within(row).queryByText("Disabled")).not.toBeInTheDocument();
     expect(within(row).getByRole("button", { name: "Disable" })).toBeInTheDocument();
+  });
+
+  it("draws each row through UserIdentity and matches the filter on the handle", async () => {
+    server.use(
+      meHandler({ id: "viewer", is_admin: true }),
+      adminUsersHandler([
+        userRow({ id: "u2", display_name: "Bob Builder", handle: "bob_b" }),
+        userRow({ id: "u3", display_name: "Carol Carpenter", handle: "carol_c" }),
+      ]),
+    );
+    renderWithProviders(routed(), { route: "/admin" });
+    await screen.findByText("Bob Builder");
+
+    const rows = screen.getAllByTestId("admin-user-row");
+    // Asserted on the identity node, not the row: on the row it would pass
+    // just as happily when this surface hand-rolls its own span (§7).
+    expect(rows[0].querySelector("[data-user-identity]")).toHaveTextContent("@bob_b");
+
+    // The handle is the one label a moderator can be handed verbatim in a
+    // report, so the box that finds a person has to match on it.
+    await userEvent.type(screen.getByRole("searchbox", { name: /filter users/i }), "carol_c");
+    expect(screen.getByText("Carol Carpenter")).toBeInTheDocument();
+    expect(screen.queryByText("Bob Builder")).not.toBeInTheDocument();
+  });
+
+  it("names both the display name and the handle on the repeated admin switch and the dialogs", async () => {
+    // The sharpest case in §4.3: this switch repeats down every row, so with
+    // `display_name` alone a screen reader user hears the same accessible name
+    // on two switches, one of which grants admin to the wrong person.
+    server.use(
+      meHandler({ id: "viewer", is_admin: true }),
+      adminUsersHandler([
+        userRow({ id: "u2", display_name: "Tom", handle: "tom_b" }),
+        userRow({ id: "u3", display_name: "Tom", handle: "tom_c" }),
+      ]),
+    );
+    renderWithProviders(routed(), { route: "/admin" });
+
+    expect(
+      await screen.findByRole("switch", { name: "Admin status for Tom (@tom_b)" }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("switch", { name: "Admin status for Tom (@tom_c)" })).toBeInTheDocument();
+
+    const rows = screen.getAllByTestId("admin-user-row");
+    await userEvent.click(within(rows[1]).getByRole("button", { name: "Disable" }));
+    expect(await screen.findByText("Disable Tom (@tom_c)")).toBeInTheDocument();
   });
 });

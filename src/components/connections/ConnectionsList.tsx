@@ -7,6 +7,8 @@ import type { ConnectionOut } from "@/api/types";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { ReportUserButton } from "@/components/ReportUserButton";
+import { UserIdentity } from "@/components/UserIdentity";
+import { nameWithHandle } from "@/lib/userLabel";
 import { useBlockUser } from "./useBlockUser";
 
 const CONNECTIONS_KEY = ["connections"] as const;
@@ -49,8 +51,11 @@ export function ConnectionsList() {
       <ul className="flex flex-col divide-y divide-border rounded border border-border">
         {data.map((c) => (
           <li key={c.user.id} className="flex items-center justify-between gap-3 px-3 py-2">
-            <Link to={`/users/${c.user.id}`} className="flex flex-col hover:underline">
-              <span className="text-sm">{c.user.display_name}</span>
+            <Link
+              to={`/users/${c.user.id}`}
+              className="flex min-w-0 flex-1 flex-col hover:underline"
+            >
+              <UserIdentity displayName={c.user.display_name} handle={c.user.handle} />
               <span className="text-xs text-muted-foreground">Connected {formatDate(c.since)}</span>
             </Link>
             <div className="flex gap-2">
@@ -60,7 +65,7 @@ export function ConnectionsList() {
               <Button type="button" size="sm" variant="outline" onClick={() => setPendingBlock(c)}>
                 Block
               </Button>
-              <ReportUserButton userId={c.user.id} userName={c.user.display_name} />
+              <ReportUserButton userId={c.user.id} user={c.user} />
             </div>
           </li>
         ))}
@@ -71,7 +76,7 @@ export function ConnectionsList() {
       {pendingBlock && (
         <ConfirmDialog
           title="Block user"
-          description={`Block ${pendingBlock.user.display_name}? This removes the connection and prevents future requests until you unblock them.`}
+          description={`Block ${nameWithHandle(pendingBlock.user)}? This removes the connection and prevents future requests until you unblock them.`}
           confirmLabel="Confirm"
           destructive
           pending={block.isPending}
@@ -116,7 +121,7 @@ function RemoveConfirmDialog({
   return (
     <ConfirmDialog
       title="Remove connection"
-      description={`Disconnect from ${connection.user.display_name}? You can reconnect later by sending another request.`}
+      description={`Disconnect from ${nameWithHandle(connection.user)}? You can reconnect later by sending another request.`}
       confirmLabel="Confirm"
       pending={mutation.isPending}
       onConfirm={() => {

@@ -16,7 +16,7 @@ vi.mock("sonner", () => ({
 
 function makeBlock(id: string, name: string) {
   return {
-    user: { id, display_name: name },
+    user: { id, display_name: name, handle: name.toLowerCase().replace(/[^a-z0-9]+/g, "_") },
     blocked_at: "2026-04-01T00:00:00Z",
   };
 }
@@ -96,7 +96,7 @@ describe("BlockedList", () => {
     const user = userEvent.setup();
 
     // Blocking is private; reporting is the escalation from it (NEU-1168 §2).
-    await user.click(await screen.findByRole("button", { name: "Report Alice" }));
+    await user.click(await screen.findByRole("button", { name: "Report Alice (@alice)" }));
     await user.type(screen.getByLabelText(/what happened/i), "Still contacting me elsewhere.");
     await user.click(screen.getByRole("button", { name: /send report/i }));
     await screen.findByText(/report received/i);
@@ -105,5 +105,24 @@ describe("BlockedList", () => {
     // small dishonesty AC 5 exists against.
     expect(screen.queryByRole("button", { name: /block Alice/i })).not.toBeInTheDocument();
     expect(screen.getByText(/already blocked Alice/i)).toBeInTheDocument();
+  });
+
+  it("draws each blocked user through UserIdentity", async () => {
+    vi.spyOn(connectionsApi, "listBlocks").mockResolvedValue([makeBlock("u-1", "Alice")]);
+    renderWithProviders(<BlockedList />);
+
+    await waitFor(() => expect(screen.getByText("Alice")).toBeInTheDocument());
+    const identity = document.querySelector("[data-user-identity]");
+    expect(identity).not.toBeNull();
+    expect(identity).toHaveTextContent("@alice");
+  });
+
+  it("names both the display name and the handle in the unblock confirmation", async () => {
+    vi.spyOn(connectionsApi, "listBlocks").mockResolvedValue([makeBlock("u-1", "Alice")]);
+    renderWithProviders(<BlockedList />);
+    await waitFor(() => expect(screen.getByText("Alice")).toBeInTheDocument());
+
+    fireEvent.click(screen.getByRole("button", { name: /unblock/i }));
+    expect(await screen.findByText(/Unblock Alice \(@alice\)\?/)).toBeInTheDocument();
   });
 });

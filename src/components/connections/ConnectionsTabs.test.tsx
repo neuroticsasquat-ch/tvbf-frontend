@@ -76,16 +76,16 @@ describe("ConnectionsTabs", () => {
       incoming: [
         {
           id: "r1",
-          requester: { id: "u1", display_name: "U1" },
-          addressee: { id: "me", display_name: "Me" },
+          requester: { id: "u1", display_name: "U1", handle: "u1_user" },
+          addressee: { id: "me", display_name: "Me", handle: "me_user" },
           state: "pending",
           created_at: new Date().toISOString(),
           responded_at: null,
         },
         {
           id: "r2",
-          requester: { id: "u2", display_name: "U2" },
-          addressee: { id: "me", display_name: "Me" },
+          requester: { id: "u2", display_name: "U2", handle: "u2_user" },
+          addressee: { id: "me", display_name: "Me", handle: "me_user" },
           state: "pending",
           created_at: new Date().toISOString(),
           responded_at: null,

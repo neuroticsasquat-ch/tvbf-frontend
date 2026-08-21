@@ -94,7 +94,7 @@ describe("FriendProfilePage", () => {
   beforeEach(() => {
     window.localStorage.clear();
     vi.spyOn(connectionsApi, "listConnections").mockResolvedValue([
-      { user: { id: FRIEND_ID, display_name: "Friendly Person" }, since: "2026-04-01T00:00:00Z" },
+      { user: { id: FRIEND_ID, display_name: "Friendly Person", handle: "friendly_person" }, since: "2026-04-01T00:00:00Z" },
     ]);
   });
   afterEach(() => {
@@ -419,7 +419,7 @@ describe("FriendProfilePage", () => {
   it("carries a labelled report control in the header and leaves the profile when it blocks", async () => {
     vi.spyOn(friendsApi, "getFriendShows").mockResolvedValue([]);
     const block = vi.spyOn(connectionsApi, "blockUser").mockResolvedValue({
-      user: { id: FRIEND_ID, display_name: "Friendly Person" },
+      user: { id: FRIEND_ID, display_name: "Friendly Person", handle: "friendly_person" },
       blocked_at: "2026-08-20T00:00:00Z",
     });
     renderWithProviders(
@@ -432,7 +432,7 @@ describe("FriendProfilePage", () => {
     const user = userEvent.setup();
 
     // Labelled here, compact in the three list rows (NEU-1168 §3.2).
-    const report = await screen.findByRole("button", { name: "Report Friendly Person" });
+    const report = await screen.findByRole("button", { name: "Report Friendly Person (@friendly_person)" });
     expect(report).toHaveTextContent("Report");
 
     await user.click(report);
@@ -446,5 +446,14 @@ describe("FriendProfilePage", () => {
     // empties — without the navigation the reader would land on "User not
     // found" as the direct result of a deliberate act (AC 10).
     await waitFor(() => expect(screen.getByText("friends page")).toBeInTheDocument());
+  });
+
+  it("draws the header through UserIdentity at the heading size", async () => {
+    vi.spyOn(friendsApi, "getFriendShows").mockResolvedValue([]);
+    renderWithProviders(routed(), { route: `/users/${FRIEND_ID}` });
+
+    const heading = await screen.findByRole("heading", { level: 1 });
+    expect(heading.textContent).toBe("Friendly Person@friendly_person");
+    expect(heading.querySelector("[data-user-identity]")).not.toBeNull();
   });
 });

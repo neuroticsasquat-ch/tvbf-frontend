@@ -9,6 +9,7 @@ import { TurnstileWidget } from "@/components/TurnstileWidget";
 import { env } from "@/env";
 import { useFieldErrors } from "@/hooks/useFieldErrors";
 import { cn } from "@/lib/cn";
+import { HANDLE_SHAPE_MESSAGE, isHandleShapeValid, normaliseHandle } from "@/lib/handle";
 
 /** The request fields this form has an input for. A 422 naming anything else
  * falls back to the banner rather than being dropped silently. */
@@ -50,7 +51,8 @@ export function SignupPage() {
   const [password, setPassword] = useState("");
   const [inviteCode, setInviteCode] = useState(() => params.get("invite") ?? "");
   const [error, setError] = useState<string | null>(null);
-  const { fieldErrors, fieldProps, clearField, capture, reset } = useFieldErrors(OWN_FIELDS);
+  const { fieldErrors, fieldProps, clearField, setFieldError, capture, reset } =
+    useFieldErrors(OWN_FIELDS);
   const [submitting, setSubmitting] = useState(false);
   const [captchaToken, setCaptchaToken] = useState<string | null>(null);
   // Bumping this remounts the widget, which is how a spent token is replaced —
@@ -62,12 +64,40 @@ export function SignupPage() {
   const captchaEnabled = siteKey.length > 0;
   const handleCaptchaToken = useCallback((token: string | null) => setCaptchaToken(token), []);
   const captchaBlocked = captchaEnabled && !captchaToken;
+  // The prediction, shown **only when normalisation actually changed
+  // something** (D3). Echoing `@tom_b` back at someone who typed `tom_b` is
+  // noise; telling someone who typed `@TomBoone` what they will actually be
+  // called is the whole point, and this input draws a fixed `@` outside itself,
+  // so a pasted sigil reads as `@@tom_b` until this line explains it.
+  const normalisedHandle = normaliseHandle(handle);
+  const handlePreview =
+    handle.length > 0 && normalisedHandle !== handle && normalisedHandle.length > 0
+      ? normalisedHandle
+      : null;
+  /** The shape check, run on blur and on submit — never per keystroke: `t` is
+   * invalid until the third character, and erroring on it mid-word is hostile
+   * (§3.1). Reserved words, the `user_<8 hex>` pattern and uniqueness are the
+   * server's and are deliberately not checked here. */
+  function checkHandleShape(): boolean {
+    if (handle.length === 0 || isHandleShapeValid(handle)) {
+      clearField("handle");
+      return true;
+    }
+    setFieldError("handle", HANDLE_SHAPE_MESSAGE);
+    return false;
+  }
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
     setRateLimited(false);
     reset();
+    // Before the password and invite checks, so the first thing wrong with the
+    // form is what the visitor is told about. It blocks submission, which is
+    // the round trip it exists to save.
+    if (!checkHandleShape()) {
+      return;
+    }
     if (password.length < 8) {
       setError("Password must be at least 8 characters.");
       return;
@@ -228,7 +258,8 @@ export function SignupPage() {
                 setHandle(e.target.value);
                 clearField("handle");
               }}
-              {...fieldProps("handle", "handle-help")}
+              onBlur={checkHandleShape}
+              {...fieldProps("handle", handlePreview ? "handle-preview handle-help" : "handle-help")}
               className="w-full rounded-r bg-transparent px-1 py-2 focus:outline-none"
               autoComplete="username"
               autoCapitalize="none"
@@ -236,6 +267,11 @@ export function SignupPage() {
             />
           </div>
           <FieldError name="handle" message={fieldErrors.handle} />
+          {handlePreview && (
+            <p id="handle-preview" className="text-xs text-gray-500 mt-1">
+              You&apos;ll be @{handlePreview}
+            </p>
+          )}
           <p id="handle-help" className="text-xs text-gray-500 mt-1">
             3–30 characters: lowercase letters, numbers and underscores, starting with a letter.
             This is how people tell you apart when two of you share a name, and you can change it

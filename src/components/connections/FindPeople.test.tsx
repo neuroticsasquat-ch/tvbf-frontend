@@ -64,12 +64,12 @@ describe("FindPeople", () => {
 
   it("renders results and lets user send a connect request", async () => {
     vi.spyOn(connectionsApi, "searchUsers").mockResolvedValue([
-      { id: "u-1", display_name: "Alice" },
+      { id: "u-1", display_name: "Alice", handle: "alice" },
     ]);
     const send = vi.spyOn(connectionsApi, "sendConnectionRequest").mockResolvedValue({
       id: "r-1",
-      requester: { id: "me", display_name: "Me" },
-      addressee: { id: "u-1", display_name: "Alice" },
+      requester: { id: "me", display_name: "Me", handle: "me_user" },
+      addressee: { id: "u-1", display_name: "Alice", handle: "alice" },
       state: "pending",
       created_at: "2026-05-09T00:00:00Z",
       responded_at: null,
@@ -92,7 +92,7 @@ describe("FindPeople", () => {
   });
 
   it("toasts and keeps button idle on 409", async () => {
-    vi.spyOn(connectionsApi, "searchUsers").mockResolvedValue([{ id: "u-2", display_name: "Bob" }]);
+    vi.spyOn(connectionsApi, "searchUsers").mockResolvedValue([{ id: "u-2", display_name: "Bob", handle: "bob" }]);
     vi.spyOn(connectionsApi, "sendConnectionRequest").mockRejectedValue(
       new ApiError(409, "connection_exists", { detail: "connection_exists" }),
     );
@@ -157,7 +157,7 @@ describe("FindPeople — verification gate", () => {
   function serveResults() {
     server.use(
       http.get(`${env.apiBaseUrl}/users/search`, () =>
-        HttpResponse.json([{ id: "u-1", display_name: "Alice" }]),
+        HttpResponse.json([{ id: "u-1", display_name: "Alice", handle: "alice" }]),
       ),
     );
   }
@@ -250,7 +250,7 @@ describe("FindPeople — verification gate", () => {
 
   it("renders no report control on a search result", async () => {
     vi.spyOn(connectionsApi, "searchUsers").mockResolvedValue([
-      { id: "u-1", display_name: "Alice" },
+      { id: "u-1", display_name: "Alice", handle: "alice" },
     ]);
     renderWithProviders(<FindPeople />);
 
@@ -267,5 +267,53 @@ describe("FindPeople — verification gate", () => {
     // they have never dealt with. The name links to /users/{id}, which carries
     // the control.
     expect(screen.queryByRole("button", { name: /^Report / })).not.toBeInTheDocument();
+  });
+
+  it("draws each result through UserIdentity", async () => {
+    vi.spyOn(connectionsApi, "searchUsers").mockResolvedValue([
+      { id: "u-1", display_name: "Alice", handle: "alice" },
+    ]);
+    renderWithProviders(<FindPeople />);
+    fireEvent.change(screen.getByRole("searchbox", { name: /find people/i }), {
+      target: { value: "ali" },
+    });
+    act(() => {
+      vi.advanceTimersByTime(250);
+    });
+
+    await waitFor(() => expect(screen.getByText("Alice")).toBeInTheDocument());
+    const identity = document.querySelector("[data-user-identity]");
+    expect(identity).not.toBeNull();
+    expect(identity).toHaveTextContent("@alice");
+  });
+
+  it("names the handle in the placeholder", () => {
+    renderWithProviders(<FindPeople />);
+    expect(screen.getByRole("searchbox", { name: /find people/i })).toHaveAttribute(
+      "placeholder",
+      "Search by display name, handle or email",
+    );
+  });
+
+  it("counts the minimum query length after a leading sigil", async () => {
+    // `@t` is a one-character query: the server strips the sigil before it
+    // matches (NEU-1163 §8), so the minimum has to mean the same thing on both
+    // sides of the wire.
+    const search = vi.spyOn(connectionsApi, "searchUsers").mockResolvedValue([]);
+    renderWithProviders(<FindPeople />);
+    const box = screen.getByRole("searchbox", { name: /find people/i });
+
+    fireEvent.change(box, { target: { value: "@t" } });
+    act(() => {
+      vi.advanceTimersByTime(500);
+    });
+    expect(search).not.toHaveBeenCalled();
+
+    fireEvent.change(box, { target: { value: "@to" } });
+    act(() => {
+      vi.advanceTimersByTime(500);
+    });
+    // Sent as typed, sigil included — the strip is the server's.
+    await waitFor(() => expect(search).toHaveBeenCalledWith("@to"));
   });
 });

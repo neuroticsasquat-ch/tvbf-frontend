@@ -45,9 +45,13 @@ interface Props {
  * watched Jun 3", so nothing is announced twice and no fact is attributed only
  * by proximity to a name several nodes away.
  *
- * **The name truncates**, because `display_name` falls back to the account's
- * email until NEU-1154 lands handles, on every row of a library that runs to
- * hundreds.
+ * **The name truncates**, on every row of a library that runs to hundreds.
+ * That was written when `display_name` fell back to the account's email; NEU-1154
+ * has since landed handles, and this component deliberately does **not** take
+ * one. `@jeanne_briggs's rating` reads badly and disambiguates nothing — you
+ * are already inside one named person's context, having opened their library
+ * deliberately, so possessive prose keeps the display name and only
+ * consequential copy names both (NEU-1169 D8).
  *
  * One deliberate visual change on a self surface: adjacent facts are always
  * separated by a `·`. My Shows · Active's *finished* rows were the one place

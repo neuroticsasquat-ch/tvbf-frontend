@@ -24,18 +24,18 @@ afterEach(() => {
 describe("ReportUserButton", () => {
   it("names the reported user in both variants' accessible names", async () => {
     const { unmount } = renderWithProviders(
-      <ReportUserButton userId={USER_ID} userName="Mallory" />,
+      <ReportUserButton userId={USER_ID} user={{ display_name: "Mallory", handle: "mallory" }} />,
     );
-    expect(screen.getByRole("button", { name: "Report Mallory" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Report Mallory (@mallory)" })).toBeInTheDocument();
     // The compact chip carries no visible text at all — the name is the whole
     // of what a screen reader gets.
     expect(screen.queryByText("Report")).not.toBeInTheDocument();
     unmount();
 
     renderWithProviders(
-      <ReportUserButton userId={USER_ID} userName="Mallory" variant="labelled" />,
+      <ReportUserButton userId={USER_ID} user={{ display_name: "Mallory", handle: "mallory" }} variant="labelled" />,
     );
-    const labelled = screen.getByRole("button", { name: "Report Mallory" });
+    const labelled = screen.getByRole("button", { name: "Report Mallory (@mallory)" });
     expect(labelled).toHaveTextContent("Report");
   });
 
@@ -47,10 +47,10 @@ describe("ReportUserButton", () => {
         return new HttpResponse(null, { status: 204 });
       }),
     );
-    renderWithProviders(<ReportUserButton userId={USER_ID} userName="Mallory" />);
+    renderWithProviders(<ReportUserButton userId={USER_ID} user={{ display_name: "Mallory", handle: "mallory" }} />);
     const user = userEvent.setup();
 
-    await user.click(screen.getByRole("button", { name: "Report Mallory" }));
+    await user.click(screen.getByRole("button", { name: "Report Mallory (@mallory)" }));
     const send = screen.getByRole("button", { name: /send report/i });
     expect(send).toBeDisabled();
 
@@ -72,16 +72,16 @@ describe("ReportUserButton", () => {
 
   it("offers blocking as a separate act, and calls the block mutation", async () => {
     const block = vi.spyOn(connectionsApi, "blockUser").mockResolvedValue({
-      user: { id: USER_ID, display_name: "Mallory" },
+      user: { id: USER_ID, display_name: "Mallory", handle: "mallory" },
       blocked_at: "2026-08-20T00:00:00Z",
     });
     const onBlocked = vi.fn();
     renderWithProviders(
-      <ReportUserButton userId={USER_ID} userName="Mallory" onBlocked={onBlocked} />,
+      <ReportUserButton userId={USER_ID} user={{ display_name: "Mallory", handle: "mallory" }} onBlocked={onBlocked} />,
     );
     const user = userEvent.setup();
 
-    await user.click(screen.getByRole("button", { name: "Report Mallory" }));
+    await user.click(screen.getByRole("button", { name: "Report Mallory (@mallory)" }));
     await user.type(screen.getByLabelText(/what happened/i), "Harassment.");
     await user.click(screen.getByRole("button", { name: /send report/i }));
     await screen.findByText(/report received/i);
@@ -99,10 +99,10 @@ describe("ReportUserButton", () => {
   });
 
   it("does not offer blocking when the caller says the person is already blocked", async () => {
-    renderWithProviders(<ReportUserButton userId={USER_ID} userName="Mallory" canBlock={false} />);
+    renderWithProviders(<ReportUserButton userId={USER_ID} user={{ display_name: "Mallory", handle: "mallory" }} canBlock={false} />);
     const user = userEvent.setup();
 
-    await user.click(screen.getByRole("button", { name: "Report Mallory" }));
+    await user.click(screen.getByRole("button", { name: "Report Mallory (@mallory)" }));
     await user.type(screen.getByLabelText(/what happened/i), "Still at it.");
     await user.click(screen.getByRole("button", { name: /send report/i }));
     await screen.findByText(/report received/i);
@@ -117,10 +117,10 @@ describe("ReportUserButton", () => {
         HttpResponse.json({ detail: "rate_limited" }, { status: 429 }),
       ),
     );
-    renderWithProviders(<ReportUserButton userId={USER_ID} userName="Mallory" />);
+    renderWithProviders(<ReportUserButton userId={USER_ID} user={{ display_name: "Mallory", handle: "mallory" }} />);
     const user = userEvent.setup();
 
-    await user.click(screen.getByRole("button", { name: "Report Mallory" }));
+    await user.click(screen.getByRole("button", { name: "Report Mallory (@mallory)" }));
     await user.type(screen.getByLabelText(/what happened/i), "A long account of what happened.");
     await user.click(screen.getByRole("button", { name: /send report/i }));
 
@@ -139,10 +139,10 @@ describe("ReportUserButton", () => {
         HttpResponse.json({ detail: "reported_user_not_found" }, { status: 404 }),
       ),
     );
-    renderWithProviders(<ReportUserButton userId={USER_ID} userName="Mallory" />);
+    renderWithProviders(<ReportUserButton userId={USER_ID} user={{ display_name: "Mallory", handle: "mallory" }} />);
     const user = userEvent.setup();
 
-    await user.click(screen.getByRole("button", { name: "Report Mallory" }));
+    await user.click(screen.getByRole("button", { name: "Report Mallory (@mallory)" }));
     await user.type(screen.getByLabelText(/what happened/i), "Something.");
     await user.click(screen.getByRole("button", { name: /send report/i }));
 
@@ -152,14 +152,14 @@ describe("ReportUserButton", () => {
   });
 
   it("clears the form when the dialog is dismissed and reopened", async () => {
-    renderWithProviders(<ReportUserButton userId={USER_ID} userName="Mallory" />);
+    renderWithProviders(<ReportUserButton userId={USER_ID} user={{ display_name: "Mallory", handle: "mallory" }} />);
     const user = userEvent.setup();
 
-    await user.click(screen.getByRole("button", { name: "Report Mallory" }));
+    await user.click(screen.getByRole("button", { name: "Report Mallory (@mallory)" }));
     await user.type(screen.getByLabelText(/what happened/i), "Half a thought");
     await user.click(screen.getByRole("button", { name: /cancel/i }));
 
-    await user.click(screen.getByRole("button", { name: "Report Mallory" }));
+    await user.click(screen.getByRole("button", { name: "Report Mallory (@mallory)" }));
     expect(screen.getByLabelText(/what happened/i)).toHaveValue("");
   });
 
@@ -171,10 +171,10 @@ describe("ReportUserButton", () => {
         return new HttpResponse(null, { status: 204 });
       }),
     );
-    renderWithProviders(<ReportUserButton userId={USER_ID} userName="Mallory" />);
+    renderWithProviders(<ReportUserButton userId={USER_ID} user={{ display_name: "Mallory", handle: "mallory" }} />);
     const user = userEvent.setup();
 
-    await user.click(screen.getByRole("button", { name: "Report Mallory" }));
+    await user.click(screen.getByRole("button", { name: "Report Mallory (@mallory)" }));
     await user.type(screen.getByLabelText(/what happened/i), "Typed but not sent.");
     await user.click(screen.getByRole("button", { name: /cancel/i }));
 
@@ -188,10 +188,10 @@ describe("ReportUserButton", () => {
     // maintainer rather than the reported user — gating it would silence the
     // newest accounts, which is exactly who a griefer targets.
     server.use(meHandler(null));
-    renderWithProviders(<ReportUserButton userId={USER_ID} userName="Mallory" />);
+    renderWithProviders(<ReportUserButton userId={USER_ID} user={{ display_name: "Mallory", handle: "mallory" }} />);
     const user = userEvent.setup();
 
-    await user.click(screen.getByRole("button", { name: "Report Mallory" }));
+    await user.click(screen.getByRole("button", { name: "Report Mallory (@mallory)" }));
     await user.type(screen.getByLabelText(/what happened/i), "Abusive messages.");
     await user.click(screen.getByRole("button", { name: /send report/i }));
 

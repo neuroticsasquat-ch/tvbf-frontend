@@ -69,6 +69,19 @@ export function useFieldErrors(ownFields: readonly string[]) {
     );
   }, []);
 
+  /** Set one field's message from a check the form ran itself, before or
+   * instead of a request (NEU-1169 §3.1).
+   *
+   * Client-side and server-side messages share this one store on purpose: they
+   * are the same message in the same place, and the `aria-describedby` join
+   * that puts them there is the thing a hand-written copy gets wrong. A form
+   * holding its own `useState` beside this one would have to rebuild that join
+   * for one field. `capture` overwrites what this set, which is the right
+   * precedence — the server's sentence is the authoritative one. */
+  const setFieldError = useCallback((name: string, message: string) => {
+    setFieldErrors((prev) => ({ ...prev, [name]: message }));
+  }, []);
+
   /** Take the field messages off a rejected request.
    *
    * Discriminates on the shape rather than on the status, as the client does:
@@ -107,5 +120,5 @@ export function useFieldErrors(ownFields: readonly string[]) {
     [fieldErrors],
   );
 
-  return { fieldErrors, fieldProps, clearField, capture, reset };
+  return { fieldErrors, fieldProps, clearField, setFieldError, capture, reset };
 }

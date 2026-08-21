@@ -8,6 +8,7 @@ import { useMyShows, useMyWatched } from "@/api/me";
 import type { ConnectionOut, MyShowEntry, WatchedEntry } from "@/api/types";
 import { localToday } from "@/api/today";
 import { ReportUserButton } from "@/components/ReportUserButton";
+import { UserIdentity } from "@/components/UserIdentity";
 import { LibraryActiveList } from "@/components/library/LibraryActiveList";
 import { LibraryWatchedList } from "@/components/library/LibraryWatchedList";
 import { buildCallerLibrary } from "@/components/library/callerLibrary";
@@ -37,7 +38,13 @@ export function FriendProfilePage() {
   return (
     <section className="flex flex-col gap-4">
       <div className="flex items-center justify-between gap-3">
-        <h1 className="text-2xl font-semibold">{friend.user.display_name}</h1>
+        <h1 className="min-w-0">
+          <UserIdentity
+            displayName={friend.user.display_name}
+            handle={friend.user.handle}
+            size="heading"
+          />
+        </h1>
         {/* Labelled here and compact in the three list rows (NEU-1168 §3.2):
             this page has room for a word, and the rows measurably do not.
 
@@ -47,7 +54,7 @@ export function FriendProfilePage() {
             direct result of a deliberate act. */}
         <ReportUserButton
           userId={friend.user.id}
-          userName={friend.user.display_name}
+          user={friend.user}
           variant="labelled"
           onBlocked={() => navigate("/friends?section=connections")}
         />
