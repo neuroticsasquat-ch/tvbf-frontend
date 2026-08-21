@@ -4,6 +4,7 @@ import { getEpisodeFriendRatings, getShowFriendRatings } from "@/api/friends";
 import type { FriendRatingsResponse } from "@/api/types";
 import { useAuth } from "@/components/AuthContext";
 import { StarRatingDisplay } from "@/components/StarRatingDisplay";
+import { UserIdentity } from "@/components/UserIdentity";
 import { formatRelativeTime } from "@/lib/relativeTime";
 
 type Target = { showId: number } | { episodeId: number };
@@ -15,8 +16,8 @@ function Items({ data }: { data: FriendRatingsResponse }) {
     <ul className="flex flex-col gap-1 text-sm">
       {data.items.map((item) => (
         <li key={item.user_id} className="flex flex-wrap items-center gap-2 text-muted-foreground">
-          <Link to={`/users/${item.user_id}`} className="hover:underline text-foreground">
-            {item.display_name}
+          <Link to={`/users/${item.user_id}`} className="min-w-0 hover:underline text-foreground">
+            <UserIdentity displayName={item.display_name} handle={item.handle} />
           </Link>
           <StarRatingDisplay
             kind="other"

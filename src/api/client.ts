@@ -7,19 +7,49 @@ export class ApiError extends Error {
   /** Per-field messages from a FastAPI validation error, keyed by field name.
    * Undefined unless the body carried that shape — see `parseFieldErrors`. */
   readonly fieldErrors: Record<string, string> | undefined;
+  /** Seconds from `Retry-After`, when the response carried one and it parsed as
+   * a number. Undefined otherwise — including for the HTTP-date form, which
+   * this API does not send.
+   *
+   * A client *capability*, not a duplicated rule (NEU-1169 §5.3): the number
+   * stays the server's, exactly as `fieldErrors` has since NEU-1196. It exists
+   * because `PATCH /me/handle`'s window is 30 days and rolling, so the earliest
+   * retry is 30 days after the *oldest* of three changes — a value the client
+   * cannot compute and which "later" describes uselessly. */
+  readonly retryAfterSeconds: number | undefined;
 
   constructor(
     status: number,
     message: string,
     body: unknown,
     fieldErrors?: Record<string, string>,
+    retryAfterSeconds?: number,
   ) {
     super(message);
     this.name = "ApiError";
     this.status = status;
     this.body = body;
     this.fieldErrors = fieldErrors;
+    this.retryAfterSeconds = retryAfterSeconds;
   }
+}
+
+/** Read `Retry-After` as a delta-seconds value.
+ *
+ * Only the numeric form. RFC 9110 also allows an HTTP-date, and this API sends
+ * none — `str(seconds)` is what every throttled route sets — so parsing one
+ * would be speculative handling of a shape that has never appeared on this
+ * wire. Anything else, including an absent or empty header, is undefined
+ * rather than a thrown error or a zero: a caller reading it renders a
+ * vaguer sentence, which is what it would have said anyway. */
+function parseRetryAfter(raw: string | null): number | undefined {
+  if (raw === null) return undefined;
+  const trimmed = raw.trim();
+  // Guarded: `Number("")` is 0, which would read an empty header as
+  // "retry immediately".
+  if (trimmed.length === 0) return undefined;
+  const seconds = Number(trimmed);
+  return Number.isFinite(seconds) && seconds >= 0 ? seconds : undefined;
 }
 
 /** The one place in the SPA that knows the wire shape of the verification
@@ -135,7 +165,13 @@ export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> 
     } catch {
       // non-JSON body; keep generic message
     }
-    throw new ApiError(res.status, message, body, fieldErrors);
+    throw new ApiError(
+      res.status,
+      message,
+      body,
+      fieldErrors,
+      parseRetryAfter(res.headers.get("Retry-After")),
+    );
   }
 
   // 204 and 205 are explicitly no-content; many of our 202 endpoints return

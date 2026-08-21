@@ -10,6 +10,8 @@ import type { ConnectionRequestList, ConnectionRequestOut, UserBrief } from "@/a
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { ReportUserButton } from "@/components/ReportUserButton";
+import { UserIdentity } from "@/components/UserIdentity";
+import { nameWithHandle } from "@/lib/userLabel";
 import { useBlockUser } from "./useBlockUser";
 
 const REQUESTS_KEY = ["connection-requests"] as const;
@@ -56,7 +58,7 @@ export function RequestsInbox() {
       {pendingBlock && (
         <ConfirmDialog
           title="Block user"
-          description={`Block ${pendingBlock.display_name}? This removes the request and prevents future requests until you unblock them.`}
+          description={`Block ${nameWithHandle(pendingBlock)}? This removes the request and prevents future requests until you unblock them.`}
           confirmLabel="Confirm"
           destructive
           pending={block.isPending}
@@ -108,8 +110,8 @@ function IncomingRow({ row, onBlock }: { row: ConnectionRequestOut; onBlock: () 
   const busy = accept.isPending || reject.isPending;
   return (
     <li className="flex items-center justify-between gap-3 px-3 py-2">
-      <div className="flex flex-col">
-        <span className="text-sm">{row.requester.display_name}</span>
+      <div className="flex min-w-0 flex-1 flex-col">
+        <UserIdentity displayName={row.requester.display_name} handle={row.requester.handle} />
         <span className="text-xs text-muted-foreground">{formatDate(row.created_at)}</span>
       </div>
       <div className="flex gap-2">
@@ -131,7 +133,7 @@ function IncomingRow({ row, onBlock }: { row: ConnectionRequestOut; onBlock: () 
         {/* Incoming only. A stranger reaching you is the harassment case; an
             outgoing request is someone you chose to contact, so its row carries
             no report control (NEU-1168 §2). */}
-        <ReportUserButton userId={row.requester.id} userName={row.requester.display_name} />
+        <ReportUserButton userId={row.requester.id} userName={nameWithHandle(row.requester)} />
       </div>
     </li>
   );
@@ -144,8 +146,8 @@ function OutgoingRow({ row, onBlock }: { row: ConnectionRequestOut; onBlock: () 
   );
   return (
     <li className="flex items-center justify-between gap-3 px-3 py-2">
-      <div className="flex flex-col">
-        <span className="text-sm">{row.addressee.display_name}</span>
+      <div className="flex min-w-0 flex-1 flex-col">
+        <UserIdentity displayName={row.addressee.display_name} handle={row.addressee.handle} />
         <span className="text-xs text-muted-foreground">{formatDate(row.created_at)}</span>
       </div>
       <div className="flex gap-2">

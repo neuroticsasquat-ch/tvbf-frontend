@@ -434,6 +434,9 @@ export interface AdminUserRow {
   id: string;
   email: string;
   display_name: string;
+  /** A moderator's second label. `display_name` is free text two accounts can
+   * share, and every act on this row is an act on a person (NEU-1163 §7). */
+  handle: string;
   created_at: string;
   is_admin: boolean;
   /** When moderation began, or null for an active account (NEU-1162 §7.1).
@@ -513,11 +516,20 @@ export interface EpisodeWatchOut {
 export interface UserBrief {
   id: string;
   display_name: string;
+  /** The account's stable public identifier (NEU-1163 §7). Every payload that
+   * names a user carries it, so a viewer deciding whether to accept a request
+   * can tell two accounts called "Tom" apart. Rendered through
+   * `UserIdentity`, which owns the `@` sigil. */
+  handle: string;
 }
 
 export interface UserSearchResult {
   id: string;
   display_name: string;
+  /** Kept beside `display_name` rather than replacing it: the handle is the
+   * identifier and the display name is the label, and a searcher who typed an
+   * email needs the name to recognise who they found (NEU-1163 §7). */
+  handle: string;
 }
 
 export type ConnectionState = "pending" | "accepted" | "blocked";
@@ -554,6 +566,7 @@ export interface ShowFriendActivity {
 export interface FriendRating {
   user_id: string;
   display_name: string;
+  handle: string;
   stars: number;
   rated_at: string;
 }

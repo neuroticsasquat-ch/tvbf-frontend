@@ -26,6 +26,17 @@ export const logout = () => apiFetch<void>("/auth/logout", { method: "POST" });
 export const updateMe = (body: { display_name: string }) =>
   apiFetch<AuthedUser>("/me", { method: "PATCH", body: JSON.stringify(body) });
 
+/** Change this account's handle (NEU-1163 §6.2).
+ *
+ * Its own route rather than a field on `PATCH /me`, because it has its own
+ * error vocabulary and its own throttle — widening the display-name body to
+ * carry a throttled field beside an unthrottled one is how a display-name save
+ * ends up refused by a `429` about a handle the user did not touch.
+ *
+ * Sent as typed, exactly as `signup` sends it, and for the same reason. */
+export const updateHandle = (body: { handle: string }) =>
+  apiFetch<AuthedUser>("/me/handle", { method: "PATCH", body: JSON.stringify(body) });
+
 export const changePassword = (body: { current_password: string; new_password: string }) =>
   apiFetch<AuthedUser>("/auth/password", { method: "POST", body: JSON.stringify(body) });
 

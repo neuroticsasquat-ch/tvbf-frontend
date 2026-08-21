@@ -109,3 +109,26 @@ describe("EpisodeFriendsWatched", () => {
     );
   });
 });
+
+describe("FriendActivity — the handle boundary", () => {
+  it("renders the display name and no handle at all", async () => {
+    // D6: everyone reachable through this strip is an **accepted** connection,
+    // so the impersonation decision the handle exists to inform was already
+    // made upstream. Asserted, so the boundary stays deliberate rather than
+    // becoming something nobody noticed was missing.
+    server.use(
+      http.get(`${env.apiBaseUrl}/shows/1/friends`, () =>
+        HttpResponse.json({
+          in_my_shows: [{ id: "u-1", display_name: "Alice", handle: "alice" }],
+          watched: [],
+        }),
+      ),
+    );
+
+    renderWithProviders(<ShowFriendActivityStrip showId={1} />);
+
+    await waitFor(() => expect(screen.getByText("Alice")).toBeInTheDocument());
+    expect(screen.queryByText(/@alice/)).not.toBeInTheDocument();
+    expect(document.querySelector("[data-user-identity]")).toBeNull();
+  });
+});

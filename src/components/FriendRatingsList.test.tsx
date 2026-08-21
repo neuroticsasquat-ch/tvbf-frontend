@@ -29,12 +29,14 @@ describe("FriendRatingsList (show)", () => {
             {
               user_id: "u-1",
               display_name: "Alice",
+              handle: "alice",
               stars: 4.5,
               rated_at: "2026-05-01T00:00:00Z",
             },
             {
               user_id: "u-2",
               display_name: "Bob",
+              handle: "bob",
               stars: 4.0,
               rated_at: "2026-04-20T00:00:00Z",
             },
@@ -62,12 +64,14 @@ describe("FriendRatingsList (show)", () => {
             {
               user_id: "u-1",
               display_name: "Alice",
+              handle: "alice",
               stars: 4.5,
               rated_at: "2026-05-01T00:00:00Z",
             },
             {
               user_id: "u-2",
               display_name: "Bob",
+              handle: "bob",
               stars: 4.0,
               rated_at: "2026-04-20T00:00:00Z",
             },
@@ -149,5 +153,61 @@ describe("FriendRatingsList (episode)", () => {
 
     await waitFor(() => expect(screen.getByText("Dee")).toBeInTheDocument());
     expect(screen.getByText("Dee").closest("a")).toHaveAttribute("href", "/users/u-9");
+  });
+});
+
+describe("FriendRatingsList — identity", () => {
+  it("draws each rater through UserIdentity", async () => {
+    server.use(
+      http.get(`${env.apiBaseUrl}/shows/1/friends/ratings`, () =>
+        HttpResponse.json({
+          avg: 4.5,
+          count: 1,
+          items: [
+            {
+              user_id: "u-1",
+              display_name: "Alice",
+              handle: "alice",
+              stars: 4.5,
+              rated_at: "2026-05-01T00:00:00Z",
+            },
+          ],
+        }),
+      ),
+    );
+
+    renderWithProviders(<FriendRatingsList showId={1} />);
+
+    await waitFor(() => expect(screen.getByText("Alice")).toBeInTheDocument());
+    const identity = document.querySelector("[data-user-identity]");
+    expect(identity).not.toBeNull();
+    expect(identity).toHaveTextContent("@alice");
+  });
+
+  it("keeps the possessive rating label on the display name alone", async () => {
+    // The deliberate exception (D8): `@alice's rating` reads badly and
+    // disambiguates nothing — you are already inside one named person's
+    // context.
+    server.use(
+      http.get(`${env.apiBaseUrl}/shows/1/friends/ratings`, () =>
+        HttpResponse.json({
+          avg: 4.5,
+          count: 1,
+          items: [
+            {
+              user_id: "u-1",
+              display_name: "Alice",
+              handle: "alice",
+              stars: 4.5,
+              rated_at: "2026-05-01T00:00:00Z",
+            },
+          ],
+        }),
+      ),
+    );
+
+    renderWithProviders(<FriendRatingsList showId={1} />);
+
+    expect(await screen.findByRole("img", { name: "Alice's rating: 4.5 out of 5" })).toBeInTheDocument();
   });
 });

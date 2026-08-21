@@ -72,7 +72,7 @@ describe("ReportUserButton", () => {
 
   it("offers blocking as a separate act, and calls the block mutation", async () => {
     const block = vi.spyOn(connectionsApi, "blockUser").mockResolvedValue({
-      user: { id: USER_ID, display_name: "Mallory" },
+      user: { id: USER_ID, display_name: "Mallory", handle: "mallory" },
       blocked_at: "2026-08-20T00:00:00Z",
     });
     const onBlocked = vi.fn();

@@ -3,8 +3,10 @@ import { useAdminUsers, useToggleAdminFlag, useToggleDisabled } from "@/api/admi
 import type { AdminUserRow } from "@/api/types";
 import { useAuth } from "@/components/AuthContext";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
+import { UserIdentity } from "@/components/UserIdentity";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { nameWithHandle } from "@/lib/userLabel";
 
 function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString();
@@ -23,7 +25,12 @@ export function AdminUsersTab() {
     const q = query.trim().toLowerCase();
     if (!q) return data;
     return data.filter(
-      (u) => u.email.toLowerCase().includes(q) || u.display_name.toLowerCase().includes(q),
+      (u) =>
+        u.email.toLowerCase().includes(q) ||
+        u.display_name.toLowerCase().includes(q) ||
+        // The handle is the one label a moderator can be handed verbatim in a
+        // report, so the box that finds a person has to match on it.
+        u.handle.includes(q),
     );
   }, [data, query]);
 
@@ -48,7 +55,7 @@ export function AdminUsersTab() {
         type="search"
         value={query}
         onChange={(e) => setQuery(e.currentTarget.value)}
-        placeholder="Filter by name or email"
+        placeholder="Filter by name, handle or email"
         aria-label="Filter users"
         className="w-full rounded border border-border bg-background px-3 py-2 text-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
       />
@@ -70,7 +77,7 @@ export function AdminUsersTab() {
                   {/* A div, not a p: `Badge` renders a div, which is invalid
                       nesting inside a paragraph. */}
                   <div className="flex items-center gap-2 font-medium text-foreground">
-                    <span className="truncate">{u.display_name}</span>
+                    <UserIdentity displayName={u.display_name} handle={u.handle} />
                     {disabled ? <Badge variant="destructive">Disabled</Badge> : null}
                   </div>
                   <p className="truncate text-xs text-muted-foreground">{u.email}</p>
@@ -87,7 +94,12 @@ export function AdminUsersTab() {
                   <input
                     type="checkbox"
                     role="switch"
-                    aria-label={`Admin status for ${u.display_name}`}
+                    // Both labels, because this switch repeats down every row:
+                    // with `display_name` alone a screen reader user moving
+                    // through the list hears the *same* accessible name on two
+                    // different switches, one of which grants admin to the
+                    // wrong person (§4.3).
+                    aria-label={`Admin status for ${nameWithHandle(u)}`}
                     checked={u.is_admin}
                     disabled={isSelf || toggle.isPending}
                     onChange={(e) =>
@@ -138,7 +150,7 @@ export function AdminUsersTab() {
       {confirming &&
         (confirming.disabled_at === null ? (
           <ConfirmDialog
-            title={`Disable ${confirming.display_name}`}
+            title={`Disable ${nameWithHandle(confirming)}`}
             description={`They will be signed out everywhere and cannot log in. Their watch history is kept, and you can re-enable them at any time. This is not account deletion.`}
             confirmLabel="Disable account"
             destructive
@@ -151,7 +163,7 @@ export function AdminUsersTab() {
           />
         ) : (
           <ConfirmDialog
-            title={`Enable ${confirming.display_name}`}
+            title={`Enable ${nameWithHandle(confirming)}`}
             description={`They will be able to log in again. Their sessions ended when they were disabled, so they will need to sign in.`}
             confirmLabel="Enable account"
             pending={disable.isPending}

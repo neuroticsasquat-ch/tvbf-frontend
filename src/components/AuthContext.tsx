@@ -23,6 +23,9 @@ type AuthContextValue = {
   logout: () => Promise<void>;
   changePassword: (currentPassword: string, newPassword: string) => Promise<void>;
   updateDisplayName: (displayName: string) => Promise<void>;
+  /** Sent as typed — the server owns the normalisation (NEU-1163 §1.1), so the
+   * value that comes back on `AuthedUser` is what was actually stored. */
+  changeHandle: (handle: string) => Promise<void>;
   deleteAccount: (password: string) => Promise<void>;
   refresh: () => Promise<void>;
 };
@@ -98,6 +101,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       qc.setQueryData(["me"], user);
     },
   });
+  const updateHandleMut = useMutation({
+    mutationFn: (vars: { handle: string }) => authApi.updateHandle(vars),
+    onSuccess: (user) => {
+      setCsrfToken(user.csrf_token);
+      qc.setQueryData(["me"], user);
+    },
+  });
   const deleteMut = useMutation({
     mutationFn: (vars: { password: string }) => authApi.deleteAccount(vars),
     onSuccess: () => {
@@ -133,6 +143,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       updateDisplayName: async (displayName) => {
         await updateMeMut.mutateAsync({ display_name: displayName });
       },
+      changeHandle: async (handle) => {
+        await updateHandleMut.mutateAsync({ handle });
+      },
       deleteAccount: async (password) => {
         await deleteMut.mutateAsync({ password });
       },
@@ -146,6 +159,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       logoutMut,
       changePwMut,
       updateMeMut,
+      updateHandleMut,
       deleteMut,
       refresh,
     ],

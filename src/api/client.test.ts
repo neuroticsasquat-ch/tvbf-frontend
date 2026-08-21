@@ -254,3 +254,43 @@ describe("apiFetch — field validation errors", () => {
     expect(err.fieldErrors).toBeUndefined();
   });
 });
+
+describe("apiFetch — Retry-After", () => {
+  afterEach(() => server.resetHandlers());
+
+  async function rejectWith(headers: Record<string, string>): Promise<ApiError> {
+    server.use(
+      http.patch(`${env.apiBaseUrl}/me/handle`, () =>
+        HttpResponse.json({ detail: "rate_limited" }, { status: 429, headers }),
+      ),
+    );
+    try {
+      await apiFetch("/me/handle", { method: "PATCH", body: "{}" });
+    } catch (e) {
+      return e as ApiError;
+    }
+    throw new Error("expected apiFetch to reject");
+  }
+
+  it("parses the delta-seconds header onto the error", async () => {
+    const err = await rejectWith({ "Retry-After": "2592000" });
+    expect(err.retryAfterSeconds).toBe(2_592_000);
+  });
+
+  it("leaves it undefined when the response carried no header", async () => {
+    const err = await rejectWith({});
+    expect(err.retryAfterSeconds).toBeUndefined();
+  });
+
+  it("leaves it undefined for a value that is not a number, without throwing", async () => {
+    // The HTTP-date form is legal and this API never sends it; a caller gets
+    // `undefined` and says something vaguer rather than a date in 1970.
+    const err = await rejectWith({ "Retry-After": "Wed, 21 Oct 2026 07:28:00 GMT" });
+    expect(err.retryAfterSeconds).toBeUndefined();
+  });
+
+  it("leaves it undefined for an empty header rather than reading it as zero", async () => {
+    const err = await rejectWith({ "Retry-After": "  " });
+    expect(err.retryAfterSeconds).toBeUndefined();
+  });
+});

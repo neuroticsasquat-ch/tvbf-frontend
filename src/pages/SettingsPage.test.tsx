@@ -17,6 +17,7 @@ function authedMeHandler() {
       id: "u1",
       email: "alice@example.com",
       display_name: "Alice",
+      handle: "alice",
       created_at: new Date().toISOString(),
       email_verified_at: null,
       csrf_token: "csrf",
@@ -30,7 +31,7 @@ describe("SettingsPage", () => {
     renderWithProviders(<SettingsPage />, { route: "/settings" });
 
     expect(await screen.findByText("Alice")).toBeInTheDocument();
-    await userEvent.click(screen.getByRole("button", { name: /edit/i }));
+    await userEvent.click(screen.getByRole("button", { name: /edit display name/i }));
     expect(screen.getByLabelText(/display name/i)).toHaveValue("Alice");
   });
 
@@ -43,6 +44,7 @@ describe("SettingsPage", () => {
           id: "u1",
           email: "alice@example.com",
           display_name: body.display_name,
+          handle: "alice",
           created_at: new Date().toISOString(),
           email_verified_at: null,
           csrf_token: "csrf",
@@ -52,7 +54,7 @@ describe("SettingsPage", () => {
 
     renderWithProviders(<SettingsPage />, { route: "/settings" });
     await screen.findByText("Alice");
-    await userEvent.click(screen.getByRole("button", { name: /edit/i }));
+    await userEvent.click(screen.getByRole("button", { name: /edit display name/i }));
 
     const input = screen.getByLabelText(/display name/i);
     await userEvent.clear(input);
@@ -76,7 +78,7 @@ describe("SettingsPage", () => {
 
     renderWithProviders(<SettingsPage />, { route: "/settings" });
     await screen.findByText("Alice");
-    await userEvent.click(screen.getByRole("button", { name: /edit/i }));
+    await userEvent.click(screen.getByRole("button", { name: /edit display name/i }));
 
     const input = screen.getByLabelText(/display name/i);
     await userEvent.clear(input);
@@ -110,7 +112,7 @@ describe("SettingsPage", () => {
 
     renderWithProviders(<SettingsPage />, { route: "/settings" });
     await screen.findByText("Alice");
-    await userEvent.click(screen.getByRole("button", { name: /edit/i }));
+    await userEvent.click(screen.getByRole("button", { name: /edit display name/i }));
 
     const input = screen.getByLabelText(/display name/i);
     await userEvent.clear(input);
@@ -132,7 +134,7 @@ describe("SettingsPage", () => {
 
     renderWithProviders(<SettingsPage />, { route: "/settings" });
     await screen.findByText("Alice");
-    await userEvent.click(screen.getByRole("button", { name: /edit/i }));
+    await userEvent.click(screen.getByRole("button", { name: /edit display name/i }));
     const input = screen.getByLabelText(/display name/i);
     await userEvent.clear(input);
     await userEvent.click(screen.getByRole("button", { name: /save/i }));
@@ -458,7 +460,7 @@ describe("SettingsPage", () => {
     server.use(authedMeHandler());
     renderWithProviders(<SettingsPage />, { route: "/settings" });
     await screen.findByText("Alice");
-    await userEvent.click(screen.getByRole("button", { name: /edit/i }));
+    await userEvent.click(screen.getByRole("button", { name: /edit display name/i }));
     const input = screen.getByLabelText(/display name/i);
     await userEvent.clear(input);
     await userEvent.type(input, "Discarded");
@@ -466,5 +468,122 @@ describe("SettingsPage", () => {
 
     expect(screen.queryByRole("button", { name: /save/i })).not.toBeInTheDocument();
     expect(screen.getByText("Alice")).toBeInTheDocument();
+  });
+
+  it("shows the current handle and states all three consequences before the Edit control", async () => {
+    // The throttle in particular has to be readable *before* the first change:
+    // a rule first mentioned at save time has told someone after they spent one
+    // (§5.2).
+    server.use(authedMeHandler());
+    renderWithProviders(<SettingsPage />, { route: "/settings" });
+
+    expect(await screen.findByText("@alice")).toBeInTheDocument();
+    expect(screen.getByText(/won't find you with it/i)).toBeInTheDocument();
+    expect(screen.getByText(/stays yours to reclaim/i)).toBeInTheDocument();
+    expect(screen.getByText(/3 times every 30 days/i)).toBeInTheDocument();
+  });
+
+  it("changes the handle and reflects the stored value without a reload", async () => {
+    server.use(
+      authedMeHandler(),
+      http.patch(`${env.apiBaseUrl}/me/handle`, async ({ request }) => {
+        const body = (await request.json()) as { handle: string };
+        return HttpResponse.json({
+          id: "u1",
+          email: "alice@example.com",
+          display_name: "Alice",
+          // Sent as typed; the server is what normalises (NEU-1163 §1.1).
+          handle: body.handle.trim().replace(/^@/, "").toLowerCase(),
+          created_at: new Date().toISOString(),
+          email_verified_at: null,
+          csrf_token: "csrf",
+        });
+      }),
+    );
+    renderWithProviders(<SettingsPage />, { route: "/settings" });
+    await screen.findByText("@alice");
+
+    await userEvent.click(screen.getByRole("button", { name: /edit handle/i }));
+    const input = screen.getByLabelText(/^handle$/i);
+    await userEvent.clear(input);
+    await userEvent.type(input, "@Allison");
+    expect(screen.getByText("You'll be @allison")).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: /save/i }));
+
+    expect(await screen.findByText("@allison")).toBeInTheDocument();
+  });
+
+  it("renders one message for a 409, whatever the cause", async () => {
+    // Taken and previously-released are byte-identical on the wire on purpose
+    // (NEU-1163 §6.3); two messages here would leak the distinction back.
+    server.use(
+      authedMeHandler(),
+      http.patch(`${env.apiBaseUrl}/me/handle`, () =>
+        HttpResponse.json({ detail: "handle_unavailable" }, { status: 409 }),
+      ),
+    );
+    renderWithProviders(<SettingsPage />, { route: "/settings" });
+    await screen.findByText("@alice");
+
+    await userEvent.click(screen.getByRole("button", { name: /edit handle/i }));
+    const input = screen.getByLabelText(/^handle$/i);
+    await userEvent.clear(input);
+    await userEvent.type(input, "taken_handle");
+    await userEvent.click(screen.getByRole("button", { name: /save/i }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "That handle isn't available. Try another.",
+    );
+  });
+
+  it("names the date the throttle lifts, from the server's Retry-After", async () => {
+    const seconds = 30 * 24 * 60 * 60;
+    server.use(
+      authedMeHandler(),
+      http.patch(`${env.apiBaseUrl}/me/handle`, () =>
+        HttpResponse.json(
+          { detail: "rate_limited" },
+          { status: 429, headers: { "Retry-After": String(seconds) } },
+        ),
+      ),
+    );
+    renderWithProviders(<SettingsPage />, { route: "/settings" });
+    await screen.findByText("@alice");
+
+    await userEvent.click(screen.getByRole("button", { name: /edit handle/i }));
+    const input = screen.getByLabelText(/^handle$/i);
+    await userEvent.clear(input);
+    await userEvent.type(input, "another_one");
+    await userEvent.click(screen.getByRole("button", { name: /save/i }));
+
+    const expected = new Date(Date.now() + seconds * 1000).toLocaleDateString(undefined, {
+      day: "numeric",
+      month: "long",
+    });
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      `You've changed your handle recently. You can change it again on ${expected}.`,
+    );
+  });
+
+  it("refuses a bad shape client-side and issues no request", async () => {
+    let requests = 0;
+    server.use(
+      authedMeHandler(),
+      http.patch(`${env.apiBaseUrl}/me/handle`, () => {
+        requests += 1;
+        return HttpResponse.json({}, { status: 200 });
+      }),
+    );
+    renderWithProviders(<SettingsPage />, { route: "/settings" });
+    await screen.findByText("@alice");
+
+    await userEvent.click(screen.getByRole("button", { name: /edit handle/i }));
+    const input = screen.getByLabelText(/^handle$/i);
+    await userEvent.clear(input);
+    await userEvent.type(input, "tom-boone");
+    await userEvent.click(screen.getByRole("button", { name: /save/i }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(/3–30 characters/);
+    expect(requests).toBe(0);
   });
 });

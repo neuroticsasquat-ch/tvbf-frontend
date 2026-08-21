@@ -6,6 +6,8 @@ import type { BlockedUserOut } from "@/api/types";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { ReportUserButton } from "@/components/ReportUserButton";
+import { UserIdentity } from "@/components/UserIdentity";
+import { nameWithHandle } from "@/lib/userLabel";
 
 const BLOCKS_KEY = ["blocks"] as const;
 
@@ -41,8 +43,8 @@ export function BlockedList() {
       <ul className="flex flex-col divide-y divide-border rounded border border-border">
         {data.map((b) => (
           <li key={b.user.id} className="flex items-center justify-between gap-3 px-3 py-2">
-            <div className="flex flex-col">
-              <span className="text-sm">{b.user.display_name}</span>
+            <div className="flex min-w-0 flex-1 flex-col">
+              <UserIdentity displayName={b.user.display_name} handle={b.user.handle} />
               <span className="text-xs text-muted-foreground">
                 Blocked {formatDate(b.blocked_at)}
               </span>
@@ -56,7 +58,7 @@ export function BlockedList() {
                   already knows the answer (NEU-1168 §3.4). */}
               <ReportUserButton
                 userId={b.user.id}
-                userName={b.user.display_name}
+                userName={nameWithHandle(b.user)}
                 canBlock={false}
               />
             </div>
@@ -88,7 +90,7 @@ function UnblockConfirm({ row, onClose }: { row: BlockedUserOut; onClose: () => 
   return (
     <ConfirmDialog
       title="Unblock user"
-      description={`Unblock ${row.user.display_name}? They will be able to send you connection requests again.`}
+      description={`Unblock ${nameWithHandle(row.user)}? They will be able to send you connection requests again.`}
       confirmLabel="Confirm"
       pending={mutation.isPending}
       onConfirm={() => {
