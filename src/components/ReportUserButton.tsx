@@ -4,6 +4,7 @@ import { Flag } from "lucide-react";
 import { ApiError } from "@/api/client";
 import { useSubmitReport } from "@/api/reports";
 import { useBlockUser } from "@/components/connections/useBlockUser";
+import { nameWithHandle } from "@/lib/userLabel";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -54,13 +55,23 @@ type Failure = "rate_limited" | "generic";
  * glyph, and it is shared with no other control in the app. */
 export function ReportUserButton({
   userId,
-  userName,
+  user,
   variant = "compact",
   canBlock = true,
   onBlocked,
 }: {
   userId: string;
-  userName: string;
+  /** The person being reported, as both their labels (NEU-1169 §4.3).
+   *
+   * The pair rather than one pre-joined string, because this component makes
+   * the split D8 draws: **consequential copy names both** — the repeated
+   * control's accessible name, the dialog title, the destructive Block button —
+   * and **possessive prose keeps the display name alone**, because
+   * `Nothing happens to Alice (@alice)'s account` reads badly and disambiguates
+   * nothing inside a dialog that already named them. A caller passing one
+   * string cannot express that split, and the last one that tried shipped the
+   * possessive form. */
+  user: { display_name: string; handle: string };
   variant?: "labelled" | "compact";
   /** Whether step 2 offers blocking. `false` where the caller already knows the
    * person is blocked — offering an action the app knows is pointless is the
@@ -77,7 +88,7 @@ export function ReportUserButton({
   const submit = useSubmitReport();
   const block = useBlockUser();
 
-  const label = `Report ${userName}`;
+  const label = `Report ${nameWithHandle(user)}`;
 
   function close() {
     setOpen(false);
@@ -153,7 +164,7 @@ export function ReportUserButton({
         <DialogContent>
           {filed ? (
             <Filed
-              userName={userName}
+              user={user}
               canBlock={canBlock}
               blocking={block.isPending}
               onBlock={blockAndClose}
@@ -161,7 +172,7 @@ export function ReportUserButton({
             />
           ) : (
             <Form
-              userName={userName}
+              user={user}
               reason={reason}
               onReasonChange={setReason}
               failure={failure}
@@ -186,7 +197,7 @@ export function ReportUserButton({
  * specific detail is the part most likely to be left off. The reporter's own
  * words are what an admin wants to re-read three months later. */
 function Form({
-  userName,
+  user,
   reason,
   onReasonChange,
   failure,
@@ -194,7 +205,7 @@ function Form({
   onCancel,
   onSend,
 }: {
-  userName: string;
+  user: { display_name: string; handle: string };
   reason: string;
   onReasonChange: (value: string) => void;
   failure: Failure | null;
@@ -205,7 +216,9 @@ function Form({
   return (
     <>
       <DialogHeader>
-        <DialogTitle>Report {userName}</DialogTitle>
+        {/* Both labels: this is the moment of decision, and two accounts
+            called Tom are exactly what the handle is here to separate. */}
+        <DialogTitle>Report {nameWithHandle(user)}</DialogTitle>
         <DialogDescription>
           A person reads every report. Tell us what happened, in your own words.
         </DialogDescription>
@@ -259,13 +272,13 @@ function Form({
  * Blocking is offered as a **separate act with separate consequences**, never
  * as something the report did implicitly (AC 5). */
 function Filed({
-  userName,
+  user,
   canBlock,
   blocking,
   onBlock,
   onDone,
 }: {
-  userName: string;
+  user: { display_name: string; handle: string };
   canBlock: boolean;
   blocking: boolean;
   onBlock: () => void;
@@ -275,20 +288,24 @@ function Filed({
     <>
       <DialogHeader>
         <DialogTitle>Report received</DialogTitle>
+        {/* Possessive prose, so the display name alone (D8) — the reader is
+            already inside a dialog that named this person both ways. */}
         <DialogDescription>
-          A person will read this. Nothing happens to {userName}&apos;s account automatically — no
-          automatic warning, no automatic suspension.
+          A person will read this. Nothing happens to {user.display_name}&apos;s account
+          automatically — no automatic warning, no automatic suspension.
         </DialogDescription>
       </DialogHeader>
       <p className="text-sm text-muted-foreground">
         {canBlock
-          ? `Reporting ${userName} does not block them. Blocking is a separate action, and it takes effect right away.`
-          : `You have already blocked ${userName}, so they cannot reach you.`}
+          ? `Reporting ${user.display_name} does not block them. Blocking is a separate action, and it takes effect right away.`
+          : `You have already blocked ${user.display_name}, so they cannot reach you.`}
       </p>
       <DialogFooter>
         {canBlock ? (
           <Button type="button" variant="destructive" onClick={onBlock} disabled={blocking}>
-            Block {userName}
+            {/* The destructive act names both, as the four `ConfirmDialog`
+                block/disconnect/unblock descriptions do. */}
+            Block {nameWithHandle(user)}
           </Button>
         ) : null}
         <Button type="button" variant="outline" onClick={onDone}>

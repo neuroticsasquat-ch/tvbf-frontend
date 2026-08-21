@@ -13,7 +13,6 @@ import { LibraryActiveList } from "@/components/library/LibraryActiveList";
 import { LibraryWatchedList } from "@/components/library/LibraryWatchedList";
 import { buildCallerLibrary } from "@/components/library/callerLibrary";
 import { cn } from "@/lib/cn";
-import { nameWithHandle } from "@/lib/userLabel";
 
 type Tab = "active" | "watched";
 
@@ -55,7 +54,7 @@ export function FriendProfilePage() {
             direct result of a deliberate act. */}
         <ReportUserButton
           userId={friend.user.id}
-          userName={nameWithHandle(friend.user)}
+          user={friend.user}
           variant="labelled"
           onBlocked={() => navigate("/friends?section=connections")}
         />

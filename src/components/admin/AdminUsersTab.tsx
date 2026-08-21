@@ -29,7 +29,9 @@ export function AdminUsersTab() {
         u.email.toLowerCase().includes(q) ||
         u.display_name.toLowerCase().includes(q) ||
         // The handle is the one label a moderator can be handed verbatim in a
-        // report, so the box that finds a person has to match on it.
+        // report, so the box that finds a person has to match on it. No
+        // `.toLowerCase()` beside it, unlike the two above: a handle is
+        // lowercase by contract (NEU-1163 §1) and `q` already is.
         u.handle.includes(q),
     );
   }, [data, query]);

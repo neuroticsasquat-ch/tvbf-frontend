@@ -56,11 +56,7 @@ export function BlockedList() {
               {/* Blocking is private; reporting is the escalation from it. The
                   block offer in step 2 is suppressed because this surface
                   already knows the answer (NEU-1168 §3.4). */}
-              <ReportUserButton
-                userId={b.user.id}
-                userName={nameWithHandle(b.user)}
-                canBlock={false}
-              />
+              <ReportUserButton userId={b.user.id} user={b.user} canBlock={false} />
             </div>
           </li>
         ))}

@@ -586,4 +586,26 @@ describe("SettingsPage", () => {
     expect(await screen.findByRole("alert")).toHaveTextContent(/3–30 characters/);
     expect(requests).toBe(0);
   });
+
+  it("refuses an emptied handle client-side rather than PATCHing an empty string", async () => {
+    // The signup field is `required`, so native validation covers this there;
+    // this editor has to refuse it itself.
+    let requests = 0;
+    server.use(
+      authedMeHandler(),
+      http.patch(`${env.apiBaseUrl}/me/handle`, () => {
+        requests += 1;
+        return HttpResponse.json({}, { status: 200 });
+      }),
+    );
+    renderWithProviders(<SettingsPage />, { route: "/settings" });
+    await screen.findByText("@alice");
+
+    await userEvent.click(screen.getByRole("button", { name: /edit handle/i }));
+    await userEvent.clear(screen.getByLabelText(/^handle$/i));
+    await userEvent.click(screen.getByRole("button", { name: /save/i }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(/3–30 characters/);
+    expect(requests).toBe(0);
+  });
 });

@@ -133,7 +133,7 @@ function IncomingRow({ row, onBlock }: { row: ConnectionRequestOut; onBlock: () 
         {/* Incoming only. A stranger reaching you is the harassment case; an
             outgoing request is someone you chose to contact, so its row carries
             no report control (NEU-1168 §2). */}
-        <ReportUserButton userId={row.requester.id} userName={nameWithHandle(row.requester)} />
+        <ReportUserButton userId={row.requester.id} user={row.requester} />
       </div>
     </li>
   );

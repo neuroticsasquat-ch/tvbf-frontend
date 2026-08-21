@@ -1,5 +1,6 @@
 import { HttpResponse, http } from "msw";
 import { env } from "@/env";
+import { normaliseHandle } from "@/lib/handle";
 import {
   fixtureCast,
   fixtureCrew,
@@ -129,7 +130,10 @@ export const handlers = [
       id: "u1",
       email: "x@y.com",
       display_name: "X",
-      handle: (body.handle ?? "").trim().replace(/^@/, "").trim().toLowerCase(),
+      // Through the shared normaliser, not a second copy of it: this handler
+      // stands in for the server, so a drift here would silently invalidate
+      // every test that asserts what gets stored.
+      handle: normaliseHandle(body.handle ?? ""),
       created_at: new Date().toISOString(),
       email_verified_at: null,
       csrf_token: "test-csrf",

@@ -299,8 +299,9 @@ describe("AdminPage", () => {
     await screen.findByText("Bob Builder");
 
     const rows = screen.getAllByTestId("admin-user-row");
-    expect(rows[0].querySelector("[data-user-identity]")).not.toBeNull();
-    expect(rows[0]).toHaveTextContent("@bob_b");
+    // Asserted on the identity node, not the row: on the row it would pass
+    // just as happily when this surface hand-rolls its own span (§7).
+    expect(rows[0].querySelector("[data-user-identity]")).toHaveTextContent("@bob_b");
 
     // The handle is the one label a moderator can be handed verbatim in a
     // report, so the box that finds a person has to match on it.

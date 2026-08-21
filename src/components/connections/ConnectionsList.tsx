@@ -65,7 +65,7 @@ export function ConnectionsList() {
               <Button type="button" size="sm" variant="outline" onClick={() => setPendingBlock(c)}>
                 Block
               </Button>
-              <ReportUserButton userId={c.user.id} userName={nameWithHandle(c.user)} />
+              <ReportUserButton userId={c.user.id} user={c.user} />
             </div>
           </li>
         ))}

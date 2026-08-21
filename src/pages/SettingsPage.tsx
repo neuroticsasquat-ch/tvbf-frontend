@@ -11,6 +11,8 @@ import {
   useRevokeSession,
   type SessionSummary,
 } from "@/api/sessions";
+import { FieldError } from "@/components/FieldError";
+import { useFieldErrors } from "@/hooks/useFieldErrors";
 import { HANDLE_SHAPE_MESSAGE, isHandleShapeValid, normaliseHandle } from "@/lib/handle";
 import { formatRelativeTime } from "@/lib/relativeTime";
 
@@ -472,6 +474,10 @@ const HANDLE_CONSEQUENCES = [
  * Rendering two messages would leak exactly the distinction the backend hid. */
 const HANDLE_TAKEN = "That handle isn't available. Try another.";
 
+/** The one field this editor owns. A module-level constant because
+ * `useFieldErrors` keys its callbacks on the list's contents. */
+const HANDLE_FIELD = ["handle"];
+
 /** The date the throttle lifts, from the server's own `Retry-After` (§5.3).
  *
  * The number stays the server's — the client only renders it. "Later" is
@@ -499,7 +505,14 @@ function HandleEditor() {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState("");
   const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  // Every message this form can show is about the one input — the client-side
+  // shape check, the server's 422 sentence, the 409 and the 429 alike — so they
+  // share one store and the one `aria-describedby` join that hook owns, rather
+  // than a local `useState` rebuilding it (NEU-1196).
+  const { fieldErrors, fieldProps, clearField, setFieldError, capture } = useFieldErrors(
+    HANDLE_FIELD,
+  );
+  const error = fieldErrors.handle;
 
   if (!user) return null;
 
@@ -511,30 +524,34 @@ function HandleEditor() {
 
   function startEditing() {
     setDraft(user?.handle ?? "");
-    setError(null);
+    clearField("handle");
     setEditing(true);
   }
 
   function cancel() {
     setEditing(false);
-    setError(null);
+    clearField("handle");
   }
 
   /** The shape and nothing else — reserved words, the `user_<8 hex>` pattern
    * and uniqueness are the server's (D2). On blur and on submit, never per
-   * keystroke. */
+   * keystroke.
+   *
+   * An empty draft is refused here rather than waved through, unlike the signup
+   * field, whose `required` attribute makes native validation cover the same
+   * hole. Without that this editor would PATCH `handle: ""` for someone who
+   * cleared the box — a round trip the check exists to save. */
   function checkShape(): boolean {
-    if (draft.length === 0 || isHandleShapeValid(draft)) {
-      setError(null);
+    if (isHandleShapeValid(draft)) {
+      clearField("handle");
       return true;
     }
-    setError(HANDLE_SHAPE_MESSAGE);
+    setFieldError("handle", HANDLE_SHAPE_MESSAGE);
     return false;
   }
 
   async function save(e: React.FormEvent) {
     e.preventDefault();
-    setError(null);
     if (!checkShape()) return;
     if (normalised === user?.handle) {
       setEditing(false);
@@ -550,21 +567,20 @@ function HandleEditor() {
       setEditing(false);
     } catch (e) {
       if (e instanceof ApiError && e.status === 409) {
-        setError(HANDLE_TAKEN);
+        setFieldError("handle", HANDLE_TAKEN);
       } else if (e instanceof ApiError && e.status === 429) {
         const on = retryDate(e.retryAfterSeconds);
-        setError(
+        setFieldError(
+          "handle",
           on
             ? `You've changed your handle recently. You can change it again on ${on}.`
             : "You've changed your handle recently. You can change it again once the 30-day window has passed.",
         );
-      } else if (e instanceof ApiError && e.fieldErrors?.handle) {
-        // The rule lives in the schema, so the server's own sentence is the
-        // only one that says which rule was broken — a reserved word and the
-        // `user_<8 hex>` shape both arrive here.
-        setError(e.fieldErrors.handle);
-      } else {
-        setError("Couldn't change your handle. Try again.");
+      } else if (!capture(e).handled) {
+        // A 422 carries the schema's own sentence — the only one that says
+        // which rule was broken, since a reserved word and the `user_<8 hex>`
+        // shape both arrive that way — and `capture` puts it on the input.
+        setFieldError("handle", "Couldn't change your handle. Try again.");
       }
     } finally {
       setSubmitting(false);
@@ -591,27 +607,24 @@ function HandleEditor() {
             <input
               type="text"
               autoFocus
+              required
               value={draft}
+              minLength={3}
               maxLength={30}
               onChange={(e) => {
                 setDraft(e.target.value);
-                setError(null);
+                clearField("handle");
               }}
               onBlur={checkShape}
               aria-label="Handle"
-              aria-invalid={error ? true : undefined}
-              aria-describedby={error ? "handle-change-error" : undefined}
+              {...fieldProps("handle")}
               autoCapitalize="none"
               spellCheck={false}
               className="w-full rounded-r bg-transparent px-1 py-2 focus:outline-none"
             />
           </div>
           {preview && <p className="text-xs text-muted-foreground">You&apos;ll be @{preview}</p>}
-          {error && (
-            <p id="handle-change-error" role="alert" className="text-sm text-red-600">
-              {error}
-            </p>
-          )}
+          <FieldError name="handle" message={error} />
           <div className="flex gap-2">
             <button
               type="submit"
