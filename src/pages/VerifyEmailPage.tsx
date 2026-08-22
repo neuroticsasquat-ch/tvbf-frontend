@@ -3,6 +3,8 @@ import { Link, useSearchParams } from "react-router";
 import * as authApi from "@/api/auth";
 import { ApiError } from "@/api/client";
 import { useAuth } from "@/components/AuthContext";
+import { useResendVerification } from "@/hooks/useResendVerification";
+import { RESEND_ACTION, RESEND_SENDING, resendMessage } from "@/lib/verification";
 
 type State =
   | { kind: "verifying" }
@@ -22,9 +24,10 @@ export function VerifyEmailPage() {
   // Strict-mode-safe single-fire: guarantees we only call the API once for a
   // given token, even though React runs effects twice in dev.
   const consumedRef = useRef<string | null>(null);
-  const [resendStatus, setResendStatus] = useState<
-    "idle" | "sending" | "sent" | "rate_limited" | "error"
-  >("idle");
+  // The same resend the banner and the Find People notice offer, including the
+  // 429 mapping — one state machine, one set of words (NEU-1167 §3.6).
+  const { status: resendStatus, resend } = useResendVerification();
+  const resendOutcome = resendMessage(resendStatus);
 
   useEffect(() => {
     if (!token) return;
@@ -45,17 +48,6 @@ export function VerifyEmailPage() {
       }
     })();
   }, [token, refresh]);
-
-  async function resendVerification() {
-    setResendStatus("sending");
-    try {
-      await authApi.requestEmailVerification();
-      setResendStatus("sent");
-    } catch (e) {
-      if (e instanceof ApiError && e.status === 429) setResendStatus("rate_limited");
-      else setResendStatus("error");
-    }
-  }
 
   return (
     <div className="mx-auto max-w-md px-4 py-12 text-center space-y-4">
@@ -85,22 +77,22 @@ export function VerifyEmailPage() {
             <div className="space-y-2">
               <button
                 type="button"
-                onClick={resendVerification}
+                onClick={resend}
                 disabled={resendStatus === "sending"}
                 className="rounded bg-foreground text-background px-3 py-1 disabled:opacity-50"
               >
-                {resendStatus === "sending" ? "Sending…" : "Send a new verification email"}
+                {resendStatus === "sending" ? RESEND_SENDING : RESEND_ACTION}
               </button>
-              {resendStatus === "sent" && (
-                <p className="text-sm text-muted-foreground">Sent. Check your inbox.</p>
-              )}
-              {resendStatus === "rate_limited" && (
-                <p className="text-sm text-muted-foreground">
-                  Too many requests. Try again in a few minutes.
+              {resendOutcome && (
+                <p
+                  className={
+                    resendStatus === "error"
+                      ? "text-sm text-red-600"
+                      : "text-sm text-muted-foreground"
+                  }
+                >
+                  {resendOutcome}
                 </p>
-              )}
-              {resendStatus === "error" && (
-                <p className="text-sm text-red-600">Couldn't send a new email. Try again.</p>
               )}
             </div>
           )}

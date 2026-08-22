@@ -1,5 +1,23 @@
 # Release notes
 
+## 0.3.2 — 2026-08-16
+
+### Discover
+
+- Add the Trending tab to the Discover page ([NEU-1057](https://linear.app/neuroticsasquatch/issue/NEU-1057)) ([#190](https://github.com/neuroticsasquat-ch/music-discovery-engine/pull/190))
+- Add the Most Anticipated tab ([NEU-1060](https://linear.app/neuroticsasquatch/issue/NEU-1060)) ([#191](https://github.com/neuroticsasquat-ch/music-discovery-engine/pull/191))
+
+### General
+
+- Render the "More like this" section on show pages ([NEU-1054](https://linear.app/neuroticsasquatch/issue/NEU-1054)) ([#189](https://github.com/neuroticsasquat-ch/music-discovery-engine/pull/189))
+
+## 0.3.1 — 2026-08-16
+
+### Discover
+
+- Add the /discover route, nav item, and page shell ([NEU-1113](https://linear.app/neuroticsasquatch/issue/NEU-1113)) ([#185](https://github.com/neuroticsasquat-ch/music-discovery-engine/pull/185))
+- Render the "Recommended for you" section ([NEU-1114](https://linear.app/neuroticsasquatch/issue/NEU-1114)) ([#186](https://github.com/neuroticsasquat-ch/music-discovery-engine/pull/186))
+
 ## 0.3.0 — 2026-08-14
 
 ### Footer

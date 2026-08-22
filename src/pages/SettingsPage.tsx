@@ -11,10 +11,13 @@ import {
   useRevokeSession,
   type SessionSummary,
 } from "@/api/sessions";
+import { FieldError } from "@/components/FieldError";
+import { useFieldErrors } from "@/hooks/useFieldErrors";
+import { HANDLE_SHAPE_MESSAGE, isHandleShapeValid, normaliseHandle } from "@/lib/handle";
 import { formatRelativeTime } from "@/lib/relativeTime";
 
-/** Settings page shell. Today this only carries the Profile section
- * (display-name edit). M2/M5/M6 stories drop additional sections in here. */
+/** Settings page shell. The Profile section carries the display name and the
+ * handle (NEU-1169 §5.2). M5/M6 stories drop additional sections in here. */
 export function SettingsPage() {
   const { user } = useAuth();
 
@@ -372,7 +375,12 @@ function ProfileSection() {
       toast.success("Display name updated.");
       setEditing(false);
     } catch (e) {
-      if (e instanceof ApiError && e.status === 422) {
+      if (e instanceof ApiError && e.fieldErrors?.display_name) {
+        // The rule lives in the schema (NEU-1194), so the server's own sentence
+        // is the only one that says which rule was broken. Inline, beside the
+        // input it is about, rather than in a toast that outlives the editor.
+        setError(e.fieldErrors.display_name);
+      } else if (e instanceof ApiError && e.status === 422) {
         toast.error("That display name isn't allowed. Use 1–80 characters.");
       } else {
         toast.error("Could not update display name. Try again.");
@@ -426,14 +434,223 @@ function ProfileSection() {
           ) : (
             <div className="flex items-center justify-between gap-3">
               <span className="text-base text-foreground">{user.display_name}</span>
-              <button type="button" onClick={startEditing} className="text-sm underline">
+              {/* Named, not bare: the Profile card now carries two Edit
+                  controls, and "Edit" alone is the same repeated accessible
+                  name the admin switch is labelled against (NEU-1169 §4.3). */}
+              <button
+                type="button"
+                onClick={startEditing}
+                aria-label="Edit display name"
+                className="text-sm underline"
+              >
                 Edit
               </button>
             </div>
           )}
         </div>
+
+        <HandleEditor />
       </div>
     </section>
+  );
+}
+
+/** The three consequences of changing a handle, stated **before** the Edit
+ * control (§5.2). They are non-obvious, asymmetric and unguessable from an
+ * edit field, and the throttle in particular has to be readable before the
+ * first change: a rule first mentioned at save time has told someone after
+ * they spent one. */
+const HANDLE_CONSEQUENCES = [
+  "People who have your old handle won't find you with it.",
+  "Nobody else can ever take a handle you've used — it stays yours to reclaim.",
+  "You can change it 3 times every 30 days.",
+];
+
+/** The one message for a refused handle, whatever the cause (§5.4).
+ *
+ * NEU-1163 §6.3 makes "held by a live account" and "released by a different
+ * account" byte-identical on purpose — distinguishing them turns this form into
+ * a *has this handle ever existed* oracle, including for deleted accounts.
+ * Rendering two messages would leak exactly the distinction the backend hid. */
+const HANDLE_TAKEN = "That handle isn't available. Try another.";
+
+/** The one field this editor owns. A module-level constant because
+ * `useFieldErrors` keys its callbacks on the list's contents. */
+const HANDLE_FIELD = ["handle"];
+
+/** The date the throttle lifts, from the server's own `Retry-After` (§5.3).
+ *
+ * The number stays the server's — the client only renders it. "Later" is
+ * useless here: the window is 30 days and rolling, so the earliest retry is 30
+ * days after the *oldest* of three changes, and someone who spent three
+ * changes fixing a typo on day one is locked out until day 31. */
+function retryDate(seconds: number | undefined): string | null {
+  if (seconds === undefined) return null;
+  const at = new Date(Date.now() + seconds * 1000);
+  if (Number.isNaN(at.valueOf())) return null;
+  return at.toLocaleDateString(undefined, { day: "numeric", month: "long" });
+}
+
+/** Changing the handle, in the Profile section beneath the display name —
+ * the handle is the identifier and the display name is the label, so they
+ * belong together.
+ *
+ * An inline editor mirroring the display-name one above rather than a
+ * `ConfirmDialog`: this repo reserves that dialog for destructive or
+ * outward-facing acts — block, disconnect, unblock, disable, delete watch
+ * history — and a handle change is none of those. NEU-1163 §4.2's same-owner
+ * exemption makes it reversible by the person doing it (D9). */
+function HandleEditor() {
+  const { user, changeHandle } = useAuth();
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  // Every message this form can show is about the one input — the client-side
+  // shape check, the server's 422 sentence, the 409 and the 429 alike — so they
+  // share one store and the one `aria-describedby` join that hook owns, rather
+  // than a local `useState` rebuilding it (NEU-1196).
+  const { fieldErrors, fieldProps, clearField, setFieldError, capture } =
+    useFieldErrors(HANDLE_FIELD);
+  const error = fieldErrors.handle;
+
+  if (!user) return null;
+
+  const normalised = normaliseHandle(draft);
+  // The same prediction the signup field draws, on the same rule: shown only
+  // when normalisation actually changed something.
+  const preview =
+    draft.length > 0 && normalised !== draft && normalised.length > 0 ? normalised : null;
+
+  function startEditing() {
+    setDraft(user?.handle ?? "");
+    clearField("handle");
+    setEditing(true);
+  }
+
+  function cancel() {
+    setEditing(false);
+    clearField("handle");
+  }
+
+  /** The shape and nothing else — reserved words, the `user_<8 hex>` pattern
+   * and uniqueness are the server's (D2). On blur and on submit, never per
+   * keystroke.
+   *
+   * An empty draft is refused here rather than waved through, unlike the signup
+   * field, whose `required` attribute makes native validation cover the same
+   * hole. Without that this editor would PATCH `handle: ""` for someone who
+   * cleared the box — a round trip the check exists to save. */
+  function checkShape(): boolean {
+    if (isHandleShapeValid(draft)) {
+      clearField("handle");
+      return true;
+    }
+    setFieldError("handle", HANDLE_SHAPE_MESSAGE);
+    return false;
+  }
+
+  async function save(e: React.FormEvent) {
+    e.preventDefault();
+    if (!checkShape()) return;
+    if (normalised === user?.handle) {
+      setEditing(false);
+      return;
+    }
+    setSubmitting(true);
+    try {
+      // Sent as typed, exactly as signup sends it: the server owns the
+      // normalisation, so lowercasing here would be a second copy of a rule
+      // that already has one.
+      await changeHandle(draft);
+      toast.success("Handle updated.");
+      setEditing(false);
+    } catch (e) {
+      if (e instanceof ApiError && e.status === 409) {
+        setFieldError("handle", HANDLE_TAKEN);
+      } else if (e instanceof ApiError && e.status === 429) {
+        const on = retryDate(e.retryAfterSeconds);
+        setFieldError(
+          "handle",
+          on
+            ? `You've changed your handle recently. You can change it again on ${on}.`
+            : "You've changed your handle recently. You can change it again once the 30-day window has passed.",
+        );
+      } else if (!capture(e).handled) {
+        // A 422 carries the schema's own sentence — the only one that says
+        // which rule was broken, since a reserved word and the `user_<8 hex>`
+        // shape both arrive that way — and `capture` puts it on the input.
+        setFieldError("handle", "Couldn't change your handle. Try again.");
+      }
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  return (
+    <div className="border-t border-border pt-3 text-sm">
+      <p className="text-muted-foreground mb-1">Handle</p>
+      <p className="text-xs text-muted-foreground mb-2">
+        Your handle is how people tell you apart when two of you share a display name.
+      </p>
+      <ul className="mb-2 list-disc pl-5 text-xs text-muted-foreground">
+        {HANDLE_CONSEQUENCES.map((line) => (
+          <li key={line}>{line}</li>
+        ))}
+      </ul>
+      {editing ? (
+        <form onSubmit={save} className="space-y-2">
+          <div className="flex items-center rounded border border-border bg-background focus-within:ring-2 focus-within:ring-ring">
+            <span aria-hidden="true" className="pl-3 text-muted-foreground select-none">
+              @
+            </span>
+            <input
+              type="text"
+              autoFocus
+              required
+              value={draft}
+              minLength={3}
+              maxLength={30}
+              onChange={(e) => {
+                setDraft(e.target.value);
+                clearField("handle");
+              }}
+              onBlur={checkShape}
+              aria-label="Handle"
+              {...fieldProps("handle")}
+              autoCapitalize="none"
+              spellCheck={false}
+              className="w-full rounded-r bg-transparent px-1 py-2 focus:outline-none"
+            />
+          </div>
+          {preview && <p className="text-xs text-muted-foreground">You&apos;ll be @{preview}</p>}
+          <FieldError name="handle" message={error} />
+          <div className="flex gap-2">
+            <button
+              type="submit"
+              disabled={submitting}
+              className="rounded bg-foreground text-background px-3 py-1 disabled:opacity-50"
+            >
+              {submitting ? "Saving…" : "Save"}
+            </button>
+            <button type="button" onClick={cancel} disabled={submitting} className="px-3 py-1">
+              Cancel
+            </button>
+          </div>
+        </form>
+      ) : (
+        <div className="flex items-center justify-between gap-3">
+          <span className="text-base text-foreground">@{user.handle}</span>
+          <button
+            type="button"
+            onClick={startEditing}
+            aria-label="Edit handle"
+            className="text-sm underline"
+          >
+            Edit
+          </button>
+        </div>
+      )}
+    </div>
   );
 }
 

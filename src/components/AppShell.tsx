@@ -3,6 +3,7 @@ import { Link, NavLink, Outlet, useLocation } from "react-router";
 import {
   PlayCircle as WatchNextIcon,
   Calendar as CalendarIcon,
+  Compass as DiscoverIcon,
   Library as MyShowsIcon,
   Users as FriendsIcon,
   Search as SearchIcon,
@@ -109,6 +110,15 @@ export function AppShell() {
     placement === "mobile-bottom" ? "text-foreground" : "text-foreground bg-accent";
   const inactiveCls = "text-muted-foreground hover:text-foreground";
 
+  // Labels everywhere except the mobile header, whose slots are 9x9 icon
+  // buttons. Note the bottom bar is *labelled*, not icon-only — NEU-1113's spec
+  // and the M5 milestone both describe it as icon-only, which was never true of
+  // this code. Measured in Chrome at the fifth item's landing (NEU-1113): five
+  // slots fit with no horizontal overflow down to 320px CSS, all five cells
+  // keeping equal height. At 375px and up every label sits on one line; below
+  // ~340px "Watch Next" wraps to two and the bar grows 55px -> 71px, which is
+  // the whole cost of the fifth item. Dropping the labels to buy that back
+  // would cost every mobile user legibility on all five, so it was declined.
   const showLabel = (placement: Placement) => placement !== "mobile-header";
   const userMenuVariant = (placement: Placement) =>
     placement === "mobile-bottom"
@@ -140,6 +150,16 @@ export function AppShell() {
       >
         <CalendarIcon className="h-5 w-5" aria-hidden />
         {showLabel(placement) && <span>Upcoming</span>}
+      </NavLink>
+      <NavLink
+        to="/discover"
+        className={({ isActive }) =>
+          cn(linkCls(placement), isActive ? activeCls(placement) : inactiveCls)
+        }
+        aria-label="Discover"
+      >
+        <DiscoverIcon className="h-5 w-5" aria-hidden />
+        {showLabel(placement) && <span>Discover</span>}
       </NavLink>
       <NavLink
         to="/my-shows"
@@ -316,6 +336,30 @@ export function AppShell() {
               .
             </p>
           </div>
+
+          {/* Legal pages: four links, separated by dots. On narrow screens the
+            row wraps and stays center-aligned, matching the stacked layout of
+            the surrounding blocks. */}
+          <nav
+            aria-label="Legal"
+            className="flex flex-wrap justify-center gap-x-1.5 gap-y-1 text-center text-xs lg:justify-start"
+          >
+            <Link to="/terms" className="underline hover:text-foreground">
+              Terms
+            </Link>
+            <span aria-hidden="true">&middot;</span>
+            <Link to="/privacy" className="underline hover:text-foreground">
+              Privacy
+            </Link>
+            <span aria-hidden="true">&middot;</span>
+            <Link to="/about" className="underline hover:text-foreground">
+              About
+            </Link>
+            <span aria-hidden="true">&middot;</span>
+            <Link to="/contact" className="underline hover:text-foreground">
+              Contact
+            </Link>
+          </nav>
 
           {/* The publisher block: the release line sits under the copyright, and
             the pair sits under the attribution until `lg`, where it moves to the

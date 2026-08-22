@@ -153,7 +153,11 @@ export function EpisodePage() {
             {ep.airdate ? <span>{formatAirdate(ep.airdate)}</span> : null}
             {ep.airdate && ep.runtime ? <span aria-hidden>·</span> : null}
             {ep.runtime ? <span>{ep.runtime} min</span> : null}
-            <RatingBadge value={tenPointToFiveStar(ep.rating_average)} title="TMDB average" />
+            <RatingBadge
+              kind="aggregate"
+              crowdName="TMDB"
+              value={tenPointToFiveStar(ep.rating_average)}
+            />
           </p>
         )}
         {user ? (

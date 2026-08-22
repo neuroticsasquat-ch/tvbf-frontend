@@ -1,7 +1,11 @@
-import { describe, expect, it, beforeEach } from "vitest";
-import { fireEvent, screen, waitFor } from "@testing-library/react";
+import { Toaster } from "sonner";
+import { describe, expect, it, beforeEach, vi } from "vitest";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { http, HttpResponse } from "msw";
-import { renderWithProviders } from "@/test/renderWithProviders";
+import { QueryClientProvider } from "@tanstack/react-query";
+import { MemoryRouter } from "react-router";
+import { AuthProvider } from "@/components/AuthContext";
+import { createTestQueryClient, renderWithProviders } from "@/test/renderWithProviders";
 import { server } from "@/test/msw/server";
 import { env } from "@/env";
 import { MyShowsPage } from "./MyShowsPage";
@@ -66,6 +70,7 @@ function makeWatched(showId: number, name: string): WatchedEntry {
     first_watched_at: "2026-03-01T00:00:00Z",
     in_my_shows: false,
     status: "finished",
+    my_rating: null,
   };
 }
 
@@ -134,5 +139,68 @@ describe("MyShowsPage", () => {
   it("Active tab still renders existing My Shows list", async () => {
     renderWithProviders(<MyShowsPage />);
     await waitFor(() => expect(screen.getByText("Severance")).toBeInTheDocument());
+  });
+
+  describe("invited-user toast", () => {
+    beforeEach(() => {
+      vi.spyOn(window.history, "replaceState").mockImplementation(() => {});
+    });
+
+    function renderWithToaster(
+      ui: React.ReactElement,
+      route = "/",
+      state?: Record<string, unknown>,
+    ) {
+      const qc = createTestQueryClient();
+      return render(
+        <QueryClientProvider client={qc}>
+          <AuthProvider>
+            <MemoryRouter initialEntries={[{ pathname: route, state }]}>{ui}</MemoryRouter>
+            <Toaster />
+          </AuthProvider>
+        </QueryClientProvider>,
+      );
+    }
+
+    it("shows a toast with the first connection's handle when state.invited is true", async () => {
+      server.use(
+        http.get(`${env.apiBaseUrl}/me/shows`, () =>
+          HttpResponse.json([makeMyShow(1, "Severance")]),
+        ),
+        http.get(`${env.apiBaseUrl}/me/connections`, () =>
+          HttpResponse.json([
+            {
+              user: { id: "u2", display_name: "Inviter", handle: "inviter_user" },
+              since: "2026-08-22T00:00:00Z",
+            },
+          ]),
+        ),
+      );
+      renderWithToaster(<MyShowsPage />, "/my-shows", { invited: true });
+
+      await waitFor(() => {
+        expect(screen.getByText("You're now connected with @inviter_user.")).toBeInTheDocument();
+      });
+    });
+
+    it("suppresses the toast when connections are empty", async () => {
+      server.use(
+        http.get(`${env.apiBaseUrl}/me/shows`, () =>
+          HttpResponse.json([makeMyShow(1, "Severance")]),
+        ),
+        http.get(`${env.apiBaseUrl}/me/connections`, () => HttpResponse.json([])),
+      );
+      renderWithToaster(<MyShowsPage />, "/my-shows", { invited: true });
+
+      // Wait for connections to resolve — the toast should not appear.
+      await waitFor(() => expect(screen.queryByText(/now connected/i)).not.toBeInTheDocument());
+    });
+
+    it("suppresses the toast when no location state is present", async () => {
+      renderWithToaster(<MyShowsPage />, "/my-shows");
+      await waitFor(() => {
+        expect(screen.queryByText(/now connected/i)).not.toBeInTheDocument();
+      });
+    });
   });
 });

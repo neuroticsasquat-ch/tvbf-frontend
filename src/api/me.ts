@@ -11,7 +11,9 @@ import type {
   MyShowEntry,
   MyShowsSort,
   Rating,
+  RecommendationsResponse,
   ShowDetail,
+  ShowListPage,
   UpcomingEntry,
   UpcomingSeasonEntry,
   UpcomingShowEntry,
@@ -154,6 +156,73 @@ function invalidateAll(qc: ReturnType<typeof useQueryClient>) {
   qc.invalidateQueries({ queryKey: ["season-progress"] });
   // Friend engagement may include the caller in the future; keep honest.
   qc.invalidateQueries({ queryKey: ["friend-activity"] });
+  // Every grid surface carries a per-user `in_my_shows` mark, so adding or
+  // removing a show changes all four bodies (NEU-1057, NEU-1060, NEU-1186).
+  // Invalidation is the mechanism, not `staleTime`: `staleTime: 0` alone only
+  // refetches on mount, which would leave a Discover tab showing the
+  // pre-toggle mark until it remounted — and `["shows"]` / `["show-similar"]`
+  // keep a five-minute `staleTime`, so for those two it is the only mechanism
+  // there is.
+  qc.invalidateQueries({ queryKey: ["trending"] });
+  qc.invalidateQueries({ queryKey: ["anticipated"] });
+  qc.invalidateQueries({ queryKey: ["shows"] });
+  qc.invalidateQueries({ queryKey: ["show-similar"] });
+  invalidateRecommendations(qc);
+}
+
+/** `GET /me/recommendations` suppresses any stored suggestion the viewer
+ * already has a record for, and the suppression is a live join rather than a
+ * stored flag (NEU-1175), so every mutation that creates or removes one of
+ * project spec §8's four records changes this body in one direction or the
+ * other: My Shows membership, a show rating, any episode watch, any episode
+ * rating. NEU-1178 added a fifth that is not one of those four and need not
+ * name a show the viewer has ever seen: a dismissal
+ * (`useDismissRecommendation`).
+ *
+ * The client **never re-implements the suppression rule** — it is one
+ * definition on the server (`recommendations/exclusion.py`), cited by the
+ * NEU-1112 contract §4.1, and a client-side copy is a second expression of it
+ * that drifts. All the client decides is *when to refetch*.
+ *
+ * Called from `invalidateAll` (which covers membership and every episode-watch
+ * path) and by hand from the four mutations that do not route through it.
+ */
+function invalidateRecommendations(qc: ReturnType<typeof useQueryClient>) {
+  qc.invalidateQueries({ queryKey: ["me-recommendations"] });
+}
+
+/** Flip `in_my_shows` on every cached browse page that holds this show
+ * (NEU-1192 §3.3).
+ *
+ * Search is the first surface where a control sits **beside** the mark on a
+ * result that stays on screen through the toggle, so the lag between the chip's
+ * own optimistic state and the mark's became visible: the chip reads "✓ My
+ * Shows" beside a poster still saying nothing, for a `PUT` plus a refetch of a
+ * fifty-item page. Both signals confirming the add is also the stronger answer
+ * to "does this read as a completed action rather than a no-op?".
+ *
+ * A page that does **not** hold the show is returned unchanged, so a toggle
+ * does not break referential equality for every cached search page and
+ * re-render grids nothing happened to.
+ *
+ * Scoped to `["shows"]` deliberately: `["trending"]`, `["anticipated"]` and
+ * `["show-similar"]` carry the same mark and the same invalidate-on-settled
+ * behaviour, and the lag is only *observable* where a control sits beside a
+ * mark — which is search alone until those surfaces grow one.
+ */
+function setBrowseMembership(
+  qc: ReturnType<typeof useQueryClient>,
+  showId: number,
+  inMyShows: boolean,
+) {
+  qc.setQueriesData<ShowListPage>({ queryKey: ["shows"] }, (prev) =>
+    prev?.items.some((s) => s.id === showId)
+      ? {
+          ...prev,
+          items: prev.items.map((s) => (s.id === showId ? { ...s, in_my_shows: inMyShows } : s)),
+        }
+      : prev,
+  );
 }
 
 function placeholderMyShowEntry(showId: number): MyShowEntry {
@@ -194,16 +263,29 @@ export function useAddShow() {
   return useMutation({
     mutationFn: (showId: number) => apiFetch<void>(`/me/shows/${showId}`, { method: "PUT" }),
     onMutate: async (showId: number) => {
+      // Both keys are cancelled before either is patched, for the reason the
+      // `["my-shows"]` cancel already existed: an in-flight search response
+      // landing after the patch would write the pre-toggle body back and
+      // reintroduce exactly the flicker being removed. A cancelled search fetch
+      // is not lost — `invalidateAll` refetches it in `onSettled`.
       await qc.cancelQueries({ queryKey: ["my-shows"] });
-      const snapshots = qc.getQueriesData<MyShowEntry[]>({ queryKey: ["my-shows"] });
+      await qc.cancelQueries({ queryKey: ["shows"] });
+      const snapshots = [
+        ...qc.getQueriesData<MyShowEntry[]>({ queryKey: ["my-shows"] }),
+        ...qc.getQueriesData<ShowListPage>({ queryKey: ["shows"] }),
+      ];
       qc.setQueriesData<MyShowEntry[]>({ queryKey: ["my-shows"] }, (prev) => {
         if (!prev) return prev;
         if (prev.some((e) => e.show.id === showId)) return prev;
         return [placeholderMyShowEntry(showId), ...prev];
       });
+      setBrowseMembership(qc, showId, true);
       return { snapshots };
     },
     onError: (_err, _showId, ctx) => {
+      // Snapshot-and-restore rather than an inverse flip: that is the shape
+      // this mutation already used for `["my-shows"]`, and an inverse flip
+      // would be a second expression of the same guess.
       ctx?.snapshots.forEach(([key, data]) => qc.setQueryData(key, data));
     },
     onSettled: () => invalidateAll(qc),
@@ -216,10 +298,15 @@ export function useRemoveShow() {
     mutationFn: (showId: number) => apiFetch<void>(`/me/shows/${showId}`, { method: "DELETE" }),
     onMutate: async (showId: number) => {
       await qc.cancelQueries({ queryKey: ["my-shows"] });
-      const snapshots = qc.getQueriesData<MyShowEntry[]>({ queryKey: ["my-shows"] });
+      await qc.cancelQueries({ queryKey: ["shows"] });
+      const snapshots = [
+        ...qc.getQueriesData<MyShowEntry[]>({ queryKey: ["my-shows"] }),
+        ...qc.getQueriesData<ShowListPage>({ queryKey: ["shows"] }),
+      ];
       qc.setQueriesData<MyShowEntry[]>({ queryKey: ["my-shows"] }, (prev) =>
         prev?.filter((e) => e.show.id !== showId),
       );
+      setBrowseMembership(qc, showId, false);
       return { snapshots };
     },
     onError: (_err, _showId, ctx) => {
@@ -372,6 +459,7 @@ export function useRemoveFromHistory() {
       qc.invalidateQueries({ queryKey: ["upcoming"] });
       qc.invalidateQueries({ queryKey: ["watched-episodes", vars.showId] });
       qc.invalidateQueries({ queryKey: ["season-progress", vars.showId] });
+      invalidateRecommendations(qc);
     },
   });
 }
@@ -425,6 +513,11 @@ export function useShowRating(showId: number) {
       qc.invalidateQueries({ queryKey: ["show", showId] });
       qc.invalidateQueries({ queryKey: ["my-shows"] });
       qc.invalidateQueries({ queryKey: ["shows"] });
+      // `/shows/{id}/similar` carries `my_rating` since NEU-1186, so a rating
+      // changes that body too — and a show is routinely similar to one the
+      // viewer is rating, which is the case a browse-only invalidation misses.
+      qc.invalidateQueries({ queryKey: ["show-similar"] });
+      invalidateRecommendations(qc);
     },
   });
 }
@@ -461,6 +554,7 @@ export function useEpisodeRating(episodeId: number) {
       if (showId !== undefined) {
         qc.invalidateQueries({ queryKey: ["show-episodes", showId] });
       }
+      invalidateRecommendations(qc);
     },
   });
 }
@@ -478,6 +572,70 @@ export function useFeed(limit = 20) {
     initialPageParam: null as string | null,
     getNextPageParam: (lastPage) => lastPage.next_cursor,
     staleTime: 0,
+  });
+}
+
+export function fetchRecommendations(): Promise<RecommendationsResponse> {
+  return apiFetch<RecommendationsResponse>("/me/recommendations");
+}
+
+/** The newest succeeded batch of weekly recommendations, already capped and
+ * filtered by the server.
+ *
+ * The client never slices and never filters this list: the server caps at 12
+ * *after* applying the `adult` / `deleted_upstream_at` filters, so a client
+ * re-slicing a pre-filtered list would show fewer than twelve the first time a
+ * tombstone landed (NEU-1112 contract §4). It never re-sorts it either — the
+ * array arrives in the model's rank order, the only ordering in the payload
+ * that carries information.
+ */
+export function useRecommendations() {
+  return useQuery<RecommendationsResponse>({
+    // `staleTime: 0`, matching `useFeed`: the route answers `Cache-Control:
+    // no-store` because it is per-user content the weekly pass replaces out
+    // from under any cache (NEU-1112 contract §1).
+    queryKey: ["me-recommendations"],
+    queryFn: fetchRecommendations,
+    staleTime: 0,
+  });
+}
+
+/** `POST /me/recommendations/{show_id}/dismiss` — never recommend this show to
+ * this viewer again (NEU-1178, NEU-1179).
+ *
+ * `apiFetch` needs nothing else here: it sets `X-CSRF-Token` on any non-GET,
+ * sends no `Content-Type` when there is no body, and short-circuits the `204`
+ * before it would try to parse one. The endpoint is idempotent
+ * (`ON CONFLICT DO NOTHING`, `204` on every repeat), so the client fires
+ * without checking whether the show is already dismissed.
+ *
+ * **It invalidates `["me-recommendations"]` and nothing else.** A dismissal
+ * creates no My Shows row, no rating, no `activity_event` and no feed item
+ * (NEU-1178 AC 9), so no other key's body changes — it is the fifth
+ * never-recommend source and only that.
+ *
+ * **`onSuccess`, not `onSettled`** — the one mutation in this file that
+ * refreshes this key that way. The others invalidate on settle because they
+ * carry optimistic updates whose rollback still leaves the server
+ * authoritative. This one has none, so a refetch after a failure would spend a
+ * request to be told the same thing, and firing only on success is what makes
+ * "a failed request leaves the card in place" structural rather than
+ * incidental.
+ *
+ * The toast is the whole of the failure feedback: there is no optimistic
+ * override to visibly revert, so without it a genuinely broken endpoint reads
+ * as a button that does nothing at all. It is not the page-level error a
+ * background browsing surface must not show.
+ */
+export function useDismissRecommendation() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (showId: number) =>
+      apiFetch<void>(`/me/recommendations/${showId}/dismiss`, { method: "POST" }),
+    onSuccess: () => invalidateRecommendations(qc),
+    onError: () => {
+      toast.error("Could not remove that recommendation.");
+    },
   });
 }
 

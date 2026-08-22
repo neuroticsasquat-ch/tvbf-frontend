@@ -4,7 +4,10 @@ import { toast } from "sonner";
 import { listBlocks, unblockUser } from "@/api/connections";
 import type { BlockedUserOut } from "@/api/types";
 import { Button } from "@/components/ui/button";
-import { ConfirmDialog } from "./ConfirmDialog";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
+import { ReportUserButton } from "@/components/ReportUserButton";
+import { UserIdentity } from "@/components/UserIdentity";
+import { nameWithHandle } from "@/lib/userLabel";
 
 const BLOCKS_KEY = ["blocks"] as const;
 
@@ -40,15 +43,21 @@ export function BlockedList() {
       <ul className="flex flex-col divide-y divide-border rounded border border-border">
         {data.map((b) => (
           <li key={b.user.id} className="flex items-center justify-between gap-3 px-3 py-2">
-            <div className="flex flex-col">
-              <span className="text-sm">{b.user.display_name}</span>
+            <div className="flex min-w-0 flex-1 flex-col">
+              <UserIdentity displayName={b.user.display_name} handle={b.user.handle} />
               <span className="text-xs text-muted-foreground">
                 Blocked {formatDate(b.blocked_at)}
               </span>
             </div>
-            <Button type="button" size="sm" variant="outline" onClick={() => setPending(b)}>
-              Unblock
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button type="button" size="sm" variant="outline" onClick={() => setPending(b)}>
+                Unblock
+              </Button>
+              {/* Blocking is private; reporting is the escalation from it. The
+                  block offer in step 2 is suppressed because this surface
+                  already knows the answer (NEU-1168 §3.4). */}
+              <ReportUserButton userId={b.user.id} user={b.user} canBlock={false} />
+            </div>
           </li>
         ))}
       </ul>
@@ -77,7 +86,7 @@ function UnblockConfirm({ row, onClose }: { row: BlockedUserOut; onClose: () => 
   return (
     <ConfirmDialog
       title="Unblock user"
-      description={`Unblock ${row.user.display_name}? They will be able to send you connection requests again.`}
+      description={`Unblock ${nameWithHandle(row.user)}? They will be able to send you connection requests again.`}
       confirmLabel="Confirm"
       pending={mutation.isPending}
       onConfirm={() => {

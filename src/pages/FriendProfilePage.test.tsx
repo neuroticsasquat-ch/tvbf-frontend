@@ -1,5 +1,6 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
 import { fireEvent, screen, waitFor, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { Route, Routes } from "react-router";
 import { http, HttpResponse } from "msw";
 import { renderWithProviders } from "@/test/renderWithProviders";
@@ -84,6 +85,7 @@ function makeWatched(
     first_watched_at: "2026-03-01T00:00:00Z",
     in_my_shows: false,
     status: "finished",
+    my_rating: null,
     ...overrides,
   };
 }
@@ -92,7 +94,10 @@ describe("FriendProfilePage", () => {
   beforeEach(() => {
     window.localStorage.clear();
     vi.spyOn(connectionsApi, "listConnections").mockResolvedValue([
-      { user: { id: FRIEND_ID, display_name: "Friendly Person" }, since: "2026-04-01T00:00:00Z" },
+      {
+        user: { id: FRIEND_ID, display_name: "Friendly Person", handle: "friendly_person" },
+        since: "2026-04-01T00:00:00Z",
+      },
     ]);
   });
   afterEach(() => {
@@ -123,8 +128,10 @@ describe("FriendProfilePage", () => {
     await waitFor(() => expect(get).toHaveBeenCalledWith(FRIEND_ID, expect.any(Object)));
     await waitFor(() => expect(screen.getByText("Severance")).toBeInTheDocument());
     // Caller's My Shows is empty (default MSW handler) → Add button shown.
-    expect(screen.getByRole("button", { name: /add to my shows/i })).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /remove from my shows/i })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^add .+ to my shows$/i })).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /^remove .+ from my shows$/i }),
+    ).not.toBeInTheDocument();
   });
 
   it("Active tab renders the shared toolbar (sort + filters + view toggle)", async () => {
@@ -199,7 +206,7 @@ describe("FriendProfilePage", () => {
 
     await waitFor(() => expect(screen.getByText("Severance")).toBeInTheDocument());
     await waitFor(() => {
-      const badges = screen.queryAllByLabelText(/^in my shows$/i);
+      const badges = screen.queryAllByLabelText(/^in your my shows$/i);
       expect(badges).toHaveLength(1);
     });
     // Badge is a sibling of the Severance link (same row), not the Lost link.
@@ -225,6 +232,7 @@ describe("FriendProfilePage", () => {
             first_watched_at: "2026-03-01T00:00:00Z",
             in_my_shows: false,
             status: "in_progress",
+            my_rating: null,
           },
         ]),
       ),
@@ -235,7 +243,7 @@ describe("FriendProfilePage", () => {
     await waitFor(() => expect(screen.getByText("Severance")).toBeInTheDocument());
     await waitFor(() => expect(screen.getByText(/^you:\s*3\/9$/i)).toBeInTheDocument());
     // No green ✓ badge for this show — caller watches it but doesn't track it.
-    expect(screen.queryByLabelText(/^in my shows$/i)).not.toBeInTheDocument();
+    expect(screen.queryByLabelText(/^in your my shows$/i)).not.toBeInTheDocument();
   });
 
   it("friend Active row shows BOTH green ✓ and 'You: x/y' when caller tracks AND has watched", async () => {
@@ -257,7 +265,7 @@ describe("FriendProfilePage", () => {
     renderWithProviders(routed(), { route: `/users/${FRIEND_ID}` });
 
     await waitFor(() => expect(screen.getByText("Severance")).toBeInTheDocument());
-    await waitFor(() => expect(screen.getByLabelText(/^in my shows$/i)).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByLabelText(/^in your my shows$/i)).toBeInTheDocument());
     expect(screen.getByText(/^you:\s*5\/10$/i)).toBeInTheDocument();
   });
 
@@ -270,7 +278,7 @@ describe("FriendProfilePage", () => {
     renderWithProviders(routed(), { route: `/users/${FRIEND_ID}` });
 
     await waitFor(() => expect(screen.getByText("Severance")).toBeInTheDocument());
-    expect(screen.queryByLabelText(/^in my shows$/i)).not.toBeInTheDocument();
+    expect(screen.queryByLabelText(/^in your my shows$/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/^you:/i)).not.toBeInTheDocument();
   });
 
@@ -409,5 +417,48 @@ describe("FriendProfilePage", () => {
     expect(screen.getByText("Six Feet Under")).toBeInTheDocument();
     // No new server fetch — filtering happens client-side.
     expect(watched.mock.calls.length).toBe(callsAfterLoad);
+  });
+
+  it("carries a labelled report control in the header and leaves the profile when it blocks", async () => {
+    vi.spyOn(friendsApi, "getFriendShows").mockResolvedValue([]);
+    const block = vi.spyOn(connectionsApi, "blockUser").mockResolvedValue({
+      user: { id: FRIEND_ID, display_name: "Friendly Person", handle: "friendly_person" },
+      blocked_at: "2026-08-20T00:00:00Z",
+    });
+    renderWithProviders(
+      <Routes>
+        <Route path="/users/:userId" element={<FriendProfilePage />} />
+        <Route path="/friends" element={<p>friends page</p>} />
+      </Routes>,
+      { route: `/users/${FRIEND_ID}` },
+    );
+    const user = userEvent.setup();
+
+    // Labelled here, compact in the three list rows (NEU-1168 §3.2).
+    const report = await screen.findByRole("button", {
+      name: "Report Friendly Person (@friendly_person)",
+    });
+    expect(report).toHaveTextContent("Report");
+
+    await user.click(report);
+    await user.type(screen.getByLabelText(/what happened/i), "Abusive messages.");
+    await user.click(screen.getByRole("button", { name: /send report/i }));
+    await screen.findByText(/report received/i);
+    await user.click(screen.getByRole("button", { name: /block Friendly Person/i }));
+
+    await waitFor(() => expect(block).toHaveBeenCalledWith(FRIEND_ID));
+    // This page resolves its subject out of `listConnections`, which the block
+    // empties — without the navigation the reader would land on "User not
+    // found" as the direct result of a deliberate act (AC 10).
+    await waitFor(() => expect(screen.getByText("friends page")).toBeInTheDocument());
+  });
+
+  it("draws the header through UserIdentity at the heading size", async () => {
+    vi.spyOn(friendsApi, "getFriendShows").mockResolvedValue([]);
+    renderWithProviders(routed(), { route: `/users/${FRIEND_ID}` });
+
+    const heading = await screen.findByRole("heading", { level: 1 });
+    expect(heading.textContent).toBe("Friendly Person@friendly_person");
+    expect(heading.querySelector("[data-user-identity]")).not.toBeNull();
   });
 });

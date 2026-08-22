@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { useParams } from "react-router";
+import { useNavigate, useParams } from "react-router";
 import { useQuery } from "@tanstack/react-query";
 import { ApiError } from "@/api/client";
 import { listConnections } from "@/api/connections";
@@ -7,6 +7,8 @@ import { getFriendShows, getFriendWatched } from "@/api/friends";
 import { useMyShows, useMyWatched } from "@/api/me";
 import type { ConnectionOut, MyShowEntry, WatchedEntry } from "@/api/types";
 import { localToday } from "@/api/today";
+import { ReportUserButton } from "@/components/ReportUserButton";
+import { UserIdentity } from "@/components/UserIdentity";
 import { LibraryActiveList } from "@/components/library/LibraryActiveList";
 import { LibraryWatchedList } from "@/components/library/LibraryWatchedList";
 import { buildCallerLibrary } from "@/components/library/callerLibrary";
@@ -17,6 +19,7 @@ type Tab = "active" | "watched";
 export function FriendProfilePage() {
   const { userId = "" } = useParams<{ userId: string }>();
   const [tab, setTab] = useState<Tab>("active");
+  const navigate = useNavigate();
 
   const connectionsQuery = useQuery<ConnectionOut[]>({
     queryKey: ["connections"],
@@ -34,7 +37,28 @@ export function FriendProfilePage() {
 
   return (
     <section className="flex flex-col gap-4">
-      <h1 className="text-2xl font-semibold">{friend.user.display_name}</h1>
+      <div className="flex items-center justify-between gap-3">
+        <h1 className="min-w-0">
+          <UserIdentity
+            displayName={friend.user.display_name}
+            handle={friend.user.handle}
+            size="heading"
+          />
+        </h1>
+        {/* Labelled here and compact in the three list rows (NEU-1168 §3.2):
+            this page has room for a word, and the rows measurably do not.
+
+            `onBlocked` navigates because this page resolves its subject out of
+            `listConnections`, which `useBlockUser` empties — blocking from the
+            dialog would otherwise leave the reader on "User not found" as the
+            direct result of a deliberate act. */}
+        <ReportUserButton
+          userId={friend.user.id}
+          user={friend.user}
+          variant="labelled"
+          onBlocked={() => navigate("/friends?section=connections")}
+        />
+      </div>
 
       <div
         role="tablist"
@@ -50,8 +74,8 @@ export function FriendProfilePage() {
       </div>
 
       <div role="tabpanel">
-        {tab === "active" && <ActiveTab userId={userId} />}
-        {tab === "watched" && <WatchedTab userId={userId} />}
+        {tab === "active" && <ActiveTab userId={userId} name={friend.user.display_name} />}
+        {tab === "watched" && <WatchedTab userId={userId} name={friend.user.display_name} />}
       </div>
     </section>
   );
@@ -85,7 +109,7 @@ function TabButton({
   );
 }
 
-function ActiveTab({ userId }: { userId: string }) {
+function ActiveTab({ userId, name }: { userId: string; name: string }) {
   const today = localToday();
   const { data, isLoading, error } = useQuery<MyShowEntry[]>({
     queryKey: ["friend-shows", userId, today],
@@ -108,14 +132,14 @@ function ActiveTab({ userId }: { userId: string }) {
     <LibraryActiveList
       data={data}
       isLoading={isLoading}
-      viewerContext="friend"
+      viewerContext={{ kind: "friend", name }}
       callerLibrary={callerLibrary}
       storagePrefix="friend-active"
     />
   );
 }
 
-function WatchedTab({ userId }: { userId: string }) {
+function WatchedTab({ userId, name }: { userId: string; name: string }) {
   const today = localToday();
   const { data, isLoading, isError, error } = useQuery<WatchedEntry[]>({
     queryKey: ["friend-watched", userId, today],
@@ -137,7 +161,7 @@ function WatchedTab({ userId }: { userId: string }) {
       data={data}
       isLoading={isLoading}
       isError={isError}
-      viewerContext="friend"
+      viewerContext={{ kind: "friend", name }}
       callerLibrary={callerLibrary}
       storagePrefix="friend-watched"
     />

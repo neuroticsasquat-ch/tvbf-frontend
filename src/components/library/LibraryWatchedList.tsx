@@ -1,14 +1,12 @@
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { Link } from "react-router";
-import { ArrowDown, ArrowUp, Check, Plus, Trash2 } from "lucide-react";
-import { useAddShow, useRemoveFromHistory, useRemoveShow } from "@/api/me";
 import type { MyShowEntry, WatchedEntry } from "@/api/types";
-import { ConfirmDialog } from "@/components/connections/ConfirmDialog";
-import { Button } from "@/components/ui/button";
-import { ViewToggle } from "@/components/ViewToggle";
 import { MyShowCard } from "@/components/MyShowCard";
+import { ShowPoster } from "@/components/ShowPoster";
+import { MyShowsButton } from "@/components/MyShowsButton";
+import { RemoveWatchHistoryButton } from "@/components/RemoveWatchHistoryButton";
 import { WatchProgressBar } from "@/components/WatchProgressBar";
-import { FilterSheet } from "@/components/home/FilterSheet";
+import { ListingToolbar } from "@/components/home/ListingToolbar";
 import {
   CallerMembershipFilterPicker,
   CallerWatchStateFilterPicker,
@@ -36,14 +34,16 @@ import {
   compareLibraryEntries,
   type LibrarySort,
 } from "@/components/home/librarySort";
+import { useFocusAfterRemoval } from "@/hooks/useFocusAfterRemoval";
 import { usePersistedSort } from "@/hooks/usePersistedSort";
 import { usePersistedString } from "@/hooks/usePersistedString";
 import { usePersistedView } from "@/hooks/usePersistedView";
-import { cn } from "@/lib/cn";
-import type { CallerLibrary } from "./callerLibrary";
+import { OwnerFacts } from "@/components/OwnerFacts";
+import { watchedCallerRelationship, type CallerLibrary } from "./callerLibrary";
 import { matchesCallerMembership, matchesCallerWatchState } from "./callerFilters";
-import type { ViewerContext } from "./LibraryActiveList";
-import { CallerPosterBadge, CallerProgressNote } from "./LibraryRowIndicators";
+import { CallerProgressNote } from "./LibraryRowIndicators";
+import { SELF, ratingOwnerFor, type ViewerContext } from "./viewerContext";
+import { watchedEmptyMessage } from "./emptyStates";
 
 // Disabled options on All Watched per NEU-121:
 // - Watch State: "Not Started" — every entry has at least one watched episode.
@@ -55,18 +55,9 @@ const DISABLED_SORTS: Partial<Record<LibrarySort, string>> = {
   added_desc: "Available on the Active tab.",
 };
 
-function formatDate(iso: string | null): string {
-  if (!iso) return "";
-  const d = new Date(iso);
-  if (Number.isNaN(d.valueOf())) return "";
-  const ageDays = (Date.now() - d.getTime()) / 86_400_000;
-  const includeYear = ageDays > 180;
-  return d.toLocaleDateString(undefined, {
-    month: "short",
-    day: "numeric",
-    ...(includeYear ? { year: "numeric" } : {}),
-  });
-}
+/** Module scope so it is one stable reference across renders — it lands in
+ * `useFocusAfterRemoval`'s effect dependencies. */
+const showIdOf = (e: WatchedEntry) => e.show.id;
 
 interface Props {
   data: WatchedEntry[] | undefined;
@@ -87,7 +78,7 @@ export function LibraryWatchedList({
   data,
   isLoading,
   isError,
-  viewerContext = "self",
+  viewerContext = SELF,
   callerLibrary,
   storagePrefix = "watched",
 }: Props) {
@@ -150,7 +141,18 @@ export function LibraryWatchedList({
     callerLibrary,
   ]);
 
-  const sortLabel = LIBRARY_SORTS.find((s) => s.key === sort)?.label ?? "";
+  // Focus after a watch-history removal unmounts a row or card (NEU-1193).
+  // `useRemoveFromHistory` filters the entry out of every `["my-watched"]`
+  // query in `onMutate`, so the control is gone before the request settles and
+  // focus falls to `<body>` — three histories in a sitting meant three trips
+  // back through the page from the top. Same hook as the Active tab and the
+  // recommendations grid, and no empty selector: when the last entry goes, the
+  // results container itself takes focus.
+  const { containerRef: resultsRef, onRemoved } = useFocusAfterRemoval<
+    WatchedEntry,
+    HTMLDivElement
+  >(filteredAndSorted, showIdOf, "[data-remove-watch-history]");
+
   const filtersActive =
     watchState !== "all" ||
     showStatus !== "all" ||
@@ -161,106 +163,111 @@ export function LibraryWatchedList({
 
   return (
     <div>
-      <div className="flex flex-wrap items-center gap-2 mb-4">
-        <ViewToggle value={view} onChange={setView} ariaLabel="Watched display" />
-        <FilterSheet
-          title="Sort Watched"
-          triggerLabel={sortLabel}
-          triggerIcon={
-            <>
-              <ArrowDown className="h-4 w-4" aria-hidden />
-              <ArrowUp className="h-4 w-4 -ml-2" aria-hidden />
-            </>
-          }
-          ariaLabel={`Sort Watched (current: ${sortLabel})`}
-          options={LIBRARY_SORTS.map((o) => ({
-            ...o,
-            disabledReason: DISABLED_SORTS[o.key],
-          }))}
-          value={sort}
-          onChange={setSort}
-        />
-      </div>
-      <div className="mb-4 flex flex-wrap items-center gap-2">
-        <WatchStateFilter
-          value={watchState}
-          onChange={setWatchState}
-          disabledOptions={DISABLED_WATCH_STATES}
-        />
-        <ShowStatusFilterPicker value={showStatus} onChange={setShowStatus} />
-        <InMyShowsFilterPicker value={inMyShows} onChange={setInMyShows} />
-        {viewerContext === "friend" && (
+      <ListingToolbar
+        view={{ value: view, onChange: setView, ariaLabel: "Watched display" }}
+        sort={{
+          label: "Watched",
+          options: LIBRARY_SORTS.map((o) => ({ ...o, disabledReason: DISABLED_SORTS[o.key] })),
+          value: sort,
+          onChange: setSort,
+        }}
+        filters={
           <>
-            <CallerMembershipFilterPicker value={callerMembership} onChange={setCallerMembership} />
-            <CallerWatchStateFilterPicker value={callerWatchState} onChange={setCallerWatchState} />
+            <WatchStateFilter
+              value={watchState}
+              onChange={setWatchState}
+              disabledOptions={DISABLED_WATCH_STATES}
+            />
+            <ShowStatusFilterPicker value={showStatus} onChange={setShowStatus} />
+            <InMyShowsFilterPicker value={inMyShows} onChange={setInMyShows} />
+            {viewerContext.kind === "friend" && (
+              <>
+                <CallerMembershipFilterPicker
+                  value={callerMembership}
+                  onChange={setCallerMembership}
+                />
+                <CallerWatchStateFilterPicker
+                  value={callerWatchState}
+                  onChange={setCallerWatchState}
+                />
+              </>
+            )}
+            <GenreFilter value={genre} onChange={setGenre} />
+            {filtersActive && (
+              <ClearFiltersButton
+                onClear={() => {
+                  setWatchState("all");
+                  setShowStatus("all");
+                  setInMyShows("all");
+                  setCallerMembership("all");
+                  setCallerWatchState("all");
+                  setGenre("all");
+                }}
+              />
+            )}
           </>
+        }
+      />
+      {/* One focusable container across both views, so the post-removal focus
+        move has somewhere to land when the last entry goes — and one query root
+        for the controls. `tabIndex={-1}` keeps it out of the tab order. Same
+        shape as the Active tab's. */}
+      <div ref={resultsRef} tabIndex={-1} className="outline-none">
+        {isLoading && <p className="text-sm text-muted-foreground">Loading…</p>}
+        {isError && <p className="text-sm text-destructive">Failed to load watch history.</p>}
+        {!isLoading && !isError && filteredAndSorted && filteredAndSorted.length === 0 && (
+          <p className="text-sm text-muted-foreground">
+            {watchedEmptyMessage(viewerContext, data?.length === 0)}
+          </p>
         )}
-        <GenreFilter value={genre} onChange={setGenre} />
-        {filtersActive && (
-          <ClearFiltersButton
-            onClear={() => {
-              setWatchState("all");
-              setShowStatus("all");
-              setInMyShows("all");
-              setCallerMembership("all");
-              setCallerWatchState("all");
-              setGenre("all");
-            }}
-          />
-        )}
+        {!isLoading &&
+          !isError &&
+          filteredAndSorted &&
+          filteredAndSorted.length > 0 &&
+          view === "grid" && (
+            <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-8">
+              {filteredAndSorted.map((entry) => (
+                <WatchedCard
+                  key={entry.show.id}
+                  entry={entry}
+                  viewerContext={viewerContext}
+                  callerLibrary={callerLibrary}
+                  onRemoved={onRemoved}
+                />
+              ))}
+            </div>
+          )}
+        {!isLoading &&
+          !isError &&
+          filteredAndSorted &&
+          filteredAndSorted.length > 0 &&
+          view === "list" && (
+            <ul className="space-y-3">
+              {filteredAndSorted.map((entry) => (
+                <WatchedRow
+                  key={entry.show.id}
+                  entry={entry}
+                  viewerContext={viewerContext}
+                  callerLibrary={callerLibrary}
+                  onRemoved={onRemoved}
+                />
+              ))}
+            </ul>
+          )}
       </div>
-
-      {isLoading && <p className="text-sm text-muted-foreground">Loading…</p>}
-      {isError && <p className="text-sm text-destructive">Failed to load watch history.</p>}
-      {!isLoading && !isError && filteredAndSorted && filteredAndSorted.length === 0 && (
-        <p className="text-sm text-muted-foreground">
-          {data && data.length === 0
-            ? "No watch history yet."
-            : "No matches in your watch history."}
-        </p>
-      )}
-      {!isLoading &&
-        !isError &&
-        filteredAndSorted &&
-        filteredAndSorted.length > 0 &&
-        view === "grid" && (
-          <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-8">
-            {filteredAndSorted.map((entry) => (
-              <MyShowCard
-                key={entry.show.id}
-                entry={watchedToMyShowEntry(entry)}
-                inMyShows={
-                  viewerContext === "friend"
-                    ? (callerLibrary?.get(entry.show.id)?.in_my_shows ?? false)
-                    : entry.in_my_shows
-                }
-              />
-            ))}
-          </div>
-        )}
-      {!isLoading &&
-        !isError &&
-        filteredAndSorted &&
-        filteredAndSorted.length > 0 &&
-        view === "list" && (
-          <ul className="space-y-3">
-            {filteredAndSorted.map((entry) => (
-              <WatchedRow
-                key={entry.show.id}
-                entry={entry}
-                viewerContext={viewerContext}
-                callerLibrary={callerLibrary}
-              />
-            ))}
-          </ul>
-        )}
     </div>
   );
 }
 
 /** Adapter so the existing `MyShowCard` (built for MyShowEntry) can render
- * WatchedEntry rows in grid view. The card only reads `show`, the watched/aired
- * counts, and `upcoming_episode_count` — which we derive. */
+ * WatchedEntry rows in grid view.
+ *
+ * It is a **pass-through**, and stayed one: `my_rating` was hard-coded `null`
+ * here, which was an honest statement about a field the server did not send
+ * until NEU-1191 added it to `WatchedEntry` as a top-level field with the same
+ * meaning `MyShowEntry.my_rating` has — **the row owner's** rating, so a
+ * friend's on a friend's library. Both payloads being structurally identical is
+ * what keeps this a copy rather than a translation layer (NEU-1188 AC 4). */
 function watchedToMyShowEntry(e: WatchedEntry): MyShowEntry {
   const upcoming = Math.max(0, e.total_episode_count - e.aired_episode_count);
   return {
@@ -274,78 +281,91 @@ function watchedToMyShowEntry(e: WatchedEntry): MyShowEntry {
     first_watched_at: e.first_watched_at,
     next_episode: null,
     added_at: e.first_watched_at ?? new Date(0).toISOString(),
-    my_rating: null,
+    my_rating: e.my_rating,
   };
+}
+
+/** One Watched grid card.
+ *
+ * Its own component rather than an inline `MyShowCard`, because the card now
+ * needs the same two resolved answers `WatchedRow` needs and deriving them
+ * twice is what let the two views disagree: the grid could not add a show to My
+ * Shows at all, and the list never drew the library mark (NEU-1188 AC 2/6).
+ *
+ * **The one asymmetry NEU-1188 left open is closed here** (NEU-1193): the list
+ * row's "Watch History" removal now has a counterpart, as the compact variant
+ * in the poster's bottom-right corner. That is the position NEU-1187 §3.1
+ * reserves for a control that can only remove, which this act always is — there
+ * is no "add watch history" — so it needed a variant rather than the fifth
+ * ad-hoc treatment NEU-1188 declined to invent.
+ */
+function WatchedCard({
+  entry,
+  viewerContext,
+  callerLibrary,
+  onRemoved,
+}: {
+  entry: WatchedEntry;
+  viewerContext: ViewerContext;
+  callerLibrary?: CallerLibrary;
+  onRemoved?: (showId: number) => void;
+}) {
+  const caller = watchedCallerRelationship(entry, viewerContext, callerLibrary);
+  return (
+    <MyShowCard
+      entry={watchedToMyShowEntry(entry)}
+      ratingOwner={ratingOwnerFor(viewerContext)}
+      // The viewer's own membership, which on this tab genuinely varies in both
+      // modes — the mark and the button therefore read one boolean and cannot
+      // contradict each other.
+      inMyShows={caller.inMyShows}
+      callerRelationship={caller}
+      // Self mode only, the same guard the row applies: a friend's watch
+      // history is not the viewer's to delete. The card re-checks it against
+      // `ratingOwner`, so passing it in friend mode would still draw nothing.
+      historyRemovable={viewerContext.kind === "self"}
+      onRemoved={onRemoved}
+    />
+  );
 }
 
 function WatchedRow({
   entry,
   viewerContext,
   callerLibrary,
+  onRemoved,
 }: {
   entry: WatchedEntry;
   viewerContext: ViewerContext;
   callerLibrary?: CallerLibrary;
+  onRemoved?: (showId: number) => void;
 }) {
-  // For self, `entry.in_my_shows` is the caller's relationship. For friend, the
-  // friend endpoint reports the friend's relationship there — drive the button
-  // off `callerLibrary` instead.
-  const upstream =
-    viewerContext === "friend"
-      ? (callerLibrary?.get(entry.show.id)?.in_my_shows ?? false)
-      : entry.in_my_shows;
-
-  const [override, setOverride] = useState<boolean | null>(null);
-  const [lastUpstream, setLastUpstream] = useState(upstream);
-  if (lastUpstream !== upstream) {
-    setLastUpstream(upstream);
-    setOverride(null);
-  }
-  const inMyShows = override ?? upstream;
-
-  const add = useAddShow();
-  const remove = useRemoveShow();
-  const removeHistory = useRemoveFromHistory();
-  const [confirmingRemoveHistory, setConfirmingRemoveHistory] = useState(false);
+  // The same resolver the grid card asks (NEU-1188). For self,
+  // `entry.in_my_shows` is the viewer's own relationship; for friend the
+  // endpoint reports the *friend's* there, so the viewer's comes from their own
+  // library. `MyShowsButton` takes that answer rather than the sources.
+  const caller = watchedCallerRelationship(entry, viewerContext, callerLibrary);
+  const owner = ratingOwnerFor(viewerContext);
 
   const status = libraryStatusFor(entry);
   const upcoming = Math.max(0, entry.total_episode_count - entry.aired_episode_count);
 
-  function onAdd() {
-    setOverride(true);
-    add.mutate(entry.show.id, {
-      onError: () => setOverride(false),
-    });
-  }
-  function onRemove() {
-    setOverride(false);
-    remove.mutate(entry.show.id, {
-      onError: () => setOverride(true),
-    });
-  }
-
   return (
     <li className="border border-border rounded p-3 flex items-start gap-3 sm:gap-4">
-      <Link
-        to={`/shows/${entry.show.id}`}
-        className="shrink-0 relative"
-        aria-label={entry.show.name}
-      >
-        {entry.show.image_medium ? (
-          <img
-            src={entry.show.image_medium}
-            alt=""
-            className="w-16 aspect-[210/295] object-cover rounded"
-          />
-        ) : (
-          <div className="w-16 aspect-[210/295] rounded bg-muted" />
-        )}
-        <CallerPosterBadge
-          showId={entry.show.id}
-          viewerContext={viewerContext}
-          callerLibrary={callerLibrary}
-        />
-      </Link>
+      {/* Presentational — the show's name below is the row's one link
+        (NEU-1190 §1). */}
+      <ShowPoster
+        src={entry.show.image_medium}
+        size="row"
+        // The viewer's own membership, not `callerPosterMark` — which
+        // hard-returns `false` in self mode, correctly on Active where every
+        // row is tracked by definition and wrongly here, where membership
+        // varies and the tab offers a filter on it (NEU-1188 AC 6).
+        inMyShows={caller.inMyShows}
+        // Only the viewer's own rating may occupy a poster corner; a friend's
+        // stays in the group that carries their name (NEU-1182 §3.5).
+        ownRating={owner.kind === "own" ? entry.my_rating : null}
+      />
       <div className="flex-1 min-w-0 flex flex-col gap-2">
         <div className="flex items-baseline gap-2 flex-wrap">
           <Link
@@ -368,99 +388,43 @@ function WatchedRow({
             barOnly
           />
         )}
-        <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
-          {status === "finished" ? (
-            <span className="px-1.5 py-0.5 rounded border border-emerald-600 text-emerald-700">
-              Finished
-            </span>
-          ) : status === "caught_up" ? (
-            <span className="px-1.5 py-0.5 rounded border border-emerald-600 text-emerald-700">
-              Caught Up
-            </span>
-          ) : (
-            <span>
-              Progress: {entry.watched_episode_count}/{entry.aired_episode_count}
-            </span>
-          )}
-          {entry.last_watched_at && (
-            <span aria-hidden className="text-muted-foreground/50">
-              ·
-            </span>
-          )}
-          {entry.last_watched_at && (
-            <span className="whitespace-nowrap">
-              Last Watched: {formatDate(entry.last_watched_at)}
-            </span>
-          )}
-        </div>
+        <OwnerFacts
+          owner={owner}
+          layout="inline"
+          status={status}
+          progress={
+            status === null
+              ? { watched: entry.watched_episode_count, aired: entry.aired_episode_count }
+              : null
+          }
+          // `my_rating` is the *row owner's* rating (NEU-1191). In self mode it
+          // sits on the poster above; in friend mode it belongs to the group
+          // that carries their name (NEU-1181 §6.2).
+          rating={owner.kind === "own" ? null : entry.my_rating}
+          lastWatchedAt={entry.last_watched_at}
+        />
         {status !== "finished" && upcoming > 0 && (
           <p className="text-xs text-muted-foreground">{upcoming} upcoming</p>
         )}
         <div className="flex flex-wrap items-center justify-end gap-2 pt-1">
-          <CallerProgressNote
+          <CallerProgressNote progress={caller.progress} />
+          <MyShowsButton
             showId={entry.show.id}
-            viewerContext={viewerContext}
-            callerLibrary={callerLibrary}
+            showName={entry.show.name}
+            inMyShows={caller.inMyShows}
           />
-          {inMyShows ? (
-            <Button
-              type="button"
-              size="sm"
-              variant="outline"
-              onClick={onRemove}
-              disabled={remove.isPending}
-              aria-label="Remove from My Shows"
-              className={cn(
-                "h-7 px-2 gap-1 text-xs",
-                "border-emerald-600 text-emerald-700 hover:bg-emerald-50",
-                "dark:text-emerald-400 dark:hover:bg-emerald-950/40",
-              )}
-            >
-              <Check className="h-3.5 w-3.5" aria-hidden />
-              My Shows
-            </Button>
-          ) : (
-            <Button
-              type="button"
-              size="sm"
-              onClick={onAdd}
-              disabled={add.isPending}
-              aria-label="Add to My Shows"
-              className="h-7 px-2 gap-1 text-xs"
-            >
-              <Plus className="h-3.5 w-3.5" aria-hidden />
-              My Shows
-            </Button>
-          )}
-          {viewerContext === "self" && (
-            <Button
-              type="button"
-              size="sm"
-              variant="ghost"
-              onClick={() => setConfirmingRemoveHistory(true)}
-              aria-label={`Remove ${entry.show.name} watch history`}
-              className="h-7 px-2 gap-1 text-xs text-muted-foreground hover:text-destructive"
-            >
-              <Trash2 className="h-3.5 w-3.5" aria-hidden />
-              Watch History
-            </Button>
+          {viewerContext.kind === "self" && (
+            // The labelled variant, unchanged from where this control has
+            // always been: adding is possible in this action row (the My Shows
+            // button beside it), so the row keeps its text (NEU-1187 §3.1).
+            <RemoveWatchHistoryButton
+              showId={entry.show.id}
+              showName={entry.show.name}
+              onRemoved={onRemoved}
+            />
           )}
         </div>
       </div>
-      {confirmingRemoveHistory && (
-        <ConfirmDialog
-          title="Remove from history"
-          description={`Remove all watch history for ${entry.show.name}? This cannot be undone.`}
-          confirmLabel="Confirm"
-          destructive
-          pending={removeHistory.isPending}
-          onConfirm={() => {
-            removeHistory.mutate({ showId: entry.show.id });
-            setConfirmingRemoveHistory(false);
-          }}
-          onClose={() => setConfirmingRemoveHistory(false)}
-        />
-      )}
     </li>
   );
 }

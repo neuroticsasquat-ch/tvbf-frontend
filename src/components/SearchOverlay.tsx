@@ -1,5 +1,4 @@
 import { useState, type ReactNode } from "react";
-import { ArrowDown, ArrowUp } from "lucide-react";
 
 import { usePersonSearch } from "@/api/people";
 import { useShows } from "@/api/shows";
@@ -10,8 +9,7 @@ import { Pagination } from "@/components/Pagination";
 import { PersonChip } from "@/components/PersonChip";
 import { ShowGrid } from "@/components/ShowGrid";
 import { ShowList } from "@/components/ShowList";
-import { ViewToggle } from "@/components/ViewToggle";
-import { FilterSheet } from "@/components/home/FilterSheet";
+import { ListingToolbar } from "@/components/home/ListingToolbar";
 import {
   ClearFiltersButton,
   GenreFilter,
@@ -77,18 +75,21 @@ function SearchSection({
 }) {
   return (
     <section aria-labelledby={`${id}-heading`}>
-      <div className="mb-3 flex flex-wrap items-center gap-2">
-        <h2 id={`${id}-heading`} className="text-lg font-semibold">
-          {title}
-          {count !== undefined && (
-            <>
-              {" "}
-              <span className="font-normal text-muted-foreground">({count})</span>
-            </>
-          )}
-        </h2>
-        {toolbar}
-      </div>
+      {/* The heading stands alone and the controls sit below it, in the one
+        order every listing page uses (NEU-1189 AC 1). They used to share this
+        row, with the filters inline beside the `h2` and the view toggle and
+        sort pushed to the far right by `ml-auto` — the only right-aligned
+        toolbar in the app. */}
+      <h2 id={`${id}-heading`} className="mb-3 text-lg font-semibold">
+        {title}
+        {count !== undefined && (
+          <>
+            {" "}
+            <span className="font-normal text-muted-foreground">({count})</span>
+          </>
+        )}
+      </h2>
+      {toolbar}
       {children}
     </section>
   );
@@ -154,39 +155,27 @@ export function SearchOverlay({ search }: { search: string }) {
     enabled,
   });
 
-  const sortLabel = SEARCH_SORTS.find((s) => s.key === sort)?.label ?? "";
   const filtersActive = status !== "all" || genre !== "all";
 
   const showsToolbar = (
-    <>
-      <ShowStatusFilterPicker value={status} onChange={setStatus} />
-      <GenreFilter value={genre} onChange={setGenre} />
-      {filtersActive && (
-        <ClearFiltersButton
-          onClear={() => {
-            setStatus("all");
-            setGenre("all");
-          }}
-        />
-      )}
-      <div className="ml-auto flex items-center gap-2">
-        <ViewToggle value={view} onChange={setView} ariaLabel="Display" />
-        <FilterSheet
-          title="Sort"
-          triggerLabel={sortLabel}
-          triggerIcon={
-            <>
-              <ArrowDown className="h-4 w-4" aria-hidden />
-              <ArrowUp className="h-4 w-4 -ml-2" aria-hidden />
-            </>
-          }
-          ariaLabel={`Sort results (current: ${sortLabel})`}
-          options={SEARCH_SORTS}
-          value={sort}
-          onChange={setSort}
-        />
-      </div>
-    </>
+    <ListingToolbar
+      view={{ value: view, onChange: setView, ariaLabel: "Shows display" }}
+      sort={{ label: "Shows", options: SEARCH_SORTS, value: sort, onChange: setSort }}
+      filters={
+        <>
+          <ShowStatusFilterPicker value={status} onChange={setStatus} />
+          <GenreFilter value={genre} onChange={setGenre} />
+          {filtersActive && (
+            <ClearFiltersButton
+              onClear={() => {
+                setStatus("all");
+                setGenre("all");
+              }}
+            />
+          )}
+        </>
+      }
+    />
   );
 
   function renderShows(): ReactNode {
@@ -216,7 +205,16 @@ export function SearchOverlay({ search }: { search: string }) {
 
     return section(
       <>
-        {view === "grid" ? <ShowGrid shows={data.items} /> : <ShowList shows={data.items} />}
+        {/* `addable` on both views, never one (NEU-1192): search is the one
+            surface where "should I add this?" is the question being asked, and
+            a control present in only one view would reintroduce the parity
+            defect NEU-1188 exists to remove. `data.items` is `BrowseShow[]`,
+            so the chip and the mark are fed from one field on one object. */}
+        {view === "grid" ? (
+          <ShowGrid shows={data.items} addable />
+        ) : (
+          <ShowList shows={data.items} addable />
+        )}
         <Pagination page={data.page} totalPages={data.total_pages} onPageChange={setPage} />
       </>,
       data.total,

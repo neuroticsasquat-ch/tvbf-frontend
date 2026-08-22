@@ -95,9 +95,135 @@ export interface ShowSummary {
   my_rating: number | null;
 }
 
+/** A `ShowSummary` carrying the viewer's library mark — the shape every grid
+ * surface serves, mirroring the backend's `MarkedShowOut` one-for-one
+ * (tvbf-backend/docs/specs/NEU-1184-in-my-shows-on-browse-surfaces.md §2.1,
+ * §5.1).
+ *
+ * Declared **once** rather than four times. Each surface keeps its own named
+ * subtype and its own docstring, because what differs between them is
+ * everything *around* the field — different bodies, different `my_rating`
+ * rules; what does not differ is the field itself.
+ *
+ * **Not folded into `ShowSummary`.** That type is nested inside six `/me`
+ * payloads (`MyShowEntry.show`, watch-next, upcoming, …) and is `ShowDetail`'s
+ * base, none of which the server computes a mark for — a My Shows row's mark is
+ * tautologically `true` and the detail page derives membership from
+ * `useMyShows()`.
+ *
+ * `in_my_shows` is a **mark, never a filter**: a tracked show still appears in
+ * every list it would otherwise appear in.
+ */
+export interface MarkedShow extends ShowSummary {
+  in_my_shows: boolean;
+}
+
+/** One entry of `GET /trending` — `MarkedShow` flattened, which is what makes
+ * it an entry rather than a search result.
+ *
+ * Flattened rather than nested under a `show` key, on `Recommendation`'s
+ * reasoning: `ShowGrid` / `ShowCard` already take a `ShowSummary`, so a wrapper
+ * type would cost this client something for a single boolean. See
+ * tvbf-backend/docs/specs/NEU-1056-trending-contract.md §2.
+ *
+ * Trending is a claim about the world, and seeing a show you already track in
+ * it is a feature.
+ */
+export interface TrendingShow extends MarkedShow {}
+
+/** The `GET /trending` body.
+ *
+ * `captured_at` is null exactly when `shows` is empty, and a stale snapshot is
+ * served as the same empty body an empty table gives (contract §3). So this
+ * client can neither re-derive the seven-day cutoff nor tell the two apart —
+ * which is the point: the cutoff is the server's rule, enforced in one place,
+ * and a rule enforced in two drifts into week-old rows under a label reading
+ * "trending right now".
+ */
+export interface TrendingSnapshot {
+  captured_at: string | null;
+  shows: TrendingShow[];
+}
+
+/** One entry of `GET /anticipated` — `ShowSummary` flattened, plus the same
+ * mark `TrendingShow` carries, and for its reason: `ShowGrid` / `ShowCard`
+ * already take a `ShowSummary`, so a wrapper type would cost this client
+ * something for one field. See
+ * tvbf-backend/docs/specs/NEU-1059-anticipated-contract.md §2.
+ *
+ * The body is a **bare array**, unlike `/trending`'s object: nothing is
+ * stored, so there is no `captured_at` to wrap alongside the list — and for
+ * the same reason there is no staleness rule on this surface and nothing here
+ * to build one from (contract §3).
+ *
+ * `premiered` is the field the surface exists for, and it is typed nullable
+ * like every other `ShowSummary`'s even though the server never sends an
+ * undated show (contract §5) — the card renders "TBA" rather than trusting
+ * that.
+ *
+ * `my_rating` is always null here where `/trending` fills it: every entry
+ * premieres in the future, so a rating would be one for something nobody has
+ * seen.
+ */
+export interface AnticipatedShow extends MarkedShow {}
+
+/** One item of `GET /shows` — browse and search results (NEU-1186).
+ *
+ * The mark is what the search grid was missing: the app knew the show was
+ * tracked and declined to say so, on the one surface where "should I add this?"
+ * is the actual question (spec §1). `my_rating` was already filled here.
+ *
+ * The route answers `private, no-store`, and has since before the mark — the
+ * body already carried `my_rating`. So adding the mark cost this route no
+ * cacheability, and `useShows` keeps its five-minute `staleTime`: invalidation,
+ * not `staleTime`, is what keeps the mark fresh (spec §5.2).
+ */
+export interface BrowseShow extends MarkedShow {}
+
+/** One row of `GET /shows/{id}/similar` — TMDB's "More like this" (NEU-1186).
+ *
+ * `in_my_shows` **and** `my_rating` are both filled here, and they arrived
+ * together: NEU-1053 left the route free of per-user fields to keep a body
+ * byte-identical for every viewer, and the mark spends exactly that. Once
+ * spent, only the cost of one more query stood against the rating, and leaving
+ * it out would have kept the Similar tab as the one grid in the app where the
+ * same show shows your stars everywhere else and not here (spec §3.2).
+ *
+ * `genres` is always `[]` and `network` always null — unchanged from NEU-1053
+ * and not re-decided: `ShowCard` renders neither, so hydrating them would be
+ * two more round trips for fields nothing displays.
+ */
+export interface SimilarShow extends MarkedShow {}
+
 export interface Rating {
   stars: number;
   rated_at: string;
+}
+
+/** One row of `GET /me/recommendations` — `ShowSummary` flattened, plus the
+ * model's own `rank`.
+ *
+ * Flattened rather than nested under a `show` key, unlike `MyShowEntry` /
+ * `WatchNextEntry` / `UpcomingEntry`: those carry per-show progress, which is a
+ * second object with its own identity, where a recommendation carries a
+ * position. See
+ * tvbf-backend/docs/specs/NEU-1112-recommendations-page-contract.md §2.
+ *
+ * `rank` is the stored rank, so it is not guaranteed contiguous or to start at
+ * 1 — a row the server filtered out took its rank with it.
+ *
+ * **There is no `reason`.** The server stopped serving it on 2026-08-17: the
+ * card has one truncated 10px line, which is not room for a sentence. It is
+ * still asked for and still stored server-side as a diagnostic, so do not add
+ * it back here on the strength of finding it in the database — see the
+ * contract's own section on it.
+ */
+export interface Recommendation extends ShowSummary {
+  rank: number;
+}
+
+export interface RecommendationsResponse {
+  recommendations: Recommendation[];
 }
 
 export interface ShowDetail extends ShowSummary {
@@ -225,7 +351,7 @@ export interface PersonListPage {
 }
 
 export interface ShowListPage {
-  items: ShowSummary[];
+  items: BrowseShow[];
   page: number;
   per_page: number;
   total: number;
@@ -273,12 +399,27 @@ export interface WatchedEntry {
   first_watched_at: string | null;
   in_my_shows: boolean;
   status: WatchedStatus;
+  /** **The row owner's rating, not the requester's** (NEU-1191). The two are
+   * the same user on `GET /me/watched` and differ on `GET /users/{id}/watched`,
+   * where the value is the *friend's* rating and is null when the friend has
+   * not rated a show however the caller rated it. `MyShowEntry.my_rating`
+   * behaves identically, and both are attributed through `ratingOwnerFor`
+   * (NEU-1181) rather than assumed to be the viewer's.
+   *
+   * It is top-level rather than on `show`, because `ShowSummary.my_rating`
+   * means the *requester's* rating everywhere it is filled. */
+  my_rating: number | null;
 }
 
 export interface User {
   id: string;
   email: string;
   display_name: string;
+  /** The stable public identifier beside the free-text `display_name` label
+   * (NEU-1163). Lowercase, unique, `^[a-z][a-z0-9_]{2,29}$` — the server
+   * normalises case and a leading `@` rather than refusing them, so what is
+   * stored is not always what was typed. */
+  handle: string;
   created_at: string;
   email_verified_at: string | null;
 }
@@ -293,8 +434,18 @@ export interface AdminUserRow {
   id: string;
   email: string;
   display_name: string;
+  /** A moderator's second label. `display_name` is free text two accounts can
+   * share, and every act on this row is an act on a person (NEU-1163 §7). */
+  handle: string;
   created_at: string;
   is_admin: boolean;
+  /** When moderation began, or null for an active account (NEU-1162 §7.1).
+   *
+   * The admin list is the one surface that carries it. `UserOut` and
+   * `AuthedUserOut` deliberately do not: a disabled user reaches neither, and a
+   * field saying so would be the machine-readable confirmation the backend
+   * refuses to hand an abuser (NEU-1162 §2.2). */
+  disabled_at: string | null;
 }
 
 export interface InviteRow {
@@ -365,11 +516,20 @@ export interface EpisodeWatchOut {
 export interface UserBrief {
   id: string;
   display_name: string;
+  /** The account's stable public identifier (NEU-1163 §7). Every payload that
+   * names a user carries it, so a viewer deciding whether to accept a request
+   * can tell two accounts called "Tom" apart. Rendered through
+   * `UserIdentity`, which owns the `@` sigil. */
+  handle: string;
 }
 
 export interface UserSearchResult {
   id: string;
   display_name: string;
+  /** Kept beside `display_name` rather than replacing it: the handle is the
+   * identifier and the display name is the label, and a searcher who typed an
+   * email needs the name to recognise who they found (NEU-1163 §7). */
+  handle: string;
 }
 
 export type ConnectionState = "pending" | "accepted" | "blocked";
@@ -406,6 +566,7 @@ export interface ShowFriendActivity {
 export interface FriendRating {
   user_id: string;
   display_name: string;
+  handle: string;
   stars: number;
   rated_at: string;
 }

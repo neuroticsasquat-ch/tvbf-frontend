@@ -9,7 +9,7 @@ import { FriendsFeedPage } from "./FriendsFeedPage";
 
 function item(overrides: Partial<FeedItem> & { id: string; kind: FeedItem["kind"] }): FeedItem {
   return {
-    actor: { id: "u-1", display_name: "Alice" },
+    actor: { id: "u-1", display_name: "Alice", handle: "alice" },
     show: { id: 5, name: "Severance" },
     episode: null,
     season_number: null,
@@ -110,9 +110,11 @@ describe("FriendsFeedPage", () => {
     expect(text).toContain("Alice watched Severance S1 · A Christmas Special.");
     expect(text).not.toContain("Enull");
     expect(text).not.toContain("E0");
-    // rated_show / rated_episode use StarRatingDisplay; check it rendered.
-    expect(screen.getByLabelText("4.5 out of 5")).toBeInTheDocument();
-    expect(screen.getByLabelText("3.0 out of 5")).toBeInTheDocument();
+    // rated_show / rated_episode use StarRatingDisplay; check it rendered, and
+    // that NEU-1182 attributes it to the actor rather than leaving a bare
+    // number in the accessibility tree.
+    expect(screen.getByLabelText("Alice's rating: 4.5 out of 5")).toBeInTheDocument();
+    expect(screen.getByLabelText("Alice's rating: 3.0 out of 5")).toBeInTheDocument();
   });
 
   // NEU-1133: the roll-up label comes from the server, via `seasonLabel`.
@@ -241,24 +243,24 @@ describe("FriendsFeedPage", () => {
           incoming: [
             {
               id: "r1",
-              requester: { id: "u1", display_name: "U1" },
-              addressee: { id: "me", display_name: "Me" },
+              requester: { id: "u1", display_name: "U1", handle: "u1_user" },
+              addressee: { id: "me", display_name: "Me", handle: "me_user" },
               state: "pending",
               created_at: "2026-05-15T10:00:00Z",
               responded_at: null,
             },
             {
               id: "r2",
-              requester: { id: "u2", display_name: "U2" },
-              addressee: { id: "me", display_name: "Me" },
+              requester: { id: "u2", display_name: "U2", handle: "u2_user" },
+              addressee: { id: "me", display_name: "Me", handle: "me_user" },
               state: "pending",
               created_at: "2026-05-15T10:00:00Z",
               responded_at: null,
             },
             {
               id: "r3",
-              requester: { id: "u3", display_name: "U3" },
-              addressee: { id: "me", display_name: "Me" },
+              requester: { id: "u3", display_name: "U3", handle: "u3_user" },
+              addressee: { id: "me", display_name: "Me", handle: "me_user" },
               state: "pending",
               created_at: "2026-05-15T10:00:00Z",
               responded_at: null,
@@ -354,5 +356,16 @@ describe("FriendsFeedPage", () => {
     expect(text).toContain("Alice watched Severance S2E5.");
     expect(text).not.toContain("Pilot");
     expect(text).not.toContain("·");
+  });
+
+  it("names the actor by display name alone, with no handle anywhere on the row", async () => {
+    // D6: the feed is prose, not an entity list, and everyone in it is an
+    // accepted connection — the decision the handle informs was made before
+    // they could appear here. `Alice (@alice) added Severance to My Shows` is
+    // also a heavier sentence on a surface that runs to hundreds of rows.
+    const text = await feedText([item({ id: "a", kind: "added_show" })]);
+    expect(text).toContain("Alice added Severance to My Shows.");
+    expect(text).not.toContain("@alice");
+    expect(document.querySelector("[data-user-identity]")).toBeNull();
   });
 });

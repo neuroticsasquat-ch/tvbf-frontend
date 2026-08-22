@@ -5,7 +5,10 @@ import { toast } from "sonner";
 import { listConnections, removeConnection } from "@/api/connections";
 import type { ConnectionOut } from "@/api/types";
 import { Button } from "@/components/ui/button";
-import { ConfirmDialog } from "./ConfirmDialog";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
+import { ReportUserButton } from "@/components/ReportUserButton";
+import { UserIdentity } from "@/components/UserIdentity";
+import { nameWithHandle } from "@/lib/userLabel";
 import { useBlockUser } from "./useBlockUser";
 
 const CONNECTIONS_KEY = ["connections"] as const;
@@ -48,8 +51,11 @@ export function ConnectionsList() {
       <ul className="flex flex-col divide-y divide-border rounded border border-border">
         {data.map((c) => (
           <li key={c.user.id} className="flex items-center justify-between gap-3 px-3 py-2">
-            <Link to={`/users/${c.user.id}`} className="flex flex-col hover:underline">
-              <span className="text-sm">{c.user.display_name}</span>
+            <Link
+              to={`/users/${c.user.id}`}
+              className="flex min-w-0 flex-1 flex-col hover:underline"
+            >
+              <UserIdentity displayName={c.user.display_name} handle={c.user.handle} />
               <span className="text-xs text-muted-foreground">Connected {formatDate(c.since)}</span>
             </Link>
             <div className="flex gap-2">
@@ -59,6 +65,7 @@ export function ConnectionsList() {
               <Button type="button" size="sm" variant="outline" onClick={() => setPendingBlock(c)}>
                 Block
               </Button>
+              <ReportUserButton userId={c.user.id} user={c.user} />
             </div>
           </li>
         ))}
@@ -69,7 +76,7 @@ export function ConnectionsList() {
       {pendingBlock && (
         <ConfirmDialog
           title="Block user"
-          description={`Block ${pendingBlock.user.display_name}? This removes the connection and prevents future requests until you unblock them.`}
+          description={`Block ${nameWithHandle(pendingBlock.user)}? This removes the connection and prevents future requests until you unblock them.`}
           confirmLabel="Confirm"
           destructive
           pending={block.isPending}
@@ -108,32 +115,20 @@ function RemoveConfirmDialog({
     },
   });
 
-  function confirm() {
-    mutation.mutate(connection.user.id);
-    onClose();
-  }
-
+  // Converted to the shared `ConfirmDialog` (NEU-1168 §5): it was the same
+  // picture built differently, sitting in the one file that already renders
+  // one. Only the presentation is replaced — the mutation stays here.
   return (
-    <div
-      role="dialog"
-      aria-label="Remove connection"
-      className="fixed inset-0 bg-black/30 flex items-center justify-center z-20"
-    >
-      <div className="bg-background rounded p-6 w-96 border border-border">
-        <h2 className="text-lg font-semibold mb-2">Remove connection</h2>
-        <p className="text-sm text-muted-foreground mb-4">
-          Disconnect from {connection.user.display_name}? You can reconnect later by sending another
-          request.
-        </p>
-        <div className="flex gap-2 justify-end">
-          <Button type="button" variant="outline" size="sm" onClick={onClose}>
-            Cancel
-          </Button>
-          <Button type="button" size="sm" onClick={confirm} disabled={mutation.isPending}>
-            Confirm
-          </Button>
-        </div>
-      </div>
-    </div>
+    <ConfirmDialog
+      title="Remove connection"
+      description={`Disconnect from ${nameWithHandle(connection.user)}? You can reconnect later by sending another request.`}
+      confirmLabel="Confirm"
+      pending={mutation.isPending}
+      onConfirm={() => {
+        mutation.mutate(connection.user.id);
+        onClose();
+      }}
+      onClose={onClose}
+    />
   );
 }

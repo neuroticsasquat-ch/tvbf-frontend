@@ -1,52 +1,43 @@
-import { Check } from "lucide-react";
-import { callerHasShow, callerProgress, type CallerLibrary } from "./callerLibrary";
-import type { ViewerContext } from "./LibraryActiveList";
+import type { ShowPosterSize } from "@/components/ShowPoster";
+import { cn } from "@/lib/cn";
 
-/** Green ✓ overlay rendered on a list-view poster when the caller has the
- * show in their own My Shows. Suppressed for self mode (their own library
- * already implies tracking) or when no caller relationship exists. */
-export function CallerPosterBadge({
-  showId,
-  viewerContext,
-  callerLibrary,
-}: {
-  showId: number;
-  viewerContext: ViewerContext;
-  callerLibrary?: CallerLibrary;
-}) {
-  if (viewerContext !== "friend") return null;
-  if (!callerHasShow(callerLibrary, showId)) return null;
-  return (
-    <span
-      className="absolute top-1 right-1 inline-flex h-5 w-5 items-center justify-center rounded-full bg-emerald-600 text-white shadow"
-      title="In My Shows"
-      aria-label="In My Shows"
-    >
-      <Check className="h-3.5 w-3.5" aria-hidden strokeWidth={3} />
-    </span>
-  );
-}
-
-/** "You: x/y" muted-text affordance for a friend row, shown whenever the caller
- * has watched at least one episode — irrespective of whether they also track
- * the show. Pairs with `<CallerPosterBadge>` when both apply, giving a direct
- * progress comparison against the friend's row. Renders as an inline span so
- * callers can drop it into the action-button row immediately beside the
- * button. */
+/** "You: x/y" — the **viewer's own** progress, drawn beside someone else's row
+ * or card so the two are directly comparable ("they're 10/10, I'm 3/10 —
+ * spoiler risk"). Rendered whenever the viewer has watched at least one
+ * episode, irrespective of whether they also track the show; it pairs with the
+ * library mark that `callerPosterMark` gates when both apply.
+ *
+ * **It takes the resolved progress, and gates on nothing else.** It used to
+ * take `showId` + `viewerContext` + `callerLibrary` and re-derive the answer,
+ * which meant only a surface holding all three could draw it — and a grid card
+ * holds none of them, which is precisely why the friend grid carried no
+ * comparison at all (NEU-1188 AC 3). The derivation now lives once in
+ * `activeCallerRelationship` / `watchedCallerRelationship`, on the same
+ * take-the-answer seam as `MyShowsButton` and `ratingOwner`.
+ *
+ * An inline span, so a caller can drop it straight into an action row.
+ */
 export function CallerProgressNote({
-  showId,
-  viewerContext,
-  callerLibrary,
+  progress,
+  size = "row",
 }: {
-  showId: number;
-  viewerContext: ViewerContext;
-  callerLibrary?: CallerLibrary;
+  progress: { watched: number; aired: number } | null;
+  /** Density — **a variant, not a `className`**, on `ShowPoster`'s rule: the
+   * two real densities are a list row's and a grid card's, and anything else is
+   * a new surface making a decision that belongs here. They are the same two
+   * `OwnerFacts` draws its group at, and the 10px is measured (§6.3): at 12px
+   * inside the ~97px of a `grid-cols-3` card the line wraps unpredictably at
+   * exactly the width that matters. */
+  size?: ShowPosterSize;
 }) {
-  if (viewerContext !== "friend") return null;
-  const progress = callerProgress(callerLibrary, showId);
   if (!progress) return null;
   return (
-    <span className="text-xs text-muted-foreground/80">
+    <span
+      className={cn(
+        "text-muted-foreground/80",
+        size === "row" ? "text-xs" : "text-[10px] leading-tight",
+      )}
+    >
       You: {progress.watched}/{progress.aired}
     </span>
   );

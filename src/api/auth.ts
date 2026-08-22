@@ -7,7 +7,17 @@ export const signup = (body: {
   email: string;
   password: string;
   display_name: string;
-  invite_code: string;
+  /** Required (NEU-1163 §6.1). Sent as typed — the server owns the
+   * normalisation, so lowercasing here would be a second copy of a rule that
+   * already has one. */
+  handle: string;
+  /** Optional since NEU-1165/NEU-1171. Omitted from the body when no code
+   * is used. The server accepts both shapes (str | None = None). */
+  invite_code?: string;
+  /** Optional on the wire exactly as it is in `SignupRequest`: the backend
+   * decides that "verification enabled means a token is required" and answers
+   * 400 `captcha_required` when one is missing (NEU-1160 §7). */
+  turnstile_token?: string;
 }) => apiFetch<AuthedUser>("/auth/signup", { method: "POST", body: JSON.stringify(body) });
 
 export const login = (body: { email: string; password: string }) =>
@@ -17,6 +27,17 @@ export const logout = () => apiFetch<void>("/auth/logout", { method: "POST" });
 
 export const updateMe = (body: { display_name: string }) =>
   apiFetch<AuthedUser>("/me", { method: "PATCH", body: JSON.stringify(body) });
+
+/** Change this account's handle (NEU-1163 §6.2).
+ *
+ * Its own route rather than a field on `PATCH /me`, because it has its own
+ * error vocabulary and its own throttle — widening the display-name body to
+ * carry a throttled field beside an unthrottled one is how a display-name save
+ * ends up refused by a `429` about a handle the user did not touch.
+ *
+ * Sent as typed, exactly as `signup` sends it, and for the same reason. */
+export const updateHandle = (body: { handle: string }) =>
+  apiFetch<AuthedUser>("/me/handle", { method: "PATCH", body: JSON.stringify(body) });
 
 export const changePassword = (body: { current_password: string; new_password: string }) =>
   apiFetch<AuthedUser>("/auth/password", { method: "POST", body: JSON.stringify(body) });

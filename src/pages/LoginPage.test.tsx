@@ -26,6 +26,32 @@ function renderAt(path: string) {
 }
 
 describe("LoginPage", () => {
+  it("shows a page-level error state for the IP throttle's 429", async () => {
+    server.use(
+      http.get(`${env.apiBaseUrl}/me`, () =>
+        HttpResponse.json({ detail: "auth_required" }, { status: 401 }),
+      ),
+      http.post(`${env.apiBaseUrl}/auth/login`, () =>
+        HttpResponse.json(
+          { detail: "rate_limited" },
+          { status: 429, headers: { "Retry-After": "900" } },
+        ),
+      ),
+    );
+    renderAt("/login");
+    await userEvent.type(screen.getByLabelText(/email/i), "x@y.com");
+    await userEvent.type(screen.getByLabelText(/password/i), "hunter2hunter2");
+    await userEvent.click(screen.getByRole("button", { name: /log in/i }));
+
+    // The throttle is the one auth gate that deliberately does not hide behind
+    // the 401 (NEU-1160 §4.3), so it must not read as a wrong password or as a
+    // server fault.
+    const alert = await screen.findByRole("alert");
+    expect(alert).toHaveTextContent(/too many sign-in attempts/i);
+    expect(screen.queryByText(/email or password is incorrect/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/something went wrong. please try again/i)).not.toBeInTheDocument();
+  });
+
   it("logs in and redirects to /my-shows", async () => {
     server.use(
       http.get(`${env.apiBaseUrl}/me`, () =>

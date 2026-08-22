@@ -8,15 +8,26 @@ type AuthContextValue = {
   user: AuthedUser | null;
   loading: boolean;
   login: (email: string, password: string) => Promise<void>;
-  signup: (
-    email: string,
-    password: string,
-    displayName: string,
-    inviteCode: string,
-  ) => Promise<void>;
+  /** One object rather than six positional parameters (NEU-1198). Five of the
+   * six are strings, so a transposed `inviteCode` / `handle` is a defect the
+   * type checker cannot catch — and `handle` is the identifier the account is
+   * then known by, so getting it silently wrong is expensive. */
+  signup: (vars: {
+    email: string;
+    password: string;
+    displayName: string;
+    handle: string;
+    /** Optional since NEU-1165/NEU-1171. Omitted from the body when no code
+     * is used. */
+    inviteCode?: string;
+    turnstileToken?: string;
+  }) => Promise<void>;
   logout: () => Promise<void>;
   changePassword: (currentPassword: string, newPassword: string) => Promise<void>;
   updateDisplayName: (displayName: string) => Promise<void>;
+  /** Sent as typed — the server owns the normalisation (NEU-1163 §1.1), so the
+   * value that comes back on `AuthedUser` is what was actually stored. */
+  changeHandle: (handle: string) => Promise<void>;
   deleteAccount: (password: string) => Promise<void>;
   refresh: () => Promise<void>;
 };
@@ -60,7 +71,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       email: string;
       password: string;
       display_name: string;
-      invite_code: string;
+      handle: string;
+      invite_code?: string;
+      turnstile_token?: string;
     }) => authApi.signup(vars),
     onSuccess: (user) => {
       setCsrfToken(user.csrf_token);
@@ -90,6 +103,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       qc.setQueryData(["me"], user);
     },
   });
+  const updateHandleMut = useMutation({
+    mutationFn: (vars: { handle: string }) => authApi.updateHandle(vars),
+    onSuccess: (user) => {
+      setCsrfToken(user.csrf_token);
+      qc.setQueryData(["me"], user);
+    },
+  });
   const deleteMut = useMutation({
     mutationFn: (vars: { password: string }) => authApi.deleteAccount(vars),
     onSuccess: () => {
@@ -106,12 +126,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       login: async (email, password) => {
         await loginMut.mutateAsync({ email, password });
       },
-      signup: async (email, password, displayName, inviteCode) => {
+      signup: async ({ email, password, displayName, handle, inviteCode, turnstileToken }) => {
         await signupMut.mutateAsync({
           email,
           password,
           display_name: displayName,
+          handle,
           invite_code: inviteCode,
+          turnstile_token: turnstileToken,
         });
       },
       logout: async () => {
@@ -122,6 +144,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       },
       updateDisplayName: async (displayName) => {
         await updateMeMut.mutateAsync({ display_name: displayName });
+      },
+      changeHandle: async (handle) => {
+        await updateHandleMut.mutateAsync({ handle });
       },
       deleteAccount: async (password) => {
         await deleteMut.mutateAsync({ password });
@@ -136,6 +161,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       logoutMut,
       changePwMut,
       updateMeMut,
+      updateHandleMut,
       deleteMut,
       refresh,
     ],

@@ -11,6 +11,7 @@ import { SignupPage } from "@/pages/SignupPage";
 import { RequireAuth } from "@/components/RequireAuth";
 import { WatchNextPage } from "@/pages/WatchNextPage";
 import { UpcomingPage } from "@/pages/UpcomingPage";
+import { DiscoverPage } from "@/pages/DiscoverPage";
 import { MyShowsPage } from "@/pages/MyShowsPage";
 import { AdminPage } from "@/pages/AdminPage";
 import { FriendProfilePage } from "@/pages/FriendProfilePage";
@@ -20,6 +21,10 @@ import { VerifyEmailPage } from "@/pages/VerifyEmailPage";
 import { EmailChangeConfirmPage } from "@/pages/EmailChangeConfirmPage";
 import { ForgotPasswordPage } from "@/pages/ForgotPasswordPage";
 import { ResetPasswordPage } from "@/pages/ResetPasswordPage";
+import { TermsPage } from "@/pages/TermsPage";
+import { PrivacyPage } from "@/pages/PrivacyPage";
+import { AboutPage } from "@/pages/AboutPage";
+import { ContactPage } from "@/pages/ContactPage";
 
 export const router = createBrowserRouter([
   {
@@ -32,11 +37,16 @@ export const router = createBrowserRouter([
       { path: "email-change/confirm", element: <EmailChangeConfirmPage /> },
       { path: "forgot-password", element: <ForgotPasswordPage /> },
       { path: "reset-password", element: <ResetPasswordPage /> },
+      { path: "terms", element: <TermsPage /> },
+      { path: "privacy", element: <PrivacyPage /> },
+      { path: "about", element: <AboutPage /> },
+      { path: "contact", element: <ContactPage /> },
       {
         element: <RequireAuth />,
         children: [
           { index: true, element: <WatchNextPage /> },
           { path: "upcoming", element: <UpcomingPage /> },
+          { path: "discover", element: <DiscoverPage /> },
           { path: "my-shows", element: <MyShowsPage /> },
           { path: "friends", element: <FriendsFeedPage /> },
           { path: "admin", element: <AdminPage /> },
