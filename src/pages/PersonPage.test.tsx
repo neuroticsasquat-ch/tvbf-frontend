@@ -491,8 +491,20 @@ describe("PersonPage grouped-card accessibility", () => {
           crew: [],
           episode_crew: [],
           guest_cast: [
-            { show: gamma, episode: ep(930, 3, "2019-04-09"), character, self: false, voice: false },
-            { show: gamma, episode: ep(931, 2, "2019-04-02"), character, self: false, voice: false },
+            {
+              show: gamma,
+              episode: ep(930, 3, "2019-04-09"),
+              character,
+              self: false,
+              voice: false,
+            },
+            {
+              show: gamma,
+              episode: ep(931, 2, "2019-04-02"),
+              character,
+              self: false,
+              voice: false,
+            },
           ],
         }),
       ),

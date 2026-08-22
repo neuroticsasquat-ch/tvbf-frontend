@@ -33,7 +33,11 @@ describe("ReportUserButton", () => {
     unmount();
 
     renderWithProviders(
-      <ReportUserButton userId={USER_ID} user={{ display_name: "Mallory", handle: "mallory" }} variant="labelled" />,
+      <ReportUserButton
+        userId={USER_ID}
+        user={{ display_name: "Mallory", handle: "mallory" }}
+        variant="labelled"
+      />,
     );
     const labelled = screen.getByRole("button", { name: "Report Mallory (@mallory)" });
     expect(labelled).toHaveTextContent("Report");
@@ -47,7 +51,9 @@ describe("ReportUserButton", () => {
         return new HttpResponse(null, { status: 204 });
       }),
     );
-    renderWithProviders(<ReportUserButton userId={USER_ID} user={{ display_name: "Mallory", handle: "mallory" }} />);
+    renderWithProviders(
+      <ReportUserButton userId={USER_ID} user={{ display_name: "Mallory", handle: "mallory" }} />,
+    );
     const user = userEvent.setup();
 
     await user.click(screen.getByRole("button", { name: "Report Mallory (@mallory)" }));
@@ -77,7 +83,11 @@ describe("ReportUserButton", () => {
     });
     const onBlocked = vi.fn();
     renderWithProviders(
-      <ReportUserButton userId={USER_ID} user={{ display_name: "Mallory", handle: "mallory" }} onBlocked={onBlocked} />,
+      <ReportUserButton
+        userId={USER_ID}
+        user={{ display_name: "Mallory", handle: "mallory" }}
+        onBlocked={onBlocked}
+      />,
     );
     const user = userEvent.setup();
 
@@ -99,7 +109,13 @@ describe("ReportUserButton", () => {
   });
 
   it("does not offer blocking when the caller says the person is already blocked", async () => {
-    renderWithProviders(<ReportUserButton userId={USER_ID} user={{ display_name: "Mallory", handle: "mallory" }} canBlock={false} />);
+    renderWithProviders(
+      <ReportUserButton
+        userId={USER_ID}
+        user={{ display_name: "Mallory", handle: "mallory" }}
+        canBlock={false}
+      />,
+    );
     const user = userEvent.setup();
 
     await user.click(screen.getByRole("button", { name: "Report Mallory (@mallory)" }));
@@ -117,7 +133,9 @@ describe("ReportUserButton", () => {
         HttpResponse.json({ detail: "rate_limited" }, { status: 429 }),
       ),
     );
-    renderWithProviders(<ReportUserButton userId={USER_ID} user={{ display_name: "Mallory", handle: "mallory" }} />);
+    renderWithProviders(
+      <ReportUserButton userId={USER_ID} user={{ display_name: "Mallory", handle: "mallory" }} />,
+    );
     const user = userEvent.setup();
 
     await user.click(screen.getByRole("button", { name: "Report Mallory (@mallory)" }));
@@ -139,7 +157,9 @@ describe("ReportUserButton", () => {
         HttpResponse.json({ detail: "reported_user_not_found" }, { status: 404 }),
       ),
     );
-    renderWithProviders(<ReportUserButton userId={USER_ID} user={{ display_name: "Mallory", handle: "mallory" }} />);
+    renderWithProviders(
+      <ReportUserButton userId={USER_ID} user={{ display_name: "Mallory", handle: "mallory" }} />,
+    );
     const user = userEvent.setup();
 
     await user.click(screen.getByRole("button", { name: "Report Mallory (@mallory)" }));
@@ -152,7 +172,9 @@ describe("ReportUserButton", () => {
   });
 
   it("clears the form when the dialog is dismissed and reopened", async () => {
-    renderWithProviders(<ReportUserButton userId={USER_ID} user={{ display_name: "Mallory", handle: "mallory" }} />);
+    renderWithProviders(
+      <ReportUserButton userId={USER_ID} user={{ display_name: "Mallory", handle: "mallory" }} />,
+    );
     const user = userEvent.setup();
 
     await user.click(screen.getByRole("button", { name: "Report Mallory (@mallory)" }));
@@ -171,7 +193,9 @@ describe("ReportUserButton", () => {
         return new HttpResponse(null, { status: 204 });
       }),
     );
-    renderWithProviders(<ReportUserButton userId={USER_ID} user={{ display_name: "Mallory", handle: "mallory" }} />);
+    renderWithProviders(
+      <ReportUserButton userId={USER_ID} user={{ display_name: "Mallory", handle: "mallory" }} />,
+    );
     const user = userEvent.setup();
 
     await user.click(screen.getByRole("button", { name: "Report Mallory (@mallory)" }));
@@ -188,7 +212,9 @@ describe("ReportUserButton", () => {
     // maintainer rather than the reported user — gating it would silence the
     // newest accounts, which is exactly who a griefer targets.
     server.use(meHandler(null));
-    renderWithProviders(<ReportUserButton userId={USER_ID} user={{ display_name: "Mallory", handle: "mallory" }} />);
+    renderWithProviders(
+      <ReportUserButton userId={USER_ID} user={{ display_name: "Mallory", handle: "mallory" }} />,
+    );
     const user = userEvent.setup();
 
     await user.click(screen.getByRole("button", { name: "Report Mallory (@mallory)" }));

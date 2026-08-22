@@ -294,9 +294,7 @@ describe("LibraryActiveList self-mode controls (NEU-1187)", () => {
       const results = container.querySelector<HTMLElement>('[tabindex="-1"]');
       expect(results).not.toBeNull();
       expect(results).toHaveFocus();
-      expect(
-        within(results!).getByText("You're not tracking any shows yet."),
-      ).toBeInTheDocument();
+      expect(within(results!).getByText("You're not tracking any shows yet.")).toBeInTheDocument();
     });
   });
 

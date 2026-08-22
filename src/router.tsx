@@ -21,6 +21,10 @@ import { VerifyEmailPage } from "@/pages/VerifyEmailPage";
 import { EmailChangeConfirmPage } from "@/pages/EmailChangeConfirmPage";
 import { ForgotPasswordPage } from "@/pages/ForgotPasswordPage";
 import { ResetPasswordPage } from "@/pages/ResetPasswordPage";
+import { TermsPage } from "@/pages/TermsPage";
+import { PrivacyPage } from "@/pages/PrivacyPage";
+import { AboutPage } from "@/pages/AboutPage";
+import { ContactPage } from "@/pages/ContactPage";
 
 export const router = createBrowserRouter([
   {
@@ -33,6 +37,10 @@ export const router = createBrowserRouter([
       { path: "email-change/confirm", element: <EmailChangeConfirmPage /> },
       { path: "forgot-password", element: <ForgotPasswordPage /> },
       { path: "reset-password", element: <ResetPasswordPage /> },
+      { path: "terms", element: <TermsPage /> },
+      { path: "privacy", element: <PrivacyPage /> },
+      { path: "about", element: <AboutPage /> },
+      { path: "contact", element: <ContactPage /> },
       {
         element: <RequireAuth />,
         children: [

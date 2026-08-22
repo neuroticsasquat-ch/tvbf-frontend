@@ -509,9 +509,8 @@ function HandleEditor() {
   // shape check, the server's 422 sentence, the 409 and the 429 alike — so they
   // share one store and the one `aria-describedby` join that hook owns, rather
   // than a local `useState` rebuilding it (NEU-1196).
-  const { fieldErrors, fieldProps, clearField, setFieldError, capture } = useFieldErrors(
-    HANDLE_FIELD,
-  );
+  const { fieldErrors, fieldProps, clearField, setFieldError, capture } =
+    useFieldErrors(HANDLE_FIELD);
   const error = fieldErrors.handle;
 
   if (!user) return null;

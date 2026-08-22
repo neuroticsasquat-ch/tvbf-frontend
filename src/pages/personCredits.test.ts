@@ -1,11 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { EpisodeRef, ShowRef } from "@/api/types";
-import {
-  characterLabel,
-  collapseByEpisode,
-  distinctLabels,
-  groupByShow,
-} from "./personCredits";
+import { characterLabel, collapseByEpisode, distinctLabels, groupByShow } from "./personCredits";
 
 function show(id: number, name: string, premiered: string | null = null): ShowRef {
   return { id, name, image_medium: null, premiered };

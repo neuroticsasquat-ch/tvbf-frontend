@@ -326,7 +326,9 @@ describe("AdminPage", () => {
     expect(
       await screen.findByRole("switch", { name: "Admin status for Tom (@tom_b)" }),
     ).toBeInTheDocument();
-    expect(screen.getByRole("switch", { name: "Admin status for Tom (@tom_c)" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("switch", { name: "Admin status for Tom (@tom_c)" }),
+    ).toBeInTheDocument();
 
     const rows = screen.getAllByTestId("admin-user-row");
     await userEvent.click(within(rows[1]).getByRole("button", { name: "Disable" }));
