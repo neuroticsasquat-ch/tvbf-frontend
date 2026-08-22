@@ -24,3 +24,4 @@ vitest.config.d.ts
 # Claude Code machine-local state (permissions, scheduled-task locks)
 .claude/settings.local.json
 .claude/scheduled_tasks.lock
+docker-compose.override.yml
