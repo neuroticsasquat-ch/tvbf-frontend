@@ -41,7 +41,7 @@ function renderSignup() {
 
 async function fillFields() {
   await userEvent.type(screen.getByLabelText(/email/i), "x@y.com");
-  await userEvent.type(screen.getByLabelText(/username/i), "X");
+  await userEvent.type(screen.getByLabelText(/display name/i), "X");
   await userEvent.type(screen.getByLabelText(/^handle$/i), "x_user");
   await userEvent.type(screen.getByLabelText(/password/i), "hunter2hunter2");
 }

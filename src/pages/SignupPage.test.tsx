@@ -28,7 +28,7 @@ function renderAt(path: string) {
 
 async function fillCommonFields() {
   await userEvent.type(screen.getByLabelText(/email/i), "x@y.com");
-  await userEvent.type(screen.getByLabelText(/username/i), "X");
+  await userEvent.type(screen.getByLabelText(/display name/i), "X");
   await userEvent.type(screen.getByLabelText(/^handle$/i), "x_user");
   await userEvent.type(screen.getByLabelText(/password/i), "hunter2hunter2");
 }
@@ -150,7 +150,7 @@ describe("SignupPage", () => {
     );
     renderAt("/signup");
     await userEvent.type(screen.getByLabelText(/email/i), "x@y.com");
-    await userEvent.type(screen.getByLabelText(/username/i), "X");
+    await userEvent.type(screen.getByLabelText(/display name/i), "X");
     await userEvent.type(screen.getByLabelText(/^handle$/i), "@TomBoone");
     await userEvent.type(screen.getByLabelText(/password/i), "hunter2hunter2");
     await userEvent.click(screen.getByRole("button", { name: /sign up/i }));
@@ -300,7 +300,7 @@ describe("SignupPage", () => {
     await userEvent.click(screen.getByRole("button", { name: /sign up/i }));
 
     const message = await screen.findByText("display_name must not be an email address");
-    const input = screen.getByLabelText(/username/i);
+    const input = screen.getByLabelText(/display name/i);
     expect(input).toHaveAttribute("aria-invalid", "true");
     expect(input.getAttribute("aria-describedby")).toContain(message.id);
     expect(screen.queryByText(/check your input/i)).not.toBeInTheDocument();
@@ -319,7 +319,7 @@ describe("SignupPage", () => {
     await fillCommonFields();
     await userEvent.click(screen.getByRole("button", { name: /sign up/i }));
     expect(await screen.findByText(/check your input/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/username/i)).not.toHaveAttribute("aria-invalid");
+    expect(screen.getByLabelText(/display name/i)).not.toHaveAttribute("aria-invalid");
   });
 
   it("keeps a message for a field this form has no input for in the banner", async () => {
@@ -390,10 +390,10 @@ describe("SignupPage", () => {
     await userEvent.click(screen.getByRole("button", { name: /sign up/i }));
     await screen.findByText("display_name must not be an email address");
 
-    const username = screen.getByLabelText(/username/i);
+    const username = screen.getByLabelText(/display name/i);
     await userEvent.type(username, "y");
     expect(screen.queryByText("display_name must not be an email address")).not.toBeInTheDocument();
-    expect(username).not.toHaveAttribute("aria-invalid");
+    expect(screen.getByLabelText(/display name/i)).not.toHaveAttribute("aria-invalid");
 
     // A different field's message is untouched by that edit.
     expect(screen.getByLabelText(/email/i)).not.toHaveAttribute("aria-invalid");
