@@ -76,15 +76,7 @@ function showYear(premiered: string | null): string | null {
 
 /** One credit: a link into the catalog plus a secondary line. All four credit
  * kinds share this shape — only what the link points at differs. */
-function CreditRow({
-  to,
-  title,
-  detail,
-}: {
-  to: string;
-  title: string;
-  detail?: string | null;
-}) {
+function CreditRow({ to, title, detail }: { to: string; title: string; detail?: string | null }) {
   // No `linkLabel` override any more. It existed because an episode-crew credit
   // repeated the same episode once per role, giving a screen reader two
   // identically-named links to one href. Collapsing repeats per episode
@@ -312,10 +304,7 @@ function EpisodeCreditCard<T extends { episode: EpisodeRef }>({
     );
   }
 
-  const summary = [
-    distinctLabels(credits, label).join(" · "),
-    `${entries.length} episodes`,
-  ]
+  const summary = [distinctLabels(credits, label).join(" · "), `${entries.length} episodes`]
     .filter(Boolean)
     .join(" · ");
 

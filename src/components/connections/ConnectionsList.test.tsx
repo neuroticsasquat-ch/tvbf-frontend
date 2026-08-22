@@ -87,7 +87,10 @@ describe("ConnectionsList", () => {
 
   it("blocks a user from the connection row", async () => {
     vi.spyOn(connectionsApi, "listConnections").mockResolvedValue([
-      { user: { id: "u-1", display_name: "Alice", handle: "alice" }, since: "2026-04-01T00:00:00Z" },
+      {
+        user: { id: "u-1", display_name: "Alice", handle: "alice" },
+        since: "2026-04-01T00:00:00Z",
+      },
     ]);
     const block = vi.spyOn(connectionsApi, "blockUser").mockResolvedValue({
       user: { id: "u-1", display_name: "Alice", handle: "alice" },
@@ -119,7 +122,9 @@ describe("ConnectionsList", () => {
 
     // The flow itself is `ReportUserButton`'s to test (NEU-1168 §6); this
     // asserts only that the surface renders it, named per person.
-    expect(await screen.findByRole("button", { name: "Report Alice (@alice)" })).toBeInTheDocument();
+    expect(
+      await screen.findByRole("button", { name: "Report Alice (@alice)" }),
+    ).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Report Bob (@bob)" })).toBeInTheDocument();
   });
 

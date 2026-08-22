@@ -188,7 +188,11 @@ export function ShowPoster({
         // an `<a>`'s display fix.
         <div className="relative">{image}</div>
       ) : (
-        <Link to={to} aria-label={children ? undefined : linkLabel} className="group relative block">
+        <Link
+          to={to}
+          aria-label={children ? undefined : linkLabel}
+          className="group relative block"
+        >
           {image}
         </Link>
       )}

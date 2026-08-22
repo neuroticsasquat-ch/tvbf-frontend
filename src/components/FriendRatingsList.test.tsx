@@ -208,6 +208,8 @@ describe("FriendRatingsList — identity", () => {
 
     renderWithProviders(<FriendRatingsList showId={1} />);
 
-    expect(await screen.findByRole("img", { name: "Alice's rating: 4.5 out of 5" })).toBeInTheDocument();
+    expect(
+      await screen.findByRole("img", { name: "Alice's rating: 4.5 out of 5" }),
+    ).toBeInTheDocument();
   });
 });

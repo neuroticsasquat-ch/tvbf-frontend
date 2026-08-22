@@ -337,6 +337,30 @@ export function AppShell() {
             </p>
           </div>
 
+          {/* Legal pages: four links, separated by dots. On narrow screens the
+            row wraps and stays center-aligned, matching the stacked layout of
+            the surrounding blocks. */}
+          <nav
+            aria-label="Legal"
+            className="flex flex-wrap justify-center gap-x-1.5 gap-y-1 text-center text-xs lg:justify-start"
+          >
+            <Link to="/terms" className="underline hover:text-foreground">
+              Terms
+            </Link>
+            <span aria-hidden="true">&middot;</span>
+            <Link to="/privacy" className="underline hover:text-foreground">
+              Privacy
+            </Link>
+            <span aria-hidden="true">&middot;</span>
+            <Link to="/about" className="underline hover:text-foreground">
+              About
+            </Link>
+            <span aria-hidden="true">&middot;</span>
+            <Link to="/contact" className="underline hover:text-foreground">
+              Contact
+            </Link>
+          </nav>
+
           {/* The publisher block: the release line sits under the copyright, and
             the pair sits under the attribution until `lg`, where it moves to the
             right edge and the two blocks share a vertical centre. Copyright

@@ -259,7 +259,10 @@ export function SignupPage() {
                 clearField("handle");
               }}
               onBlur={checkHandleShape}
-              {...fieldProps("handle", handlePreview ? "handle-preview handle-help" : "handle-help")}
+              {...fieldProps(
+                "handle",
+                handlePreview ? "handle-preview handle-help" : "handle-help",
+              )}
               className="w-full rounded-r bg-transparent px-1 py-2 focus:outline-none"
               autoComplete="username"
               autoCapitalize="none"
@@ -326,6 +329,17 @@ export function SignupPage() {
           </p>
         ) : null}
       </form>
+      <p className="mt-4 text-xs text-muted-foreground">
+        By signing up, you agree to our{" "}
+        <Link to="/terms" className="underline">
+          Terms of Service
+        </Link>{" "}
+        and{" "}
+        <Link to="/privacy" className="underline">
+          Privacy Policy
+        </Link>
+        .
+      </p>
       <p className="mt-4 text-sm">
         Already have an account?{" "}
         <Link to="/login" className="underline">

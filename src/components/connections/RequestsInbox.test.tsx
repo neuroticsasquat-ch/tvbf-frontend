@@ -23,8 +23,10 @@ function makeReq(
 ) {
   return {
     id,
-    requester: side === "incoming" ? other : { id: callerId, display_name: "Me", handle: "me_user" },
-    addressee: side === "incoming" ? { id: callerId, display_name: "Me", handle: "me_user" } : other,
+    requester:
+      side === "incoming" ? other : { id: callerId, display_name: "Me", handle: "me_user" },
+    addressee:
+      side === "incoming" ? { id: callerId, display_name: "Me", handle: "me_user" } : other,
     state: "pending" as const,
     created_at: "2026-05-08T12:00:00Z",
     responded_at: null,
@@ -41,7 +43,9 @@ describe("RequestsInbox", () => {
 
   it("renders Incoming and Outgoing sections with rows", async () => {
     vi.spyOn(connectionsApi, "listConnectionRequests").mockResolvedValue({
-      incoming: [makeReq("r-in", { id: "u-1", display_name: "Alice", handle: "alice" }, "incoming")],
+      incoming: [
+        makeReq("r-in", { id: "u-1", display_name: "Alice", handle: "alice" }, "incoming"),
+      ],
       outgoing: [makeReq("r-out", { id: "u-2", display_name: "Bob", handle: "bob" }, "outgoing")],
     });
 
@@ -58,12 +62,16 @@ describe("RequestsInbox", () => {
 
   it("optimistically removes a row on Accept", async () => {
     vi.spyOn(connectionsApi, "listConnectionRequests").mockResolvedValue({
-      incoming: [makeReq("r-in", { id: "u-1", display_name: "Alice", handle: "alice" }, "incoming")],
+      incoming: [
+        makeReq("r-in", { id: "u-1", display_name: "Alice", handle: "alice" }, "incoming"),
+      ],
       outgoing: [],
     });
     const accept = vi
       .spyOn(connectionsApi, "acceptConnectionRequest")
-      .mockResolvedValue(makeReq("r-in", { id: "u-1", display_name: "Alice", handle: "alice" }, "incoming"));
+      .mockResolvedValue(
+        makeReq("r-in", { id: "u-1", display_name: "Alice", handle: "alice" }, "incoming"),
+      );
 
     renderWithProviders(<RequestsInbox />);
 
@@ -81,12 +89,16 @@ describe("RequestsInbox", () => {
     // not to.
     server.use(meHandler(null));
     vi.spyOn(connectionsApi, "listConnectionRequests").mockResolvedValue({
-      incoming: [makeReq("r-in", { id: "u-1", display_name: "Alice", handle: "alice" }, "incoming")],
+      incoming: [
+        makeReq("r-in", { id: "u-1", display_name: "Alice", handle: "alice" }, "incoming"),
+      ],
       outgoing: [],
     });
     const accept = vi
       .spyOn(connectionsApi, "acceptConnectionRequest")
-      .mockResolvedValue(makeReq("r-in", { id: "u-1", display_name: "Alice", handle: "alice" }, "incoming"));
+      .mockResolvedValue(
+        makeReq("r-in", { id: "u-1", display_name: "Alice", handle: "alice" }, "incoming"),
+      );
 
     renderWithProviders(<RequestsInbox />);
 
@@ -100,7 +112,9 @@ describe("RequestsInbox", () => {
 
   it("optimistically removes a row on Reject", async () => {
     vi.spyOn(connectionsApi, "listConnectionRequests").mockResolvedValue({
-      incoming: [makeReq("r-in", { id: "u-1", display_name: "Alice", handle: "alice" }, "incoming")],
+      incoming: [
+        makeReq("r-in", { id: "u-1", display_name: "Alice", handle: "alice" }, "incoming"),
+      ],
       outgoing: [],
     });
     const del = vi.spyOn(connectionsApi, "deleteConnectionRequest").mockResolvedValue(undefined);
@@ -130,7 +144,9 @@ describe("RequestsInbox", () => {
 
   it("restores the row and toasts on error", async () => {
     vi.spyOn(connectionsApi, "listConnectionRequests").mockResolvedValue({
-      incoming: [makeReq("r-in", { id: "u-1", display_name: "Alice", handle: "alice" }, "incoming")],
+      incoming: [
+        makeReq("r-in", { id: "u-1", display_name: "Alice", handle: "alice" }, "incoming"),
+      ],
       outgoing: [],
     });
     vi.spyOn(connectionsApi, "acceptConnectionRequest").mockRejectedValue(
@@ -148,7 +164,9 @@ describe("RequestsInbox", () => {
 
   it("blocks the requester from an incoming row", async () => {
     vi.spyOn(connectionsApi, "listConnectionRequests").mockResolvedValue({
-      incoming: [makeReq("r-in", { id: "u-1", display_name: "Alice", handle: "alice" }, "incoming")],
+      incoming: [
+        makeReq("r-in", { id: "u-1", display_name: "Alice", handle: "alice" }, "incoming"),
+      ],
       outgoing: [],
     });
     const block = vi.spyOn(connectionsApi, "blockUser").mockResolvedValue({
@@ -179,14 +197,18 @@ describe("RequestsInbox", () => {
 
   it("carries a report control on incoming rows and none on outgoing ones", async () => {
     vi.spyOn(connectionsApi, "listConnectionRequests").mockResolvedValue({
-      incoming: [makeReq("r-in", { id: "u-1", display_name: "Alice", handle: "alice" }, "incoming")],
+      incoming: [
+        makeReq("r-in", { id: "u-1", display_name: "Alice", handle: "alice" }, "incoming"),
+      ],
       outgoing: [makeReq("r-out", { id: "u-2", display_name: "Bob", handle: "bob" }, "outgoing")],
     });
     renderWithProviders(<RequestsInbox />);
 
     // A stranger reaching you is the harassment case; an outgoing request is
     // someone you chose to contact (NEU-1168 §2).
-    expect(await screen.findByRole("button", { name: "Report Alice (@alice)" })).toBeInTheDocument();
+    expect(
+      await screen.findByRole("button", { name: "Report Alice (@alice)" }),
+    ).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Report Bob (@bob)" })).not.toBeInTheDocument();
   });
 
@@ -194,7 +216,9 @@ describe("RequestsInbox", () => {
     // Incoming *and* outgoing (§4.1): the handle has to be at the moment of
     // decision, and cancelling a request you sent to the wrong Tom is one.
     vi.spyOn(connectionsApi, "listConnectionRequests").mockResolvedValue({
-      incoming: [makeReq("r-in", { id: "u-1", display_name: "Alice", handle: "alice" }, "incoming")],
+      incoming: [
+        makeReq("r-in", { id: "u-1", display_name: "Alice", handle: "alice" }, "incoming"),
+      ],
       outgoing: [makeReq("r-out", { id: "u-2", display_name: "Bob", handle: "bob" }, "outgoing")],
     });
     renderWithProviders(<RequestsInbox />);
@@ -208,7 +232,9 @@ describe("RequestsInbox", () => {
 
   it("names both the display name and the handle in the block confirmation", async () => {
     vi.spyOn(connectionsApi, "listConnectionRequests").mockResolvedValue({
-      incoming: [makeReq("r-in", { id: "u-1", display_name: "Alice", handle: "alice" }, "incoming")],
+      incoming: [
+        makeReq("r-in", { id: "u-1", display_name: "Alice", handle: "alice" }, "incoming"),
+      ],
       outgoing: [],
     });
     renderWithProviders(<RequestsInbox />);

@@ -92,7 +92,9 @@ describe("FindPeople", () => {
   });
 
   it("toasts and keeps button idle on 409", async () => {
-    vi.spyOn(connectionsApi, "searchUsers").mockResolvedValue([{ id: "u-2", display_name: "Bob", handle: "bob" }]);
+    vi.spyOn(connectionsApi, "searchUsers").mockResolvedValue([
+      { id: "u-2", display_name: "Bob", handle: "bob" },
+    ]);
     vi.spyOn(connectionsApi, "sendConnectionRequest").mockRejectedValue(
       new ApiError(409, "connection_exists", { detail: "connection_exists" }),
     );

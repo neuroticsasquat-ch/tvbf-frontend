@@ -104,7 +104,11 @@ describe("SignupPage", () => {
       ),
       http.post(`${env.apiBaseUrl}/auth/signup`, () =>
         HttpResponse.json(
-          { detail: [{ loc: ["body", "handle"], msg: "handle is not available", type: "value_error" }] },
+          {
+            detail: [
+              { loc: ["body", "handle"], msg: "handle is not available", type: "value_error" },
+            ],
+          },
           { status: 422 },
         ),
       ),
@@ -245,7 +249,7 @@ describe("SignupPage", () => {
     // Fill everything EXCEPT invite code.
     await userEvent.type(screen.getByLabelText(/email/i), "x@y.com");
     await userEvent.type(screen.getByLabelText(/username/i), "X");
-  await userEvent.type(screen.getByLabelText(/^handle$/i), "x_user");
+    await userEvent.type(screen.getByLabelText(/^handle$/i), "x_user");
     await userEvent.type(screen.getByLabelText(/password/i), "hunter2hunter2");
     // The browser's `required` attribute prevents form submission and triggers
     // its own validation UI before any network call. The form's onSubmit never
@@ -444,7 +448,13 @@ describe("SignupPage", () => {
         sent.push(body.handle);
         return HttpResponse.json(
           {
-            detail: [{ type: "value_error", loc: ["body", "handle"], msg: "Value error, handle is not available" }],
+            detail: [
+              {
+                type: "value_error",
+                loc: ["body", "handle"],
+                msg: "Value error, handle is not available",
+              },
+            ],
           },
           { status: 422 },
         );

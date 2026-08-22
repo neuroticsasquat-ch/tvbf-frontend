@@ -94,7 +94,10 @@ describe("FriendProfilePage", () => {
   beforeEach(() => {
     window.localStorage.clear();
     vi.spyOn(connectionsApi, "listConnections").mockResolvedValue([
-      { user: { id: FRIEND_ID, display_name: "Friendly Person", handle: "friendly_person" }, since: "2026-04-01T00:00:00Z" },
+      {
+        user: { id: FRIEND_ID, display_name: "Friendly Person", handle: "friendly_person" },
+        since: "2026-04-01T00:00:00Z",
+      },
     ]);
   });
   afterEach(() => {
@@ -432,7 +435,9 @@ describe("FriendProfilePage", () => {
     const user = userEvent.setup();
 
     // Labelled here, compact in the three list rows (NEU-1168 §3.2).
-    const report = await screen.findByRole("button", { name: "Report Friendly Person (@friendly_person)" });
+    const report = await screen.findByRole("button", {
+      name: "Report Friendly Person (@friendly_person)",
+    });
     expect(report).toHaveTextContent("Report");
 
     await user.click(report);

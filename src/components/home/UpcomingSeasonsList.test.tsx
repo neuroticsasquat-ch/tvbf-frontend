@@ -44,17 +44,13 @@ describe("UpcomingSeasonsList", () => {
     // poster goes to the show and the text to that season's episode list, so
     // collapsing them would delete the only keyboard route from here to the
     // show page in exchange for a tab stop that confused nobody (§1.2).
-    server.use(
-      http.get(`${env.apiBaseUrl}/me/upcoming/seasons`, () => HttpResponse.json([ENTRY])),
-    );
+    server.use(http.get(`${env.apiBaseUrl}/me/upcoming/seasons`, () => HttpResponse.json([ENTRY])));
     renderWithProviders(<UpcomingSeasonsList />);
 
     await waitFor(() => expect(screen.getByText("Season 5")).toBeInTheDocument());
     const links = screen.getAllByRole("link");
     expect(links).toHaveLength(2);
     expect(screen.getByRole("link", { name: "Slow Horses" })).toHaveAttribute("href", "/shows/7");
-    expect(links.map((l) => l.getAttribute("href"))).toContain(
-      "/shows/7/episodes?season=5",
-    );
+    expect(links.map((l) => l.getAttribute("href"))).toContain("/shows/7/episodes?season=5");
   });
 });
