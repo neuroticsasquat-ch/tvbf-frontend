@@ -26,8 +26,7 @@ function renderAt(path: string) {
   );
 }
 
-async function fillCommonFields(invite = "test-invite") {
-  await userEvent.type(screen.getByLabelText(/invite code/i), invite);
+async function fillCommonFields() {
   await userEvent.type(screen.getByLabelText(/email/i), "x@y.com");
   await userEvent.type(screen.getByLabelText(/username/i), "X");
   await userEvent.type(screen.getByLabelText(/^handle$/i), "x_user");
@@ -150,7 +149,6 @@ describe("SignupPage", () => {
       }),
     );
     renderAt("/signup");
-    await userEvent.type(screen.getByLabelText(/invite code/i), "test-invite");
     await userEvent.type(screen.getByLabelText(/email/i), "x@y.com");
     await userEvent.type(screen.getByLabelText(/username/i), "X");
     await userEvent.type(screen.getByLabelText(/^handle$/i), "@TomBoone");
@@ -170,8 +168,10 @@ describe("SignupPage", () => {
         HttpResponse.json({ detail: "invalid_invite" }, { status: 403 }),
       ),
     );
-    renderAt("/signup");
-    await fillCommonFields("bogus-code");
+    renderAt("/signup?invite=bogus-code");
+    // The field is read-only when pre-filled from ?invite=, so we fill
+    // everything else and submit as-is with the pre-filled code.
+    await fillCommonFields();
     await userEvent.click(screen.getByRole("button", { name: /sign up/i }));
     await waitFor(() => expect(screen.getByText(/invite code is invalid/i)).toBeInTheDocument());
   });
@@ -230,10 +230,11 @@ describe("SignupPage", () => {
     expect(screen.getByLabelText(/email/i)).not.toHaveAttribute("aria-invalid");
   });
 
-  it("pre-fills the invite code from the ?invite= query param", () => {
+  it("pre-fills the invite code from the ?invite= query param, read-only", () => {
     renderAt("/signup?invite=abc123");
     const input = screen.getByLabelText(/invite code/i) as HTMLInputElement;
     expect(input.value).toBe("abc123");
+    expect(input).toBeDisabled();
   });
 
   it("pre-fills invite code and email from ?invite= and ?email= query params", () => {
@@ -241,22 +242,36 @@ describe("SignupPage", () => {
     const invite = screen.getByLabelText(/invite code/i) as HTMLInputElement;
     const email = screen.getByLabelText(/email/i) as HTMLInputElement;
     expect(invite.value).toBe("XYZ");
+    expect(invite).toBeDisabled();
     expect(email.value).toBe("foo@bar.com");
+    expect(email).not.toBeDisabled();
   });
 
-  it("blocks submit when invite code is empty", async () => {
+  it("submits without an invite code when none is in the URL", async () => {
+    let sent: Record<string, unknown> | null = null;
+    server.use(
+      http.get(`${env.apiBaseUrl}/me`, () =>
+        HttpResponse.json({ detail: "auth_required" }, { status: 401 }),
+      ),
+      http.post(`${env.apiBaseUrl}/auth/signup`, async ({ request }) => {
+        sent = (await request.json()) as Record<string, unknown>;
+        return HttpResponse.json(
+          {
+            id: "u1",
+            email: "x@y.com",
+            display_name: "X",
+            created_at: new Date().toISOString(),
+            csrf_token: "test-csrf",
+          },
+          { status: 201 },
+        );
+      }),
+    );
     renderAt("/signup");
-    // Fill everything EXCEPT invite code.
-    await userEvent.type(screen.getByLabelText(/email/i), "x@y.com");
-    await userEvent.type(screen.getByLabelText(/username/i), "X");
-    await userEvent.type(screen.getByLabelText(/^handle$/i), "x_user");
-    await userEvent.type(screen.getByLabelText(/password/i), "hunter2hunter2");
-    // The browser's `required` attribute prevents form submission and triggers
-    // its own validation UI before any network call. The form's onSubmit never
-    // runs in this case, so we just confirm no API call was made by checking
-    // the page doesn't navigate away.
+    await fillCommonFields();
     await userEvent.click(screen.getByRole("button", { name: /sign up/i }));
-    expect(screen.queryByText("my list page")).not.toBeInTheDocument();
+    await waitFor(() => expect(screen.getByText("my list page")).toBeInTheDocument());
+    expect(sent).not.toHaveProperty("invite_code");
   });
 
   it("shows a 422 field message against the display-name input", async () => {
@@ -422,11 +437,10 @@ describe("SignupPage", () => {
       }),
     );
     renderAt("/signup");
-    await userEvent.type(screen.getByLabelText(/invite code/i), "test-invite");
-    await userEvent.type(screen.getByLabelText(/email/i), "x@y.com");
-    await userEvent.type(screen.getByLabelText(/username/i), "X");
+    await fillCommonFields();
+    // Replace the handle specifically for this test.
+    await userEvent.clear(screen.getByLabelText(/^handle$/i));
     await userEvent.type(screen.getByLabelText(/^handle$/i), "tom-boone");
-    await userEvent.type(screen.getByLabelText(/password/i), "hunter2hunter2");
     await userEvent.click(screen.getByRole("button", { name: /sign up/i }));
 
     const message = await screen.findByRole("alert");
@@ -461,11 +475,10 @@ describe("SignupPage", () => {
       }),
     );
     renderAt("/signup");
-    await userEvent.type(screen.getByLabelText(/invite code/i), "test-invite");
-    await userEvent.type(screen.getByLabelText(/email/i), "x@y.com");
-    await userEvent.type(screen.getByLabelText(/username/i), "X");
+    await fillCommonFields();
+    // Replace the handle specifically for this test.
+    await userEvent.clear(screen.getByLabelText(/^handle$/i));
     await userEvent.type(screen.getByLabelText(/^handle$/i), "admin");
-    await userEvent.type(screen.getByLabelText(/password/i), "hunter2hunter2");
     await userEvent.click(screen.getByRole("button", { name: /sign up/i }));
 
     await waitFor(() => expect(sent).toEqual(["admin"]));

@@ -17,7 +17,9 @@ type AuthContextValue = {
     password: string;
     displayName: string;
     handle: string;
-    inviteCode: string;
+    /** Optional since NEU-1165/NEU-1171. Omitted from the body when no code
+     * is used. */
+    inviteCode?: string;
     turnstileToken?: string;
   }) => Promise<void>;
   logout: () => Promise<void>;
@@ -70,7 +72,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       password: string;
       display_name: string;
       handle: string;
-      invite_code: string;
+      invite_code?: string;
       turnstile_token?: string;
     }) => authApi.signup(vars),
     onSuccess: (user) => {

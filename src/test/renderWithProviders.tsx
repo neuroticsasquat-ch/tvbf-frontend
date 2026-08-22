@@ -13,20 +13,38 @@ export function createTestQueryClient() {
   });
 }
 
+/** Build an initial entry for MemoryRouter. Pass `route` as a plain string
+ * when no location state is needed — this preserves backward compatibility with
+ * existing callers that pass `?query` params in the route string. */
+function makeInitialEntry(
+  route: string,
+  state?: Record<string, unknown>,
+): string | { pathname: string; state?: Record<string, unknown> } {
+  return state !== undefined ? { pathname: route, state } : route;
+}
+
 interface ProviderOptions extends Omit<RenderOptions, "wrapper"> {
   route?: string;
+  locationState?: Record<string, unknown>;
   queryClient?: QueryClient;
 }
 
 export function renderWithProviders(
   ui: ReactElement,
-  { route = "/", queryClient = createTestQueryClient(), ...options }: ProviderOptions = {},
+  {
+    route = "/",
+    locationState,
+    queryClient = createTestQueryClient(),
+    ...options
+  }: ProviderOptions = {},
 ) {
   function Wrapper({ children }: { children: ReactNode }) {
     return (
       <QueryClientProvider client={queryClient}>
         <AuthProvider>
-          <MemoryRouter initialEntries={[route]}>{children}</MemoryRouter>
+          <MemoryRouter initialEntries={[makeInitialEntry(route, locationState)]}>
+            {children}
+          </MemoryRouter>
         </AuthProvider>
       </QueryClientProvider>
     );
