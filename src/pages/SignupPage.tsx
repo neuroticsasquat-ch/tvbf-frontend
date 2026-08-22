@@ -12,7 +12,11 @@ import { cn } from "@/lib/cn";
 import { HANDLE_SHAPE_MESSAGE, isHandleShapeValid, normaliseHandle } from "@/lib/handle";
 
 /** The request fields this form has an input for. A 422 naming anything else
- * falls back to the banner rather than being dropped silently. */
+ * falls back to the banner rather than being dropped silently.
+ *
+ * `invite_code` is always in the list even when the field is hidden — a 422
+ * about it would be anomalous (the server only validates a supplied code), but
+ * dropping it from the list would silently swallow the message. */
 const OWN_FIELDS = ["invite_code", "email", "display_name", "handle", "password"];
 
 /** The backend's four abuse-gate outcomes carry a plain-string `detail`
@@ -49,7 +53,10 @@ export function SignupPage() {
   const [displayName, setDisplayName] = useState("");
   const [handle, setHandle] = useState("");
   const [password, setPassword] = useState("");
-  const [inviteCode, setInviteCode] = useState(() => params.get("invite") ?? "");
+  const rawInvite = params.get("invite");
+  // `?invite=` with no value is treated as no invite (NEU-1171 §2.1).
+  const hasInvite = rawInvite !== null && rawInvite.length > 0;
+  const inviteCode = rawInvite ?? "";
   const [error, setError] = useState<string | null>(null);
   const { fieldErrors, fieldProps, clearField, setFieldError, capture, reset } =
     useFieldErrors(OWN_FIELDS);
@@ -102,10 +109,6 @@ export function SignupPage() {
       setError("Password must be at least 8 characters.");
       return;
     }
-    if (!inviteCode.trim()) {
-      setError("An invite code is required to sign up.");
-      return;
-    }
     if (captchaEnabled && !captchaToken) {
       setError("Please complete the verification check to continue.");
       return;
@@ -116,14 +119,11 @@ export function SignupPage() {
         email,
         password,
         displayName,
-        // Sent as typed. The server strips whitespace and one leading `@` and
-        // lowercases (NEU-1163 §1.1), so trimming here would be a second copy
-        // of a rule that already has exactly one.
         handle,
-        inviteCode: inviteCode.trim(),
+        ...(hasInvite ? { inviteCode: inviteCode.trim() } : {}),
         turnstileToken: captchaToken ?? undefined,
       });
-      navigate("/my-shows");
+      navigate("/my-shows", hasInvite ? { state: { invited: true } } : undefined);
     } catch (err) {
       const detail = stringDetail(err);
       // Field messages first: every one reaches the user, the ones this form
@@ -175,26 +175,25 @@ export function SignupPage() {
         </div>
       ) : null}
       <form onSubmit={onSubmit} className="space-y-4">
-        <div>
-          <label htmlFor="invite_code" className="block text-sm">
-            Invite code
-          </label>
-          <input
-            id="invite_code"
-            type="text"
-            required
-            value={inviteCode}
-            onChange={(e) => {
-              setInviteCode(e.target.value);
-              clearField("invite_code");
-            }}
-            {...fieldProps("invite_code")}
-            className="mt-1 w-full rounded border px-3 py-2"
-            autoComplete="off"
-          />
-          <FieldError name="invite_code" message={fieldErrors.invite_code} />
-          <p className="text-xs text-gray-500 mt-1">TV BingeFriend is invite-only during beta.</p>
-        </div>
+        {hasInvite ? (
+          <div>
+            <label htmlFor="invite_code" className="block text-sm">
+              Invite code
+            </label>
+            <input
+              id="invite_code"
+              type="text"
+              disabled
+              readOnly
+              value={inviteCode}
+              {...fieldProps("invite_code")}
+              className="mt-1 w-full rounded border bg-muted px-3 py-2 text-muted-foreground"
+              autoComplete="off"
+            />
+            <FieldError name="invite_code" message={fieldErrors.invite_code} />
+            <p className="text-xs text-gray-500 mt-1">You were invited with this code.</p>
+          </div>
+        ) : null}
         <div>
           <label htmlFor="email" className="block text-sm">
             Email

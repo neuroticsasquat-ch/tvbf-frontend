@@ -1,5 +1,8 @@
-import { useState } from "react";
-import { useSearchParams } from "react-router";
+import { useEffect, useState } from "react";
+import { useSearchParams, useLocation } from "react-router";
+import { useQuery } from "@tanstack/react-query";
+import { toast } from "sonner";
+import { listConnections } from "@/api/connections";
 import { useMyShows, useMyWatched } from "@/api/me";
 import { LibraryActiveList } from "@/components/library/LibraryActiveList";
 import { LibraryWatchedList } from "@/components/library/LibraryWatchedList";
@@ -14,6 +17,29 @@ const TABS: { key: Tab; label: string }[] = [
 
 function isTab(value: string | null): value is Tab {
   return value === "active" || value === "watched";
+}
+
+/** Ephemeral toast for an invited signup — shown once on first arrival.
+ * Reads `location.state.invited`, fires the toast after `listConnections`
+ * resolves, and clears the nav state so a cold reload does not repeat it. */
+function InvitedToast() {
+  const location = useLocation();
+  const invited = (location.state as { invited?: boolean } | null)?.invited;
+  const { data: connections } = useQuery({
+    queryKey: ["connections"],
+    queryFn: listConnections,
+    enabled: !!invited,
+  });
+
+  useEffect(() => {
+    if (invited && connections && connections.length > 0) {
+      toast(`You're now connected with @${connections[0].user.handle}.`, { duration: 5000 });
+      // Clear the nav state so a cold reload does not repeat the toast.
+      window.history.replaceState({}, "");
+    }
+  }, [invited, connections]);
+
+  return null;
 }
 
 export function MyShowsPage() {
@@ -32,6 +58,7 @@ export function MyShowsPage() {
 
   return (
     <section className="flex flex-col gap-4">
+      <InvitedToast />
       <h1 className="text-2xl font-semibold">My Shows</h1>
 
       <div

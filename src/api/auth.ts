@@ -11,7 +11,9 @@ export const signup = (body: {
    * normalisation, so lowercasing here would be a second copy of a rule that
    * already has one. */
   handle: string;
-  invite_code: string;
+  /** Optional since NEU-1165/NEU-1171. Omitted from the body when no code
+   * is used. The server accepts both shapes (str | None = None). */
+  invite_code?: string;
   /** Optional on the wire exactly as it is in `SignupRequest`: the backend
    * decides that "verification enabled means a token is required" and answers
    * 400 `captcha_required` when one is missing (NEU-1160 §7). */

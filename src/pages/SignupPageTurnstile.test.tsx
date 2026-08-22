@@ -40,7 +40,6 @@ function renderSignup() {
 }
 
 async function fillFields() {
-  await userEvent.type(screen.getByLabelText(/invite code/i), "test-invite");
   await userEvent.type(screen.getByLabelText(/email/i), "x@y.com");
   await userEvent.type(screen.getByLabelText(/username/i), "X");
   await userEvent.type(screen.getByLabelText(/^handle$/i), "x_user");
