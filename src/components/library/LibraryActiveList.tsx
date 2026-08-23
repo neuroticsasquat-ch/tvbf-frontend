@@ -11,13 +11,15 @@ import { ShowPoster } from "@/components/ShowPoster";
 import { MyShowsButton } from "@/components/MyShowsButton";
 import { ListingToolbar } from "@/components/home/ListingToolbar";
 import {
-  CallerMembershipFilterPicker,
-  CallerWatchStateFilterPicker,
   ClearFiltersButton,
+  FilterGroupDivider,
   GenreFilter,
   InMyShowsFilterPicker,
+  MyWatchStateFilter,
   RatedOnlyFilter,
   ShowStatusFilterPicker,
+  TheirShowsFilterPicker,
+  TheirWatchingFilter,
   WatchStateFilter,
 } from "@/components/home/FilterPickers";
 import {
@@ -177,27 +179,34 @@ export function LibraryActiveList({
         sort={{ label: "My Shows", options: LIBRARY_SORTS, value: sort, onChange: setSort }}
         filters={
           <>
-            <WatchStateFilter value={watchState} onChange={setWatchState} />
-            <ShowStatusFilterPicker value={status} onChange={setStatus} />
-            <InMyShowsFilterPicker
-              value={inMyShows}
-              onChange={setInMyShows}
-              disabledReason={IN_MY_SHOWS_DISABLED_REASON}
-            />
-            {viewerContext.kind === "friend" && (
+            {viewerContext.kind === "friend" ? (
               <>
-                <CallerMembershipFilterPicker
+                <TheirWatchingFilter value={watchState} onChange={setWatchState} />
+                <TheirShowsFilterPicker value={inMyShows} onChange={setInMyShows} />
+                <FilterGroupDivider />
+                <InMyShowsFilterPicker
                   value={callerMembership}
                   onChange={setCallerMembership}
+                  disabledReason={IN_MY_SHOWS_DISABLED_REASON}
                 />
-                <CallerWatchStateFilterPicker
-                  value={callerWatchState}
-                  onChange={setCallerWatchState}
+                <MyWatchStateFilter value={callerWatchState} onChange={setCallerWatchState} />
+                <FilterGroupDivider />
+                <ShowStatusFilterPicker value={status} onChange={setStatus} />
+                <GenreFilter value={genre} onChange={setGenre} />
+              </>
+            ) : (
+              <>
+                <WatchStateFilter value={watchState} onChange={setWatchState} />
+                <ShowStatusFilterPicker value={status} onChange={setStatus} />
+                <InMyShowsFilterPicker
+                  value={inMyShows}
+                  onChange={setInMyShows}
+                  disabledReason={IN_MY_SHOWS_DISABLED_REASON}
                 />
+                <RatedOnlyFilter value={rated} onChange={setRated} />
+                <GenreFilter value={genre} onChange={setGenre} />
               </>
             )}
-            {viewerContext.kind === "self" && <RatedOnlyFilter value={rated} onChange={setRated} />}
-            <GenreFilter value={genre} onChange={setGenre} />
             {filtersActive && (
               <ClearFiltersButton
                 onClear={() => {
