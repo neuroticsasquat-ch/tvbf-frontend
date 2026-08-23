@@ -49,7 +49,6 @@ export function TurnstileWidget({ siteKey, onToken }: TurnstileWidgetProps) {
 
   useEffect(() => {
     let cancelled = false;
-    setPhase("loading");
     onTokenRef.current(null);
 
     loadTurnstile()
