@@ -182,12 +182,16 @@ export function LibraryActiveList({
             {viewerContext.kind === "friend" ? (
               <>
                 <TheirWatchingFilter value={watchState} onChange={setWatchState} />
-                <TheirShowsFilterPicker value={inMyShows} onChange={setInMyShows} />
+                <TheirShowsFilterPicker
+                  value={inMyShows}
+                  onChange={setInMyShows}
+                  // All *their* active shows are in *their* My Shows.
+                  disabledReason={IN_MY_SHOWS_DISABLED_REASON}
+                />
                 <FilterGroupDivider />
                 <InMyShowsFilterPicker
                   value={callerMembership}
                   onChange={setCallerMembership}
-                  disabledReason={IN_MY_SHOWS_DISABLED_REASON}
                 />
                 <MyWatchStateFilter value={callerWatchState} onChange={setCallerWatchState} />
                 <FilterGroupDivider />

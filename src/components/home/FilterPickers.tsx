@@ -124,19 +124,23 @@ export function TheirWatchingFilter({
 }
 
 /** Friend-relative My Shows membership filter. Uses "Their Shows" so "My Shows"
- * is reserved for the viewing user's own library. */
+ * is reserved for the viewing user's own library. Options describe the
+ * friend's membership — "In their My Shows" rather than "In my My Shows". */
 const THEIR_SHOWS_OPTIONS: { key: InMyShowsFilter; label: string }[] = [
   { key: "all", label: "All" },
-  { key: "in", label: "In my My Shows" },
-  { key: "not_in", label: "Not in my My Shows" },
+  { key: "in", label: "In their My Shows" },
+  { key: "not_in", label: "Not in their My Shows" },
 ];
 
 export function TheirShowsFilterPicker({
   value,
   onChange,
+  disabledReason,
 }: {
   value: InMyShowsFilter;
   onChange: (next: InMyShowsFilter) => void;
+  /** When set, the entire picker is disabled with this tooltip. */
+  disabledReason?: string;
 }) {
   const label = THEIR_SHOWS_OPTIONS.find((o) => o.key === value)?.label ?? "All";
   return (
@@ -149,13 +153,14 @@ export function TheirShowsFilterPicker({
       value={value}
       onChange={onChange}
       active={value !== "all"}
+      disabledReason={disabledReason}
     />
   );
 }
 
 /** Viewer-relative watch-state filter for friend library tabs. Mirrors
- * `TheirWatchingFilter` but targets the viewer's own progress, styled as
- * "My Watch State" to match the viewer's perspective. */
+ * `TheirWatchingFilter` — both use "Watching" as the shared term,
+ * differentiated only by the "Their" / "My" prefix. */
 export function MyWatchStateFilter({
   value,
   onChange,
@@ -166,8 +171,8 @@ export function MyWatchStateFilter({
   const label = WATCH_STATES.find((s) => s.key === value)?.label ?? "";
   return (
     <FilterSheet
-      title="My Watch State"
-      triggerLabel={`My Watch State: ${label}`}
+      title="My Watching"
+      triggerLabel={`My Watching: ${label}`}
       triggerIcon={<Eye className={ICON_CLS} aria-hidden />}
       ariaLabel={`Filter by my watch state (current: ${label})`}
       options={WATCH_STATES}
