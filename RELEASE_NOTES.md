@@ -1,5 +1,53 @@
 # Release notes
 
+## 0.3.3 — 2026-08-23
+
+### Discover
+
+- Make My Recommendations a tab, first and default
+- Stop rendering the recommendation reason
+- Refresh the recommendations grid after an add ([NEU-1176](https://linear.app/neuroticsasquatch/issue/NEU-1176))
+- Hold the recommendations latch above the tab pane ([NEU-1176](https://linear.app/neuroticsasquatch/issue/NEU-1176))
+- A dismiss control on a recommendation card ([NEU-1179](https://linear.app/neuroticsasquatch/issue/NEU-1179))
+
+### General
+
+- Mark tracked shows on search results and the Similar tab ([NEU-1186](https://linear.app/neuroticsasquatch/issue/NEU-1186))
+- One add/remove control, suppressed where it cannot act ([NEU-1187](https://linear.app/neuroticsasquatch/issue/NEU-1187))
+- Carry the same facts and controls in grid and list views ([NEU-1188](https://linear.app/neuroticsasquatch/issue/NEU-1188))
+- Extract the post-removal focus move and apply it to watch history ([NEU-1193](https://linear.app/neuroticsasquatch/issue/NEU-1193))
+- Collapse duplicate row links, split empty states, name languages ([NEU-1190](https://linear.app/neuroticsasquatch/issue/NEU-1190))
+- Render field validation errors from 422 responses ([NEU-1196](https://linear.app/neuroticsasquatch/issue/NEU-1196))
+- Match field errors on shape, clear them on edit ([NEU-1196](https://linear.app/neuroticsasquatch/issue/NEU-1196))
+- Render field errors on password reset, share the form half ([NEU-1196](https://linear.app/neuroticsasquatch/issue/NEU-1196))
+- Answer a token complaint with the bad-link copy ([NEU-1196](https://linear.app/neuroticsasquatch/issue/NEU-1196))
+- Add the Turnstile widget to the signup form ([NEU-1166](https://linear.app/neuroticsasquatch/issue/NEU-1166))
+- Explain the verification gate before the click ([NEU-1167](https://linear.app/neuroticsasquatch/issue/NEU-1167))
+- Admin disable toggle and report-user action ([NEU-1168](https://linear.app/neuroticsasquatch/issue/NEU-1168))
+- Collect a handle at signup ([NEU-1198](https://linear.app/neuroticsasquatch/issue/NEU-1198))
+- Surface handles in signup, settings, search and profiles ([NEU-1169](https://linear.app/neuroticsasquatch/issue/NEU-1169))
+- Split the report dialog's naming and close the empty-handle hole ([NEU-1169](https://linear.app/neuroticsasquatch/issue/NEU-1169))
+- Add terms, privacy, about, and contact pages ([NEU-1170](https://linear.app/neuroticsasquatch/issue/NEU-1170))
+- Make invite code optional on signup ([NEU-1171](https://linear.app/neuroticsasquatch/issue/NEU-1171))
+- Add hero page
+
+### Library
+
+- Attribute every rating and library mark to its owner ([NEU-1181](https://linear.app/neuroticsasquatch/issue/NEU-1181))
+
+### Ratings
+
+- Give each rating kind its own treatment ([NEU-1182](https://linear.app/neuroticsasquatch/issue/NEU-1182))
+- Keep the aggregate's fill at five-star density ([NEU-1182](https://linear.app/neuroticsasquatch/issue/NEU-1182))
+
+### Search
+
+- Add a My Shows control to results in both views ([NEU-1192](https://linear.app/neuroticsasquatch/issue/NEU-1192))
+
+### Shows
+
+- Move More Like This into a Similar tab
+
 ## 0.3.2 — 2026-08-16
 
 ### Discover
