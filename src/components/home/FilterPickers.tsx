@@ -135,9 +135,12 @@ const THEIR_SHOWS_OPTIONS: { key: InMyShowsFilter; label: string }[] = [
 export function TheirShowsFilterPicker({
   value,
   onChange,
+  disabledReason,
 }: {
   value: InMyShowsFilter;
   onChange: (next: InMyShowsFilter) => void;
+  /** When set, the entire picker is disabled with this tooltip. */
+  disabledReason?: string;
 }) {
   const label = THEIR_SHOWS_OPTIONS.find((o) => o.key === value)?.label ?? "All";
   return (
@@ -150,6 +153,7 @@ export function TheirShowsFilterPicker({
       value={value}
       onChange={onChange}
       active={value !== "all"}
+      disabledReason={disabledReason}
     />
   );
 }
