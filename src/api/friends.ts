@@ -1,5 +1,6 @@
 import { apiFetch } from "./client";
 import type {
+  FeedPage,
   FriendRatingsResponse,
   MyShowEntry,
   MyShowsSort,
@@ -42,6 +43,18 @@ export function getFriendWatched(
   if (opts.today) params.set("today", opts.today);
   const qs = params.toString();
   return apiFetch<WatchedEntry[]>(`/users/${userId}/watched${qs ? `?${qs}` : ""}`);
+}
+
+// Friend activity feed (NEU-XXXX) -----------------------------------------
+
+export function getFriendFeed(
+  userId: string,
+  cursor: string | null,
+  limit = 20,
+): Promise<FeedPage> {
+  const params = new URLSearchParams({ limit: String(limit) });
+  if (cursor) params.set("cursor", cursor);
+  return apiFetch<FeedPage>(`/users/${userId}/feed?${params.toString()}`);
 }
 
 // Friend engagement (NEU-112) ----------------------------------------------

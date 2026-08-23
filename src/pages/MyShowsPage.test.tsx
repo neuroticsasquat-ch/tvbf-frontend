@@ -91,17 +91,17 @@ describe("MyShowsPage", () => {
     );
   });
 
-  it("renders Active and Watched sub-tabs with Active selected by default", async () => {
+  it("renders Shows and Watched sub-tabs with Shows selected by default", async () => {
     renderWithProviders(<MyShowsPage />);
 
     await waitFor(() => expect(screen.getAllByRole("tab")).toHaveLength(2));
-    expect(screen.getByRole("tab", { name: /active/i })).toHaveAttribute("aria-selected", "true");
+    expect(screen.getByRole("tab", { name: /^shows$/i })).toHaveAttribute("aria-selected", "true");
     expect(screen.getByRole("tab", { name: /watched/i })).toHaveAttribute("aria-selected", "false");
   });
 
   it("does not fetch the watched list until the Watched tab is clicked", async () => {
     renderWithProviders(<MyShowsPage />);
-    await waitFor(() => expect(screen.getByRole("tab", { name: /active/i })).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByRole("tab", { name: /^shows$/i })).toBeInTheDocument());
     expect(watchedCalls).toHaveLength(0);
 
     fireEvent.click(screen.getByRole("tab", { name: /watched/i }));
@@ -136,7 +136,7 @@ describe("MyShowsPage", () => {
     await waitFor(() => expect(screen.getByText(/no watch history/i)).toBeInTheDocument());
   });
 
-  it("Active tab still renders existing My Shows list", async () => {
+  it("Shows tab still renders existing My Shows list", async () => {
     renderWithProviders(<MyShowsPage />);
     await waitFor(() => expect(screen.getByText("Severance")).toBeInTheDocument());
   });

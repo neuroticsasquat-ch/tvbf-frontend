@@ -7,6 +7,7 @@ import { getFriendShows, getFriendWatched } from "@/api/friends";
 import { useMyShows, useMyWatched } from "@/api/me";
 import type { ConnectionOut, MyShowEntry, WatchedEntry } from "@/api/types";
 import { localToday } from "@/api/today";
+import { FriendActivityFeed } from "@/components/friends/FriendActivityFeed";
 import { ReportUserButton } from "@/components/ReportUserButton";
 import { UserIdentity } from "@/components/UserIdentity";
 import { LibraryActiveList } from "@/components/library/LibraryActiveList";
@@ -14,11 +15,17 @@ import { LibraryWatchedList } from "@/components/library/LibraryWatchedList";
 import { buildCallerLibrary } from "@/components/library/callerLibrary";
 import { cn } from "@/lib/cn";
 
-type Tab = "active" | "watched";
+type Tab = "shows" | "watched" | "activity";
+
+const TABS: { key: Tab; label: string }[] = [
+  { key: "shows", label: "Shows" },
+  { key: "watched", label: "Watched" },
+  { key: "activity", label: "Activity" },
+];
 
 export function FriendProfilePage() {
   const { userId = "" } = useParams<{ userId: string }>();
-  const [tab, setTab] = useState<Tab>("active");
+  const [tab, setTab] = useState<Tab>("shows");
   const navigate = useNavigate();
 
   const connectionsQuery = useQuery<ConnectionOut[]>({
@@ -65,17 +72,19 @@ export function FriendProfilePage() {
         aria-label="Friend library sections"
         className="flex gap-1 border-b border-border"
       >
-        <TabButton active={tab === "active"} onClick={() => setTab("active")}>
-          Active
-        </TabButton>
-        <TabButton active={tab === "watched"} onClick={() => setTab("watched")}>
-          Watched
-        </TabButton>
+        {TABS.map((t) => (
+          <TabButton key={t.key} active={tab === t.key} onClick={() => setTab(t.key)}>
+            {t.label}
+          </TabButton>
+        ))}
       </div>
 
       <div role="tabpanel">
-        {tab === "active" && <ActiveTab userId={userId} name={friend.user.display_name} />}
+        {tab === "shows" && <ShowsTab userId={userId} name={friend.user.display_name} />}
         {tab === "watched" && <WatchedTab userId={userId} name={friend.user.display_name} />}
+        {tab === "activity" && (
+          <ActivityTab userId={userId} name={friend.user.display_name} />
+        )}
       </div>
     </section>
   );
@@ -109,7 +118,7 @@ function TabButton({
   );
 }
 
-function ActiveTab({ userId, name }: { userId: string; name: string }) {
+function ShowsTab({ userId, name }: { userId: string; name: string }) {
   const today = localToday();
   const { data, isLoading, error } = useQuery<MyShowEntry[]>({
     queryKey: ["friend-shows", userId, today],
@@ -137,6 +146,10 @@ function ActiveTab({ userId, name }: { userId: string; name: string }) {
       storagePrefix="friend-active"
     />
   );
+}
+
+function ActivityTab({ userId, name: _name }: { userId: string; name: string }) {
+  return <FriendActivityFeed userId={userId} />;
 }
 
 function WatchedTab({ userId, name }: { userId: string; name: string }) {
