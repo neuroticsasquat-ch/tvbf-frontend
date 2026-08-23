@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef } from "react";
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { getFriendFeed } from "@/api/friends";
-import type { FeedItem } from "@/api/types";
+import type { FeedItem, FeedPage } from "@/api/types";
 import { FeedItemRow } from "@/components/friends/FeedItemRow";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -46,7 +46,7 @@ function EmptyState() {
 }
 
 export function FriendActivityFeed({ userId }: { userId: string }) {
-  const query = useInfiniteQuery<import("@/api/types").FeedPage>({
+  const query = useInfiniteQuery<FeedPage>({
     queryKey: ["friend-feed", userId],
     queryFn: ({ pageParam }) =>
       getFriendFeed(userId, (pageParam as string | null) ?? null),
