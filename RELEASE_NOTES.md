@@ -1,5 +1,15 @@
 # Release notes
 
+## 0.3.4 — 2026-08-23
+
+### General
+
+- Disambiguate friend-mode filter labels with Their/My split and group dividers
+- Normalize Their/My filter labels and correct disabled filter on friend Active tab
+- Add disabledReason to TheirShowsFilterPicker
+- Add Activity tab to friend profile and remove Activity from Friends page
+- Use direct import instead of import() type in FriendActivityFeed
+
 ## 0.3.3 — 2026-08-23
 
 ### Discover
