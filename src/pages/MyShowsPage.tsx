@@ -11,7 +11,7 @@ import { cn } from "@/lib/cn";
 type Tab = "active" | "watched";
 
 const TABS: { key: Tab; label: string }[] = [
-  { key: "active", label: "Active" },
+  { key: "active", label: "Shows" },
   { key: "watched", label: "All Watched" },
 ];
 

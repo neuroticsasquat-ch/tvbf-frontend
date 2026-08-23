@@ -114,8 +114,8 @@ describe("FriendProfilePage", () => {
         screen.getByRole("heading", { name: /friendly person/i, level: 1 }),
       ).toBeInTheDocument(),
     );
-    expect(screen.getAllByRole("tab")).toHaveLength(2);
-    expect(screen.getByRole("tab", { name: /active/i })).toHaveAttribute("aria-selected", "true");
+    expect(screen.getAllByRole("tab")).toHaveLength(3);
+    expect(screen.getByRole("tab", { name: /^shows$/i })).toHaveAttribute("aria-selected", "true");
   });
 
   it("Active tab fetches getFriendShows and renders rows with caller-relative action button", async () => {
@@ -166,7 +166,7 @@ describe("FriendProfilePage", () => {
 
     renderWithProviders(routed(), { route: `/users/${FRIEND_ID}` });
 
-    await waitFor(() => expect(screen.getByRole("tab", { name: /active/i })).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByRole("tab", { name: /^shows$/i })).toBeInTheDocument());
     expect(watched).not.toHaveBeenCalled();
 
     fireEvent.click(screen.getByRole("tab", { name: /watched/i }));
