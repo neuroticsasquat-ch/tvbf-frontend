@@ -77,7 +77,6 @@ export function useFocusAfterRemoval<T, E extends HTMLElement = HTMLElement>(
     // The absence gate.
     if (items?.some((item) => keyOf(item) === removed.key)) return;
     const root = containerRef.current;
-    setRemoved(null);
     if (!root) return;
     const controls = root.querySelectorAll<HTMLElement>(selector);
     if (controls.length > 0) {
