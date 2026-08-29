@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { BookmarkCheck, Eye, Star, Tv, Tag, User, X } from "lucide-react";
+import { BookmarkCheck, Eye, Star, Tv, Tag, X } from "lucide-react";
 import { useGenres } from "@/api/shows";
 import { FilterSheet } from "@/components/home/FilterSheet";
 import {
@@ -15,6 +15,11 @@ import {
 } from "@/components/home/filterTypes";
 
 const ICON_CLS = "h-4 w-4 text-muted-foreground";
+
+/** Visual separator between user-relative and show-relative filter groups. */
+export function FilterGroupDivider() {
+  return <span aria-hidden className="w-px h-5 bg-border mx-0.5 shrink-0 self-center" />;
+}
 
 export function ClearFiltersButton({ onClear }: { onClear: () => void }) {
   return (
@@ -94,10 +99,9 @@ export function InMyShowsFilterPicker({
   );
 }
 
-/** Caller-relative watch-state filter for friend library tabs (NEU-130).
- * Same five buckets as `WatchStateFilter` but the trigger label/aria targets
- * the caller's progress, not the row's. */
-export function CallerWatchStateFilterPicker({
+/** Friend-relative watch-state filter. Uses "Their Watching" to contrast with
+ * the viewer's own "My Watch State" filter below. */
+export function TheirWatchingFilter({
   value,
   onChange,
 }: {
@@ -107,10 +111,10 @@ export function CallerWatchStateFilterPicker({
   const label = WATCH_STATES.find((s) => s.key === value)?.label ?? "";
   return (
     <FilterSheet
-      title="My watch state"
-      triggerLabel={`My Watch State: ${label}`}
+      title="Their Watching"
+      triggerLabel={`Their Watching: ${label}`}
       triggerIcon={<Eye className={ICON_CLS} aria-hidden />}
-      ariaLabel={`Filter by my watch state (current: ${label})`}
+      ariaLabel={`Filter by their watch state (current: ${label})`}
       options={WATCH_STATES}
       value={value}
       onChange={onChange}
@@ -119,31 +123,59 @@ export function CallerWatchStateFilterPicker({
   );
 }
 
-/** Caller-relative membership filter for friend library tabs (NEU-129).
- * Reuses the InMyShowsFilter shape but its semantics target the caller's own
- * library, not the row's. Different label/icon avoids visual collision with
- * `InMyShowsFilterPicker`. */
-const CALLER_MEMBERSHIP_OPTIONS: { key: InMyShowsFilter; label: string }[] = [
+/** Friend-relative My Shows membership filter. Uses "Their Shows" so "My Shows"
+ * is reserved for the viewing user's own library. Options describe the
+ * friend's membership — "In their My Shows" rather than "In my My Shows". */
+const THEIR_SHOWS_OPTIONS: { key: InMyShowsFilter; label: string }[] = [
   { key: "all", label: "All" },
-  { key: "in", label: "In my My Shows" },
-  { key: "not_in", label: "Not in my My Shows" },
+  { key: "in", label: "In their My Shows" },
+  { key: "not_in", label: "Not in their My Shows" },
 ];
 
-export function CallerMembershipFilterPicker({
+export function TheirShowsFilterPicker({
   value,
   onChange,
+  disabledReason,
 }: {
   value: InMyShowsFilter;
   onChange: (next: InMyShowsFilter) => void;
+  /** When set, the entire picker is disabled with this tooltip. */
+  disabledReason?: string;
 }) {
-  const label = CALLER_MEMBERSHIP_OPTIONS.find((o) => o.key === value)?.label ?? "All";
+  const label = THEIR_SHOWS_OPTIONS.find((o) => o.key === value)?.label ?? "All";
   return (
     <FilterSheet
-      title="My library"
-      triggerLabel={`My Library: ${label}`}
-      triggerIcon={<User className={ICON_CLS} aria-hidden />}
-      ariaLabel={`Filter by my library membership (current: ${label})`}
-      options={CALLER_MEMBERSHIP_OPTIONS}
+      title="Their Shows"
+      triggerLabel={`Their Shows: ${label}`}
+      triggerIcon={<BookmarkCheck className={ICON_CLS} aria-hidden />}
+      ariaLabel={`Filter by their My Shows membership (current: ${label})`}
+      options={THEIR_SHOWS_OPTIONS}
+      value={value}
+      onChange={onChange}
+      active={value !== "all"}
+      disabledReason={disabledReason}
+    />
+  );
+}
+
+/** Viewer-relative watch-state filter for friend library tabs. Mirrors
+ * `TheirWatchingFilter` — both use "Watching" as the shared term,
+ * differentiated only by the "Their" / "My" prefix. */
+export function MyWatchStateFilter({
+  value,
+  onChange,
+}: {
+  value: WatchState;
+  onChange: (next: WatchState) => void;
+}) {
+  const label = WATCH_STATES.find((s) => s.key === value)?.label ?? "";
+  return (
+    <FilterSheet
+      title="My Watching"
+      triggerLabel={`My Watching: ${label}`}
+      triggerIcon={<Eye className={ICON_CLS} aria-hidden />}
+      ariaLabel={`Filter by my watch state (current: ${label})`}
+      options={WATCH_STATES}
       value={value}
       onChange={onChange}
       active={value !== "all"}

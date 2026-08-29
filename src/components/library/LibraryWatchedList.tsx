@@ -8,12 +8,14 @@ import { RemoveWatchHistoryButton } from "@/components/RemoveWatchHistoryButton"
 import { WatchProgressBar } from "@/components/WatchProgressBar";
 import { ListingToolbar } from "@/components/home/ListingToolbar";
 import {
-  CallerMembershipFilterPicker,
-  CallerWatchStateFilterPicker,
   ClearFiltersButton,
+  FilterGroupDivider,
   GenreFilter,
   InMyShowsFilterPicker,
+  MyWatchStateFilter,
   ShowStatusFilterPicker,
+  TheirShowsFilterPicker,
+  TheirWatchingFilter,
   WatchStateFilter,
 } from "@/components/home/FilterPickers";
 import {
@@ -173,26 +175,29 @@ export function LibraryWatchedList({
         }}
         filters={
           <>
-            <WatchStateFilter
-              value={watchState}
-              onChange={setWatchState}
-              disabledOptions={DISABLED_WATCH_STATES}
-            />
-            <ShowStatusFilterPicker value={showStatus} onChange={setShowStatus} />
-            <InMyShowsFilterPicker value={inMyShows} onChange={setInMyShows} />
-            {viewerContext.kind === "friend" && (
+            {viewerContext.kind === "friend" ? (
               <>
-                <CallerMembershipFilterPicker
-                  value={callerMembership}
-                  onChange={setCallerMembership}
+                <TheirWatchingFilter value={watchState} onChange={setWatchState} />
+                <TheirShowsFilterPicker value={inMyShows} onChange={setInMyShows} />
+                <FilterGroupDivider />
+                <InMyShowsFilterPicker value={callerMembership} onChange={setCallerMembership} />
+                <MyWatchStateFilter value={callerWatchState} onChange={setCallerWatchState} />
+                <FilterGroupDivider />
+                <ShowStatusFilterPicker value={showStatus} onChange={setShowStatus} />
+                <GenreFilter value={genre} onChange={setGenre} />
+              </>
+            ) : (
+              <>
+                <WatchStateFilter
+                  value={watchState}
+                  onChange={setWatchState}
+                  disabledOptions={DISABLED_WATCH_STATES}
                 />
-                <CallerWatchStateFilterPicker
-                  value={callerWatchState}
-                  onChange={setCallerWatchState}
-                />
+                <ShowStatusFilterPicker value={showStatus} onChange={setShowStatus} />
+                <InMyShowsFilterPicker value={inMyShows} onChange={setInMyShows} />
+                <GenreFilter value={genre} onChange={setGenre} />
               </>
             )}
-            <GenreFilter value={genre} onChange={setGenre} />
             {filtersActive && (
               <ClearFiltersButton
                 onClear={() => {
