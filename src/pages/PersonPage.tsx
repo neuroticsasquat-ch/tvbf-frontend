@@ -8,6 +8,7 @@ import { ErrorState } from "@/components/ErrorState";
 import { cn } from "@/lib/cn";
 import { NotFoundPage } from "./NotFoundPage";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { TabCount } from "@/components/TabCount";
 import type { EpisodeRef, PersonOut, ShowRef } from "@/api/types";
 import {
   characterLabel,
@@ -109,6 +110,9 @@ interface CreditSectionProps<T> {
    * number states the size of someone's filmography, and "(3)" for a director
    * with 40 episodes across three shows would understate their work. */
   creditCount: number;
+  /** When the tab already shows the title + count, the panel heading is
+   * visually hidden but kept in the DOM so `aria-labelledby` still resolves. */
+  headingHidden?: boolean;
   keyOf: (item: T) => React.Key;
   renderItem: (item: T) => ReactNode;
 }
@@ -118,6 +122,7 @@ function CreditSection<T>({
   title,
   items,
   creditCount,
+  headingHidden,
   keyOf,
   renderItem,
 }: CreditSectionProps<T>) {
@@ -132,7 +137,10 @@ function CreditSection<T>({
 
   return (
     <section aria-labelledby={`${id}-heading`}>
-      <h2 id={`${id}-heading`} className="mb-3 text-lg font-semibold">
+      <h2
+        id={`${id}-heading`}
+        className={headingHidden ? "sr-only" : "mb-3 text-lg font-semibold"}
+      >
         {title} <span className="font-normal text-muted-foreground">({creditCount})</span>
       </h2>
       <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -353,8 +361,8 @@ function Credits({ personId }: { personId: number }) {
     guest: guestEmpty,
     "episode-crew": episodeCrewEmpty,
   };
-  const wanted = known ? requested : "cast";
-  const firstPopulated = order.find((t) => !empties[t]) ?? "cast";
+  const wanted = known ? requested : order[0];
+  const firstPopulated = order.find((t) => !empties[t]) ?? order[0];
   const tab = empties[wanted] ? firstPopulated : wanted;
 
   function selectTab(next: string) {
@@ -367,89 +375,109 @@ function Credits({ personId }: { personId: number }) {
   return (
     <Tabs value={tab} onValueChange={selectTab}>
       <TabsList className="w-full justify-start overflow-x-auto">
-        <TabsTrigger value="cast" disabled={castEmpty}>
-          Cast
-        </TabsTrigger>
-        <TabsTrigger value="crew" disabled={crewEmpty}>
-          Crew
-        </TabsTrigger>
-        <TabsTrigger value="guest" disabled={guestEmpty}>
-          Guest
-        </TabsTrigger>
-        <TabsTrigger value="episode-crew" disabled={episodeCrewEmpty}>
-          Ep. crew
-        </TabsTrigger>
+        {!castEmpty && (
+          <TabsTrigger value="cast">
+            Cast <TabCount value={data.cast.length} />
+          </TabsTrigger>
+        )}
+        {!crewEmpty && (
+          <TabsTrigger value="crew">
+            Crew <TabCount value={data.crew.length} />
+          </TabsTrigger>
+        )}
+        {!guestEmpty && (
+          <TabsTrigger value="guest">
+            Guest <TabCount value={data.guest_cast.length} />
+          </TabsTrigger>
+        )}
+        {!episodeCrewEmpty && (
+          <TabsTrigger value="episode-crew">
+            Ep. crew <TabCount value={data.episode_crew.length} />
+          </TabsTrigger>
+        )}
       </TabsList>
-      <TabsContent value="cast">
-        <CreditSection
-          id="cast"
-          title="Cast"
-          items={castGroups}
-          creditCount={data.cast.length}
-          keyOf={(group) => group.show.id}
-          renderItem={(group) => (
-            <CreditRow
-              to={`/shows/${group.show.id}`}
-              title={group.show.name}
-              detail={[
-                distinctLabels(group.credits, characterLabel).join(" · "),
-                showYear(group.show.premiered),
-              ]
-                .filter(Boolean)
-                .join(" · ")}
-            />
-          )}
-        />
-      </TabsContent>
-      <TabsContent value="crew">
-        <CreditSection
-          id="crew"
-          title="Crew"
-          items={crewGroups}
-          creditCount={data.crew.length}
-          keyOf={(group) => group.show.id}
-          renderItem={(group) => (
-            <CreditRow
-              to={`/shows/${group.show.id}`}
-              title={group.show.name}
-              detail={[
-                distinctLabels(group.credits, (credit) => credit.role).join(" · "),
-                showYear(group.show.premiered),
-              ]
-                .filter(Boolean)
-                .join(" · ")}
-            />
-          )}
-        />
-      </TabsContent>
-      <TabsContent value="guest">
-        <CreditSection
-          id="guest"
-          title="Guest appearances"
-          items={guestGroups}
-          creditCount={data.guest_cast.length}
-          keyOf={(group) => group.show.id}
-          renderItem={(group) => (
-            <EpisodeCreditCard show={group.show} credits={group.credits} label={characterLabel} />
-          )}
-        />
-      </TabsContent>
-      <TabsContent value="episode-crew">
-        <CreditSection
-          id="episode-crew"
-          title="Episode crew"
-          items={episodeCrewGroups}
-          creditCount={data.episode_crew.length}
-          keyOf={(group) => group.show.id}
-          renderItem={(group) => (
-            <EpisodeCreditCard
-              show={group.show}
-              credits={group.credits}
-              label={(credit) => credit.role}
-            />
-          )}
-        />
-      </TabsContent>
+      {!castEmpty && (
+        <TabsContent value="cast">
+          <CreditSection
+            id="cast"
+            title="Cast"
+            headingHidden
+            items={castGroups}
+            creditCount={data.cast.length}
+            keyOf={(group) => group.show.id}
+            renderItem={(group) => (
+              <CreditRow
+                to={`/shows/${group.show.id}`}
+                title={group.show.name}
+                detail={[
+                  distinctLabels(group.credits, characterLabel).join(" · "),
+                  showYear(group.show.premiered),
+                ]
+                  .filter(Boolean)
+                  .join(" · ")}
+              />
+            )}
+          />
+        </TabsContent>
+      )}
+      {!crewEmpty && (
+        <TabsContent value="crew">
+          <CreditSection
+            id="crew"
+            title="Crew"
+            headingHidden
+            items={crewGroups}
+            creditCount={data.crew.length}
+            keyOf={(group) => group.show.id}
+            renderItem={(group) => (
+              <CreditRow
+                to={`/shows/${group.show.id}`}
+                title={group.show.name}
+                detail={[
+                  distinctLabels(group.credits, (credit) => credit.role).join(" · "),
+                  showYear(group.show.premiered),
+                ]
+                  .filter(Boolean)
+                  .join(" · ")}
+              />
+            )}
+          />
+        </TabsContent>
+      )}
+      {!guestEmpty && (
+        <TabsContent value="guest">
+          <CreditSection
+            id="guest"
+            title="Guest appearances"
+            headingHidden
+            items={guestGroups}
+            creditCount={data.guest_cast.length}
+            keyOf={(group) => group.show.id}
+            renderItem={(group) => (
+              <EpisodeCreditCard show={group.show} credits={group.credits} label={characterLabel} />
+            )}
+          />
+        </TabsContent>
+      )}
+      {!episodeCrewEmpty && (
+        <TabsContent value="episode-crew">
+          <CreditSection
+            id="episode-crew"
+            title="Episode crew"
+            headingHidden
+            items={episodeCrewGroups}
+            creditCount={data.episode_crew.length}
+            keyOf={(group) => group.show.id}
+            renderItem={(group) => (
+              <EpisodeCreditCard
+                show={group.show}
+                credits={group.credits}
+                label={(credit) => credit.role}
+              />
+            )}
+          />
+        </TabsContent>
+      )}
     </Tabs>
   );
 }

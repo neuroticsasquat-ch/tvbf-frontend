@@ -26,6 +26,7 @@ import { RatingBadge } from "@/components/RatingBadge";
 import { StarRatingInput } from "@/components/StarRatingInput";
 import { tenPointToFiveStar } from "@/lib/rating";
 import { seasonLabel } from "@/lib/season";
+import { TabCount } from "@/components/TabCount";
 
 function yearRange(premiered: string | null, ended: string | null) {
   if (!premiered) return "—";
@@ -322,9 +323,4 @@ export function ShowDetailPage() {
       </Tabs>
     </article>
   );
-}
-
-/** The count beside a tab label. Muted so the label stays the thing you read. */
-function TabCount({ value }: { value: number }) {
-  return <span className="font-normal text-muted-foreground">({value})</span>;
 }
