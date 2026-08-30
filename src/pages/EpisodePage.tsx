@@ -20,6 +20,7 @@ import { tenPointToFiveStar } from "@/lib/rating";
 import { seasonLabel } from "@/lib/season";
 import { useEpisodeRating } from "@/api/me";
 import { useAuth } from "@/components/AuthContext";
+import { TabCount } from "@/components/TabCount";
 
 const DATE_FMT = new Intl.DateTimeFormat("en-US", {
   weekday: "short",
@@ -269,9 +270,4 @@ export function EpisodePage() {
       )}
     </article>
   );
-}
-
-/** The count beside a tab label. Muted so the label stays the thing you read. */
-function TabCount({ value }: { value: number }) {
-  return <span className="font-normal text-muted-foreground">({value})</span>;
 }
