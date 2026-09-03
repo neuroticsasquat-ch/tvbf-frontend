@@ -1,13 +1,10 @@
 version: '3'
 
-includes:
-  infra:
-    taskfile: ../../tbc-localdev-infra/Taskfile.yml
-    dir: ../../tbc-localdev-infra
-
+# The workspace owns the compose file one level up; the repo owns nothing about
+# where it runs. Override on the command line if the layout moves.
 vars:
-  COMPOSE: docker compose
-  SVC: tvbf-frontend
+  COMPOSE: "docker compose -f ../docker-compose.yml"
+  SVC: web
   EXEC: "{{.COMPOSE}} exec -T {{.SVC}}"
 
 tasks:
@@ -22,10 +19,9 @@ tasks:
       - "{{.COMPOSE}} down"
 
   build:
-    desc: Rebuild the frontend image and sync deps into the node_modules volume
+    desc: Rebuild the frontend image
     cmds:
-      - "{{.COMPOSE}} build"
-      - "{{.COMPOSE}} run --rm --no-deps {{.SVC}} pnpm install"
+      - "{{.COMPOSE}} build {{.SVC}}"
 
   logs:
     desc: Follow frontend logs
