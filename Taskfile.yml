@@ -8,36 +8,6 @@ vars:
   EXEC: "{{.COMPOSE}} exec -T {{.SVC}}"
 
 tasks:
-  up:
-    desc: Start the frontend container (requires infra to be up)
-    cmds:
-      - "{{.COMPOSE}} up -d"
-
-  down:
-    desc: Stop the frontend container
-    cmds:
-      - "{{.COMPOSE}} down"
-
-  build:
-    desc: Rebuild the frontend image
-    cmds:
-      - "{{.COMPOSE}} build {{.SVC}}"
-
-  logs:
-    desc: Follow frontend logs
-    cmds:
-      - "{{.COMPOSE}} logs -f {{.SVC}}"
-
-  shell:
-    desc: Open a shell inside the frontend container
-    cmds:
-      - "{{.COMPOSE}} exec {{.SVC}} sh"
-
-  ps:
-    desc: Show compose service status
-    cmds:
-      - "{{.COMPOSE}} ps"
-
   install:
     desc: Install dependencies inside the container
     cmds:
