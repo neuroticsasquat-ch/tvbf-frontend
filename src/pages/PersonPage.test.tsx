@@ -1,7 +1,7 @@
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { HttpResponse, http } from "msw";
-import { Route, Routes } from "react-router";
+import { Route, Routes, useLocation } from "react-router";
 import { describe, expect, it } from "vitest";
 import { env } from "@/env";
 import { server } from "@/test/msw/server";
@@ -11,16 +11,34 @@ import { PersonPage } from "./PersonPage";
 
 const base = env.apiBaseUrl;
 
+function LocationSpy() {
+  const location = useLocation();
+  return <div data-testid="location">{location.search}</div>;
+}
+
 function routed() {
   return (
     <Routes>
-      <Route path="/people/:personId" element={<PersonPage />} />
+      <Route
+        path="/people/:personId"
+        element={
+          <>
+            <PersonPage />
+            <LocationSpy />
+          </>
+        }
+      />
     </Routes>
   );
 }
 
-function renderPerson(id: number | string = 300) {
-  return renderWithProviders(routed(), { route: `/people/${id}` });
+function renderPerson(id: number | string = 300, route?: string) {
+  return renderWithProviders(routed(), { route: route ?? `/people/${id}` });
+}
+
+async function switchToTab(name: string) {
+  const tab = await screen.findByRole("tab", { name });
+  await userEvent.click(tab);
 }
 
 describe("PersonPage", () => {
@@ -32,33 +50,194 @@ describe("PersonPage", () => {
     expect(screen.getByText("Born September 9, 1972 · Croatia")).toBeInTheDocument();
   });
 
-  it("renders all four credit sections when all four are populated", async () => {
+  it("renders four tabs when all four credit kinds are populated", async () => {
+    renderPerson();
+    await screen.findByRole("heading", { level: 1, name: "Zoe Lead" });
+    await screen.findByRole("tablist");
+
+    expect(screen.getByRole("tab", { name: "Cast (2)" })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Crew (1)" })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Guest (2)" })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Ep. crew (3)" })).toBeInTheDocument();
+
+    expect(screen.getByRole("tab", { name: "Cast (2)" })).toHaveAttribute("aria-selected", "true");
+
+    // Tabs carry counts; the in-panel heading is visually hidden but still in the DOM.
+    expect(screen.queryByRole("tab", { name: /Cast \(/ })).toBeInTheDocument();
+    const heading = screen.getByRole("heading", { name: "Cast (2)" });
+    expect(heading).toBeInTheDocument();
+    expect(heading).toHaveClass("sr-only");
+  });
+
+  it("falls back to the first populated tab when Cast is empty", async () => {
+    server.use(
+      http.get(`${base}/people/300/credits`, () =>
+        HttpResponse.json({
+          cast: [],
+          crew: [],
+          guest_cast: [],
+          episode_crew: fixturePersonCredits.episode_crew,
+        }),
+      ),
+    );
+    renderPerson();
+
+    expect(await screen.findByRole("tab", { name: "Ep. crew (3)" })).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
+    const heading = screen.getByRole("heading", { name: "Episode crew (3)" });
+    expect(heading).toBeInTheDocument();
+    expect(heading).toHaveClass("sr-only");
+    expect(screen.queryByText("No credits yet.")).not.toBeInTheDocument();
+  });
+
+  it("hides empty categories instead of disabling them", async () => {
+    server.use(
+      http.get(`${base}/people/300/credits`, () =>
+        HttpResponse.json({ ...fixturePersonCredits, cast: [], guest_cast: [] }),
+      ),
+    );
+    renderPerson();
+
+    expect(await screen.findByRole("tab", { name: "Crew (1)" })).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
+    expect(screen.queryByRole("tab", { name: "Cast" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("tab", { name: "Guest" })).not.toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Crew (1)" })).toBeEnabled();
+
+    // No (0) count leaks into the tab strip.
+    expect(screen.queryByRole("tab", { name: /\(0\)/ })).not.toBeInTheDocument();
+  });
+
+  it("says so when a person has no credits at all", async () => {
+    server.use(
+      http.get(`${base}/people/300/credits`, () =>
+        HttpResponse.json({ cast: [], crew: [], guest_cast: [], episode_crew: [] }),
+      ),
+    );
+    renderPerson();
+
+    // The header still renders — no credits is normal, not a broken page.
+    expect(await screen.findByRole("heading", { level: 1, name: "Zoe Lead" })).toBeInTheDocument();
+    expect(await screen.findByText("No credits yet.")).toBeInTheDocument();
+    expect(screen.queryByRole("tab")).not.toBeInTheDocument();
+  });
+
+  it("deep-links to a requested tab and falls back sensibly", async () => {
+    renderPerson(300, "/people/300?tab=crew");
+    await screen.findByRole("heading", { level: 1, name: "Zoe Lead" });
+
+    expect(await screen.findByRole("tab", { name: "Crew (1)" })).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
+    const heading = screen.getByRole("heading", { name: "Crew (1)" });
+    expect(heading).toBeInTheDocument();
+    expect(heading).toHaveClass("sr-only");
+  });
+
+  it("falls back to Cast for an unknown tab value", async () => {
+    renderPerson(300, "/people/300?tab=nonsense");
+    await screen.findByRole("heading", { level: 1, name: "Zoe Lead" });
+
+    expect(await screen.findByRole("tab", { name: "Cast (2)" })).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
+    const heading = screen.getByRole("heading", { name: "Cast (2)" });
+    expect(heading).toBeInTheDocument();
+    expect(heading).toHaveClass("sr-only");
+  });
+
+  it("falls back from an empty requested tab to the first populated tab", async () => {
+    server.use(
+      http.get(`${base}/people/300/credits`, () =>
+        HttpResponse.json({ ...fixturePersonCredits, episode_crew: [] }),
+      ),
+    );
+    renderPerson(300, "/people/300?tab=episode-crew");
+    await screen.findByRole("heading", { level: 1, name: "Zoe Lead" });
+
+    // Cast is first in order and populated, so it wins over the empty request.
+    expect(await screen.findByRole("tab", { name: "Cast (2)" })).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
+    const heading = screen.getByRole("heading", { name: "Cast (2)" });
+    expect(heading).toBeInTheDocument();
+    expect(heading).toHaveClass("sr-only");
+  });
+
+  it("leaves a stale ?tab= pointing at a hidden tab in the address bar", async () => {
+    server.use(
+      http.get(`${base}/people/300/credits`, () =>
+        HttpResponse.json({ ...fixturePersonCredits, guest_cast: [] }),
+      ),
+    );
+    renderPerson(300, "/people/300?tab=guest");
+    await screen.findByRole("heading", { level: 1, name: "Zoe Lead" });
+
+    expect(await screen.findByRole("tab", { name: "Cast (2)" })).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
+    expect(screen.getByTestId("location")).toHaveTextContent("?tab=guest");
+  });
+
+  it("updates the URL with replace when switching tabs", async () => {
     renderPerson();
     await screen.findByRole("heading", { level: 1, name: "Zoe Lead" });
 
-    expect(await screen.findByRole("heading", { name: /^Cast/ })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: /^Crew/ })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: /^Guest appearances/ })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: /^Episode crew/ })).toBeInTheDocument();
+    const historyBefore = window.history.length;
+    expect(screen.getByTestId("location")).toHaveTextContent("");
 
-    // Counts come from the payload, not from what is currently visible.
-    expect(screen.getByRole("heading", { name: "Cast (2)" })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Crew (1)" })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Guest appearances (2)" })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Episode crew (3)" })).toBeInTheDocument();
+    await switchToTab("Guest (2)");
+    expect(screen.getByRole("tab", { name: "Guest (2)" })).toHaveAttribute("aria-selected", "true");
+    expect(screen.getByTestId("location")).toHaveTextContent("?tab=guest");
+
+    await switchToTab("Cast (2)");
+    expect(screen.getByTestId("location")).toHaveTextContent("");
+
+    // Tab switches do not stack history entries.
+    expect(window.history.length).toBe(historyBefore);
+  });
+
+  it("lets the tab strip scroll horizontally at a narrow viewport", async () => {
+    const originalWidth = window.innerWidth;
+    window.innerWidth = 375;
+    window.dispatchEvent(new Event("resize"));
+
+    try {
+      renderPerson();
+      await screen.findByRole("heading", { level: 1, name: "Zoe Lead" });
+
+      const tablist = await screen.findByRole("tablist");
+      expect(tablist).toHaveClass("overflow-x-auto");
+      expect(screen.getByRole("tab", { name: "Ep. crew (3)" })).toBeVisible();
+
+      // The strip must be capable of horizontal scroll when content overflows.
+      Object.defineProperty(tablist, "clientWidth", { value: 300, configurable: true });
+      Object.defineProperty(tablist, "scrollWidth", { value: 500, configurable: true });
+      expect(tablist.scrollWidth).toBeGreaterThan(tablist.clientWidth);
+    } finally {
+      window.innerWidth = originalWidth;
+      window.dispatchEvent(new Event("resize"));
+    }
   });
 
   it("keeps episode crew separate from show-level crew", async () => {
     renderPerson();
+    await screen.findByRole("heading", { level: 1, name: "Zoe Lead" });
 
-    // The two sections answer different questions and point at different
-    // things: a standing production role links to the show, one night's
-    // directing links to the episode. Merging them would put both destinations
-    // under one heading.
-    const crew = within(await screen.findByRole("region", { name: /^Crew/ }));
+    await switchToTab("Crew (1)");
+    const crew = within(screen.getByRole("region", { name: /^Crew/ }));
     expect(crew.getByRole("heading", { name: "Crew (1)" })).toBeInTheDocument();
     expect(crew.getAllByRole("link").map((a) => a.getAttribute("href"))).toEqual(["/shows/100"]);
 
+    await switchToTab("Ep. crew (3)");
     const epCrew = within(screen.getByRole("region", { name: /^Episode crew/ }));
     const epHrefs = epCrew.getAllByRole("link").map((a) => a.getAttribute("href"));
     expect(epHrefs.every((h) => h?.startsWith("/episodes/"))).toBe(true);
@@ -66,8 +245,10 @@ describe("PersonPage", () => {
 
   it("collapses two roles on one episode into a single entry", async () => {
     renderPerson();
+    await screen.findByRole("heading", { level: 1, name: "Zoe Lead" });
 
-    const epCrew = within(await screen.findByRole("region", { name: /^Episode crew/ }));
+    await switchToTab("Ep. crew (3)");
+    const epCrew = within(screen.getByRole("region", { name: /^Episode crew/ }));
 
     // Upstream really does credit one person as both Story and Teleplay on an
     // episode, and both credits must survive — but they describe one night's
@@ -92,46 +273,18 @@ describe("PersonPage", () => {
     expect(epCrew.getByText("Writer")).toBeInTheDocument();
   });
 
-  it("hides the episode crew section for a person who has none", async () => {
-    server.use(
-      http.get(`${base}/people/300/credits`, () =>
-        HttpResponse.json({ ...fixturePersonCredits, episode_crew: [] }),
-      ),
-    );
-    renderPerson();
-
-    expect(await screen.findByRole("heading", { name: /^Cast/ })).toBeInTheDocument();
-    expect(screen.queryByRole("heading", { name: /^Episode crew/ })).not.toBeInTheDocument();
-  });
-
-  it("does not claim a director with only episode crew credits has no credits", async () => {
-    // Episode crew is reachable by no other route upstream, so this is a real
-    // shape: a working director whose entire filmography is episode-level.
-    server.use(
-      http.get(`${base}/people/300/credits`, () =>
-        HttpResponse.json({
-          cast: [],
-          crew: [],
-          guest_cast: [],
-          episode_crew: fixturePersonCredits.episode_crew,
-        }),
-      ),
-    );
-    renderPerson();
-
-    expect(await screen.findByRole("heading", { name: "Episode crew (3)" })).toBeInTheDocument();
-    expect(screen.queryByText("No credits yet.")).not.toBeInTheDocument();
-  });
-
   it("links cast and crew credits to the show", async () => {
     renderPerson();
+    await screen.findByRole("heading", { level: 1, name: "Zoe Lead" });
 
-    const cast = within(await screen.findByRole("region", { name: /^Cast/ }));
+    await switchToTab("Cast (2)");
+    const cast = within(screen.getByRole("region", { name: /^Cast/ }));
     expect(cast.getByRole("link", { name: "Alpha Show" })).toHaveAttribute("href", "/shows/100");
     expect(cast.getByText("Captain Alpha · 2020")).toBeInTheDocument();
     // Voice roles stay marked, same as on the show page.
     expect(cast.getByText("Doctor Beta (voice) · 2015")).toBeInTheDocument();
 
+    await switchToTab("Crew (1)");
     const crew = within(screen.getByRole("region", { name: /^Crew/ }));
     expect(crew.getByRole("link", { name: "Alpha Show" })).toHaveAttribute("href", "/shows/100");
     expect(crew.getByText("Executive Producer · 2020")).toBeInTheDocument();
@@ -139,8 +292,11 @@ describe("PersonPage", () => {
 
   it("renders guest credits with episode context, not bare episode names", async () => {
     renderPerson();
+    await screen.findByRole("heading", { level: 1, name: "Zoe Lead" });
 
-    const guest = within(await screen.findByRole("region", { name: /^Guest appearances/ }));
+    await switchToTab("Guest (2)");
+    expect(screen.getByRole("heading", { name: "Guest appearances (2)" })).toBeInTheDocument();
+    const guest = within(screen.getByRole("region", { name: /^Guest appearances/ }));
     // "Show — S2E11" in one payload: the show name must be on the credit itself.
     const link = guest.getByRole("link", { name: "Gamma Show — S2E11" });
     expect(link).toHaveAttribute("href", "/episodes/900");
@@ -151,32 +307,6 @@ describe("PersonPage", () => {
       "href",
       "/episodes/901",
     );
-  });
-
-  it("hides sections that are empty rather than rendering empty headers", async () => {
-    server.use(
-      http.get(`${base}/people/300/credits`, () =>
-        HttpResponse.json({ ...fixturePersonCredits, cast: [], guest_cast: [] }),
-      ),
-    );
-    renderPerson();
-
-    expect(await screen.findByRole("heading", { name: /^Crew/ })).toBeInTheDocument();
-    expect(screen.queryByRole("heading", { name: /^Cast/ })).not.toBeInTheDocument();
-    expect(screen.queryByRole("heading", { name: /^Guest appearances/ })).not.toBeInTheDocument();
-  });
-
-  it("says so when a person has no credits at all", async () => {
-    server.use(
-      http.get(`${base}/people/300/credits`, () =>
-        HttpResponse.json({ cast: [], crew: [], guest_cast: [], episode_crew: [] }),
-      ),
-    );
-    renderPerson();
-
-    // The header still renders — no credits is normal, not a broken page.
-    expect(await screen.findByRole("heading", { level: 1, name: "Zoe Lead" })).toBeInTheDocument();
-    expect(await screen.findByText("No credits yet.")).toBeInTheDocument();
   });
 
   it("collapses a long section behind a show-all toggle", async () => {
@@ -192,6 +322,11 @@ describe("PersonPage", () => {
     );
     renderPerson();
 
+    // With only guest credits populated, the Guest tab is active by default.
+    expect(await screen.findByRole("tab", { name: "Guest (20)" })).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
     const toggle = await screen.findByRole("button", { name: "Show all 20 shows" });
     expect(screen.getAllByRole("listitem")).toHaveLength(12);
 
@@ -223,6 +358,7 @@ describe("PersonPage", () => {
 
     expect(await screen.findByRole("heading", { level: 1, name: "Zoe Lead" })).toBeInTheDocument();
     expect(await screen.findByRole("alert")).toHaveTextContent(/boom/);
+    expect(screen.queryByRole("tab")).not.toBeInTheDocument();
   });
 
   it("prefers the original headshot over the medium one", async () => {
@@ -277,7 +413,8 @@ describe("PersonPage credit grouping", () => {
     });
     renderPerson();
 
-    const epCrew = within(await screen.findByRole("region", { name: /^Episode crew/ }));
+    await switchToTab("Ep. crew (3)");
+    const epCrew = within(screen.getByRole("region", { name: /^Episode crew/ }));
 
     // Three credits, one card. The heading still counts credits: the number
     // states the size of the filmography, not how many shows it spans.
@@ -330,7 +467,8 @@ describe("PersonPage credit grouping", () => {
     });
     renderPerson();
 
-    const cast = within(await screen.findByRole("region", { name: /^Cast/ }));
+    await switchToTab("Cast (2)");
+    const cast = within(screen.getByRole("region", { name: /^Cast/ }));
     expect(cast.getByRole("heading", { name: "Cast (2)" })).toBeInTheDocument();
 
     // One card, both characters, still linking to the show as it always did.
@@ -354,7 +492,8 @@ describe("PersonPage credit grouping", () => {
     });
     renderPerson();
 
-    const guest = within(await screen.findByRole("region", { name: /^Guest/ }));
+    await switchToTab("Guest (1)");
+    const guest = within(screen.getByRole("region", { name: /^Guest/ }));
 
     // No expander and no "1 episode": the common case must not gain ceremony.
     expect(guest.queryByRole("button")).not.toBeInTheDocument();
@@ -390,7 +529,8 @@ describe("PersonPage grouped-card accessibility", () => {
     );
     renderPerson();
 
-    const epCrew = within(await screen.findByRole("region", { name: /^Episode crew/ }));
+    await switchToTab("Ep. crew (4)");
+    const epCrew = within(screen.getByRole("region", { name: /^Episode crew/ }));
 
     // Both cards summarise as "Director · 2 episodes". Without the show in the
     // accessible name a screen reader announces two identical buttons.
@@ -429,7 +569,8 @@ describe("PersonPage grouped-card accessibility", () => {
     );
     renderPerson();
 
-    const epCrew = within(await screen.findByRole("region", { name: /^Episode crew/ }));
+    await switchToTab("Ep. crew (2)");
+    const epCrew = within(screen.getByRole("region", { name: /^Episode crew/ }));
     await userEvent.click(epCrew.getByRole("button", { name: /^Gamma Show —/ }));
 
     // The episode name and role used to sit outside the anchor, so the widest
@@ -463,7 +604,8 @@ describe("PersonPage grouped-card accessibility", () => {
     );
     renderPerson();
 
-    const epCrew = within(await screen.findByRole("region", { name: /^Episode crew/ }));
+    await switchToTab("Ep. crew (25)");
+    const epCrew = within(screen.getByRole("region", { name: /^Episode crew/ }));
     // The summary still states the true total.
     await userEvent.click(
       epCrew.getByRole("button", { name: "Gamma Show — Director · 25 episodes" }),
@@ -511,7 +653,8 @@ describe("PersonPage grouped-card accessibility", () => {
     );
     renderPerson();
 
-    const guest = within(await screen.findByRole("region", { name: /^Guest/ }));
+    await switchToTab("Guest (2)");
+    const guest = within(screen.getByRole("region", { name: /^Guest/ }));
     // "2 episodes" alone would not say who they played.
     expect(
       guest.getByRole("button", { name: "Gamma Show — Guest Of The Week · 2 episodes" }),

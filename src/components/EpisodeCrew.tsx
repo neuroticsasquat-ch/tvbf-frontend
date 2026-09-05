@@ -16,7 +16,13 @@ import { PersonChip } from "@/components/PersonChip";
  * 22.5% of episodes have no crew at all, so rendering nothing — no header, no
  * placeholder — is a common outcome rather than an edge case.
  */
-export function EpisodeCrew({ episodeId }: { episodeId: number }) {
+export function EpisodeCrew({
+  episodeId,
+  headingHidden = false,
+}: {
+  episodeId: number;
+  headingHidden?: boolean;
+}) {
   const { data, isError, error, refetch } = useEpisodeCrew(episodeId);
 
   // A failed request must not look like the (common) empty case.
@@ -27,7 +33,10 @@ export function EpisodeCrew({ episodeId }: { episodeId: number }) {
 
   return (
     <section aria-labelledby="episode-crew-heading">
-      <h2 id="episode-crew-heading" className="mb-3 text-lg font-semibold">
+      <h2
+        id="episode-crew-heading"
+        className={headingHidden ? "sr-only" : "mb-3 text-lg font-semibold"}
+      >
         Crew <span className="font-normal text-muted-foreground">({entries.length})</span>
       </h2>
       <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">

@@ -1,6 +1,6 @@
 import { ChevronLeft, ChevronRight, Film } from "lucide-react";
-import { Link, useNavigate, useParams } from "react-router";
-import { useEpisode, useShow, useShowEpisodes } from "@/api/shows";
+import { Link, useNavigate, useParams, useSearchParams } from "react-router";
+import { useEpisode, useEpisodeCrew, useEpisodeGuestCast, useShow, useShowEpisodes } from "@/api/shows";
 import { ApiError } from "@/api/client";
 import { LoadingState } from "@/components/LoadingState";
 import { ErrorState } from "@/components/ErrorState";
@@ -13,12 +13,14 @@ import { EpisodeFriendsWatched } from "@/components/friends/FriendActivity";
 import { FriendRatingsList } from "@/components/FriendRatingsList";
 import { FilterSheet } from "@/components/home/FilterSheet";
 import { Button } from "@/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { RatingBadge } from "@/components/RatingBadge";
 import { StarRatingInput } from "@/components/StarRatingInput";
 import { tenPointToFiveStar } from "@/lib/rating";
 import { seasonLabel } from "@/lib/season";
 import { useEpisodeRating } from "@/api/me";
 import { useAuth } from "@/components/AuthContext";
+import { TabCount } from "@/components/TabCount";
 
 const DATE_FMT = new Intl.DateTimeFormat("en-US", {
   weekday: "short",
@@ -35,6 +37,7 @@ function formatAirdate(iso: string): string {
 export function EpisodePage() {
   const { episodeId } = useParams<{ episodeId: string }>();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const id = Number(episodeId);
   const episodeQuery = useEpisode(id);
   const { user } = useAuth();
@@ -44,6 +47,12 @@ export function EpisodePage() {
     episodeQuery.data?.show_id ?? -1,
     episodeQuery.data?.season,
   );
+
+  // Fetched here for the region gate and tab counts. EpisodeGuestCast/EpisodeCrew
+  // run the same queries and React Query dedupes on the key, so this costs no
+  // extra request.
+  const guestQuery = useEpisodeGuestCast(id);
+  const crewQuery = useEpisodeCrew(id);
 
   const ep = episodeQuery.data;
   const show = showQuery.data;
@@ -81,6 +90,30 @@ export function EpisodePage() {
     );
   }
   if (!ep) return <LoadingState rows={1} />;
+
+  const guestCount = guestQuery.data?.length ?? 0;
+  const crewCount = crewQuery.data?.length ?? 0;
+  const guestEmpty = guestQuery.isSuccess && guestCount === 0;
+  const crewEmpty = crewQuery.isSuccess && crewCount === 0;
+
+  const showCredits =
+    crewCount > 0 || guestCount > 0 || crewQuery.isError || guestQuery.isError;
+
+  const requested = searchParams.get("tab");
+  const wanted = requested === "crew" || requested === "guest-cast" ? requested : "crew";
+  const tab =
+    wanted === "crew" && crewEmpty
+      ? "guest-cast"
+      : wanted === "guest-cast" && guestEmpty
+        ? "crew"
+        : wanted;
+
+  function selectTab(next: string) {
+    const params = new URLSearchParams(searchParams);
+    if (next === "crew") params.delete("tab");
+    else params.set("tab", next);
+    setSearchParams(params, { replace: true });
+  }
 
   // The season row carries the name; until the show query resolves, fall back to
   // the number the episode itself knows. Computed after the `ep` guard so the
@@ -216,8 +249,25 @@ export function EpisodePage() {
         </div>
       </div>
 
-      <EpisodeGuestCast episodeId={ep.id} />
-      <EpisodeCrew episodeId={ep.id} />
+      {showCredits && (
+        <Tabs value={tab} onValueChange={selectTab}>
+          <TabsList>
+            <TabsTrigger value="crew" disabled={crewEmpty}>
+              Crew {crewQuery.isSuccess && <TabCount value={crewCount} />}
+            </TabsTrigger>
+            <TabsTrigger value="guest-cast" disabled={guestEmpty}>
+              Guest cast {guestQuery.isSuccess && <TabCount value={guestCount} />}
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="crew">
+            <EpisodeCrew episodeId={ep.id} headingHidden />
+          </TabsContent>
+          <TabsContent value="guest-cast">
+            <EpisodeGuestCast episodeId={ep.id} headingHidden />
+          </TabsContent>
+        </Tabs>
+      )}
     </article>
   );
 }

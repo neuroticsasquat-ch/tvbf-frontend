@@ -1,12 +1,14 @@
 import { useState, type ReactNode } from "react";
 import { ChevronRight } from "lucide-react";
-import { Link, useParams } from "react-router";
+import { Link, useParams, useSearchParams } from "react-router";
 import { usePerson, usePersonCredits } from "@/api/people";
 import { ApiError } from "@/api/client";
 import { LoadingState } from "@/components/LoadingState";
 import { ErrorState } from "@/components/ErrorState";
 import { cn } from "@/lib/cn";
 import { NotFoundPage } from "./NotFoundPage";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { TabCount } from "@/components/TabCount";
 import type { EpisodeRef, PersonOut, ShowRef } from "@/api/types";
 import {
   characterLabel,
@@ -108,6 +110,9 @@ interface CreditSectionProps<T> {
    * number states the size of someone's filmography, and "(3)" for a director
    * with 40 episodes across three shows would understate their work. */
   creditCount: number;
+  /** When the tab already shows the title + count, the panel heading is
+   * visually hidden but kept in the DOM so `aria-labelledby` still resolves. */
+  headingHidden?: boolean;
   keyOf: (item: T) => React.Key;
   renderItem: (item: T) => ReactNode;
 }
@@ -117,6 +122,7 @@ function CreditSection<T>({
   title,
   items,
   creditCount,
+  headingHidden,
   keyOf,
   renderItem,
 }: CreditSectionProps<T>) {
@@ -131,7 +137,10 @@ function CreditSection<T>({
 
   return (
     <section aria-labelledby={`${id}-heading`}>
-      <h2 id={`${id}-heading`} className="mb-3 text-lg font-semibold">
+      <h2
+        id={`${id}-heading`}
+        className={headingHidden ? "sr-only" : "mb-3 text-lg font-semibold"}
+      >
         {title} <span className="font-normal text-muted-foreground">({creditCount})</span>
       </h2>
       <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -313,6 +322,7 @@ function EpisodeCreditCard<T extends { episode: EpisodeRef }>({
 
 function Credits({ personId }: { personId: number }) {
   const { data, isPending, isError, error, refetch } = usePersonCredits(personId);
+  const [searchParams, setSearchParams] = useSearchParams();
 
   if (isPending) return <LoadingState rows={1} />;
   // A failed request must not look like the (very common) no-credits case.
@@ -333,83 +343,142 @@ function Credits({ personId }: { personId: number }) {
   const guestGroups = groupByShow(data.guest_cast);
   const episodeCrewGroups = groupByShow(data.episode_crew);
 
+  const castEmpty = data.cast.length === 0;
+  const crewEmpty = data.crew.length === 0;
+  const guestEmpty = data.guest_cast.length === 0;
+  const episodeCrewEmpty = data.episode_crew.length === 0;
+  const requested = searchParams.get("tab");
+  const known =
+    requested === "cast" ||
+    requested === "crew" ||
+    requested === "guest" ||
+    requested === "episode-crew";
+
+  const order = ["cast", "crew", "guest", "episode-crew"] as const;
+  const empties: Record<string, boolean> = {
+    cast: castEmpty,
+    crew: crewEmpty,
+    guest: guestEmpty,
+    "episode-crew": episodeCrewEmpty,
+  };
+  const wanted = known ? requested : order[0];
+  const firstPopulated = order.find((t) => !empties[t]) ?? order[0];
+  const tab = empties[wanted] ? firstPopulated : wanted;
+
+  function selectTab(next: string) {
+    const params = new URLSearchParams(searchParams);
+    if (next === "cast") params.delete("tab");
+    else params.set("tab", next);
+    setSearchParams(params, { replace: true });
+  }
+
   return (
-    <div className="space-y-8">
-      {/* The API orders each list deliberately — cast and crew by show premiere
-          descending, guest and episode-crew by air date descending with undated
-          episodes last. `groupByShow` is stable, so groups inherit that order:
-          a show's first credit is its most significant under whichever rule
-          applies. Never re-sort here. */}
-      <CreditSection
-        id="cast"
-        title="Cast"
-        items={castGroups}
-        creditCount={data.cast.length}
-        keyOf={(group) => group.show.id}
-        renderItem={(group) => (
-          // Cast cards already pointed at the show, so merging duplicates for
-          // one show loses no destination — the characters just join up.
-          <CreditRow
-            to={`/shows/${group.show.id}`}
-            title={group.show.name}
-            detail={[
-              distinctLabels(group.credits, characterLabel).join(" · "),
-              showYear(group.show.premiered),
-            ]
-              .filter(Boolean)
-              .join(" · ")}
+    <Tabs value={tab} onValueChange={selectTab}>
+      <TabsList className="w-full justify-start overflow-x-auto">
+        {!castEmpty && (
+          <TabsTrigger value="cast">
+            Cast <TabCount value={data.cast.length} />
+          </TabsTrigger>
+        )}
+        {!crewEmpty && (
+          <TabsTrigger value="crew">
+            Crew <TabCount value={data.crew.length} />
+          </TabsTrigger>
+        )}
+        {!guestEmpty && (
+          <TabsTrigger value="guest">
+            Guest <TabCount value={data.guest_cast.length} />
+          </TabsTrigger>
+        )}
+        {!episodeCrewEmpty && (
+          <TabsTrigger value="episode-crew">
+            Ep. crew <TabCount value={data.episode_crew.length} />
+          </TabsTrigger>
+        )}
+      </TabsList>
+      {!castEmpty && (
+        <TabsContent value="cast">
+          <CreditSection
+            id="cast"
+            title="Cast"
+            headingHidden
+            items={castGroups}
+            creditCount={data.cast.length}
+            keyOf={(group) => group.show.id}
+            renderItem={(group) => (
+              <CreditRow
+                to={`/shows/${group.show.id}`}
+                title={group.show.name}
+                detail={[
+                  distinctLabels(group.credits, characterLabel).join(" · "),
+                  showYear(group.show.premiered),
+                ]
+                  .filter(Boolean)
+                  .join(" · ")}
+              />
+            )}
           />
-        )}
-      />
-      <CreditSection
-        id="crew"
-        title="Crew"
-        items={crewGroups}
-        creditCount={data.crew.length}
-        keyOf={(group) => group.show.id}
-        renderItem={(group) => (
-          <CreditRow
-            to={`/shows/${group.show.id}`}
-            title={group.show.name}
-            detail={[
-              distinctLabels(group.credits, (credit) => credit.role).join(" · "),
-              showYear(group.show.premiered),
-            ]
-              .filter(Boolean)
-              .join(" · ")}
+        </TabsContent>
+      )}
+      {!crewEmpty && (
+        <TabsContent value="crew">
+          <CreditSection
+            id="crew"
+            title="Crew"
+            headingHidden
+            items={crewGroups}
+            creditCount={data.crew.length}
+            keyOf={(group) => group.show.id}
+            renderItem={(group) => (
+              <CreditRow
+                to={`/shows/${group.show.id}`}
+                title={group.show.name}
+                detail={[
+                  distinctLabels(group.credits, (credit) => credit.role).join(" · "),
+                  showYear(group.show.premiered),
+                ]
+                  .filter(Boolean)
+                  .join(" · ")}
+              />
+            )}
           />
-        )}
-      />
-      <CreditSection
-        id="guest"
-        title="Guest appearances"
-        items={guestGroups}
-        creditCount={data.guest_cast.length}
-        keyOf={(group) => group.show.id}
-        renderItem={(group) => (
-          <EpisodeCreditCard show={group.show} credits={group.credits} label={characterLabel} />
-        )}
-      />
-      {/* Its own section rather than merged into Crew with an episode qualifier.
-          The two are different questions — "Executive Producer of Show" is a
-          standing role, "Director of Show S3E7" is one night's work — and the
-          glossary keeps `crew credit` and `episode crew credit` distinct for
-          that reason. */}
-      <CreditSection
-        id="episode-crew"
-        title="Episode crew"
-        items={episodeCrewGroups}
-        creditCount={data.episode_crew.length}
-        keyOf={(group) => group.show.id}
-        renderItem={(group) => (
-          <EpisodeCreditCard
-            show={group.show}
-            credits={group.credits}
-            label={(credit) => credit.role}
+        </TabsContent>
+      )}
+      {!guestEmpty && (
+        <TabsContent value="guest">
+          <CreditSection
+            id="guest"
+            title="Guest appearances"
+            headingHidden
+            items={guestGroups}
+            creditCount={data.guest_cast.length}
+            keyOf={(group) => group.show.id}
+            renderItem={(group) => (
+              <EpisodeCreditCard show={group.show} credits={group.credits} label={characterLabel} />
+            )}
           />
-        )}
-      />
-    </div>
+        </TabsContent>
+      )}
+      {!episodeCrewEmpty && (
+        <TabsContent value="episode-crew">
+          <CreditSection
+            id="episode-crew"
+            title="Episode crew"
+            headingHidden
+            items={episodeCrewGroups}
+            creditCount={data.episode_crew.length}
+            keyOf={(group) => group.show.id}
+            renderItem={(group) => (
+              <EpisodeCreditCard
+                show={group.show}
+                credits={group.credits}
+                label={(credit) => credit.role}
+              />
+            )}
+          />
+        </TabsContent>
+      )}
+    </Tabs>
   );
 }
 
