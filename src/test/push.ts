@@ -70,7 +70,6 @@ export function installFakePush({
   Object.defineProperty(navigator, "serviceWorker", {
     configurable: true,
     value: {
-      ready: Promise.resolve(registration),
       getRegistration: async () => registration,
     },
   });

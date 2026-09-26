@@ -94,12 +94,22 @@ export class PushPermissionError extends Error {
 export async function subscribe(applicationServerKey: string): Promise<string> {
   const permission = await Notification.requestPermission();
   if (permission !== "granted") throw new PushPermissionError(permission);
-  const registration = await navigator.serviceWorker.ready;
+  // Not `serviceWorker.ready`, for the reason `currentSubscription` gives: a
+  // failed registration would leave the button spinning forever.
+  const registration = await navigator.serviceWorker.getRegistration();
+  if (!registration) throw new Error("No service worker is registered");
   const subscription = await registration.pushManager.subscribe({
     userVisibleOnly: true,
     applicationServerKey: urlBase64ToUint8Array(applicationServerKey),
   });
-  return registerSubscription(subscription);
+  try {
+    return await registerSubscription(subscription);
+  } catch (e) {
+    // A browser subscription the server never heard of would read as "On for
+    // this device" while nothing is ever delivered to it.
+    await subscription.unsubscribe().catch(() => undefined);
+    throw e;
+  }
 }
 
 /** Turn this device off: the local subscription first, so nothing reaches the
@@ -107,7 +117,9 @@ export async function subscribe(applicationServerKey: string): Promise<string> {
 export async function unsubscribe(): Promise<void> {
   const subscription = await currentSubscription();
   if (!subscription) return;
-  const id = await registerSubscription(subscription);
   await subscription.unsubscribe();
+  // The object keeps its endpoint and keys after unsubscribing, which is all
+  // the upsert needs to name this device's row.
+  const id = await registerSubscription(subscription);
   await apiFetch<void>(`/me/push/subscriptions/${encodeURIComponent(id)}`, { method: "DELETE" });
 }

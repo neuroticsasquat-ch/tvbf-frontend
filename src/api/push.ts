@@ -36,15 +36,21 @@ const DEVICE_KEY = ["push-device"];
 export const fetchVapidKey = () =>
   apiFetch<{ public_key: string }>("/push/vapid-public-key").then((r) => r.public_key);
 
+/** A 503 from the key route: the server is not configured for push. */
+export function isPushUnavailable(e: unknown): boolean {
+  return e instanceof ApiError && e.status === 503;
+}
+
 /** The server's VAPID public key — fetched, never hard-coded (§7). A 503 means
- * the server is not configured for push, and there is nothing to retry. */
+ * the server is not configured for push, and there is nothing to retry; any
+ * other failure is retried as usual. */
 export function useVapidKey(enabled = true) {
   return useQuery({
     queryKey: ["push-vapid-key"],
     queryFn: fetchVapidKey,
     enabled,
     staleTime: Infinity,
-    retry: false,
+    retry: (count, e) => !isPushUnavailable(e) && count < 3,
   });
 }
 

@@ -5,7 +5,13 @@ import * as authApi from "@/api/auth";
 import { ApiError } from "@/api/client";
 import { downloadMyData } from "@/api/export";
 import { useUpdatePreferences } from "@/api/me";
-import { usePushDevice, useSendTestPush, useSubscribePush, useVapidKey } from "@/api/push";
+import {
+  isPushUnavailable,
+  usePushDevice,
+  useSendTestPush,
+  useSubscribePush,
+  useVapidKey,
+} from "@/api/push";
 import {
   useMySessions,
   useRevokeOtherSessions,
@@ -757,7 +763,7 @@ function TurnOnButton() {
   const key = useVapidKey();
   const { subscribe, isPending } = useSubscribePush();
 
-  if (key.isError) {
+  if (isPushUnavailable(key.error)) {
     return (
       <p className="text-muted-foreground">Notifications aren&apos;t available right now.</p>
     );

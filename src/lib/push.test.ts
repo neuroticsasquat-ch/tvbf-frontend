@@ -103,6 +103,26 @@ describe("subscribe", () => {
     await expect(subscribe("AQ")).rejects.toBeInstanceOf(PushPermissionError);
     expect(fake.pushSubscribe).not.toHaveBeenCalled();
   });
+  it("drops the browser subscription when the server refuses it", async () => {
+    const fake = installFakePush();
+    server.use(
+      http.post(`${base}/me/push/subscriptions`, () =>
+        HttpResponse.json({ detail: "vapid_not_configured" }, { status: 503 }),
+      ),
+    );
+    await expect(subscribe("AQ")).rejects.toThrow();
+    expect(fake.localUnsubscribe).toHaveBeenCalledTimes(1);
+    expect(fake.current()).toBeNull();
+  });
+
+  it("fails rather than hangs when no worker is registered", async () => {
+    installFakePush();
+    Object.defineProperty(navigator, "serviceWorker", {
+      configurable: true,
+      value: { getRegistration: async () => undefined },
+    });
+    await expect(subscribe("AQ")).rejects.toThrow(/no service worker/i);
+  });
 });
 
 describe("currentSubscription", () => {

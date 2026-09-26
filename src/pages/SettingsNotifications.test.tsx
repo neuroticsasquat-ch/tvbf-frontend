@@ -133,8 +133,8 @@ describe("Turn on notifications", () => {
     expect(toastError).not.toHaveBeenCalled();
   });
 
-  it("toasts when registering with the server fails", async () => {
-    installFakePush({ permission: "default" });
+  it("toasts and stays off when registering with the server fails", async () => {
+    const fake = installFakePush({ permission: "default" });
     server.use(
       vapidKey(),
       http.post(`${base}/me/push/subscriptions`, () =>
@@ -149,6 +149,8 @@ describe("Turn on notifications", () => {
     await waitFor(() =>
       expect(toastError).toHaveBeenCalledWith("Couldn't turn on notifications. Try again."),
     );
+    expect(fake.current()).toBeNull();
+    expect(section.queryByText("On for this device")).not.toBeInTheDocument();
   });
 });
 
