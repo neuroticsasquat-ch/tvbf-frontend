@@ -31,8 +31,8 @@ sufficient on a new machine.
   split was made on.
   **A spec that is a cross-repo contract belongs in `tvbf-backend/docs/specs/` instead**, even
   when the work is shared: that is where the frontend half cites the request/response shape by
-  URL. NEU-1031 drew that rule and the relocation kept it. The three project specs
-  (`tvbf-*-project-spec.md`) are in the backend repo for the same reason — both repos cite them.
+  URL. NEU-1031 drew that rule and the relocation kept it. Every project spec
+  (`tvbf-*-project-spec.md`, four as of 2026-09-26) is in the backend repo for the same reason — both repos cite them.
 - `docs/plans/` — implementation plans, when a spec needs a separate one.
 - `docs/superpowers/{specs,plans}/` — the retired layout, kept as an archive. It holds only the
   two frontend-only pairs (`2026-04-19-frontend-mvp`, `2026-05-02-home-tabs-redesign`); the
