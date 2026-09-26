@@ -42,7 +42,9 @@ function appUrl(path) {
 self.handlePush = async (event) => {
   const payload = readPayload(event);
   // Malformed pushes are ignored, not thrown: a throw here surfaces nothing
-  // useful to the user and the server has no way to hear about it.
+  // useful to the user and the server has no way to hear about it. Chrome may
+  // show its own generic notification in their place (`userVisibleOnly`),
+  // which is acceptable for input the server should never send.
   if (!payload) return;
   const options = {
     body: typeof payload.body === "string" ? payload.body : "",
@@ -62,25 +64,40 @@ self.handleNotificationClick = async (event) => {
   const windows = await self.clients.matchAll({ type: "window" });
   const existing = windows.find((client) => new URL(client.url).origin === self.location.origin);
   if (existing) {
-    // Focus first, while the click's user activation is still live.
-    await existing.focus();
-    await existing.navigate(target);
-    return;
+    try {
+      // Focus first, while the click's user activation is still live.
+      await existing.focus();
+      await existing.navigate(target);
+      return;
+    } catch {
+      // A window that cannot be navigated falls through to a new one.
+    }
   }
   await self.clients.openWindow(target);
 };
+
+/** Subscribe again with the old subscription's key, or with the published
+ * one when the browser hands over no old subscription (§7: the key is fetched). */
+async function resubscribe(oldSubscription) {
+  let key = oldSubscription && oldSubscription.options.applicationServerKey;
+  if (!key) {
+    const res = await fetch(`${API_BASE}/push/vapid-public-key`);
+    if (!res.ok) throw new Error(`VAPID key unavailable (${res.status})`);
+    key = (await res.json()).public_key;
+  }
+  return self.registration.pushManager.subscribe({
+    userVisibleOnly: true,
+    applicationServerKey: key,
+  });
+}
 
 self.handlePushSubscriptionChange = async (event) => {
   // Best-effort by design (§6.1): the push service has already rotated the
   // subscription, and if this fails the old row is retired server-side on its
   // next 404/410 while the user can re-subscribe from Settings.
   try {
-    const key = event.oldSubscription && event.oldSubscription.options.applicationServerKey;
-    if (!API_BASE || !key) return;
-    const subscription = await self.registration.pushManager.subscribe({
-      userVisibleOnly: true,
-      applicationServerKey: key,
-    });
+    if (!API_BASE) return;
+    const subscription = event.newSubscription || (await resubscribe(event.oldSubscription));
     // The POST needs the double-submit CSRF token, and a worker cannot read
     // cookies, so it asks the session for it the way the SPA does at boot.
     const me = await fetch(`${API_BASE}/me`, { credentials: "include" });

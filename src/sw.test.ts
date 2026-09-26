@@ -163,6 +163,17 @@ describe("notificationclick", () => {
     expect(self.clients.openWindow).not.toHaveBeenCalled();
   });
 
+  it("opens a new window when the open one cannot be navigated", async () => {
+    const { self, handler } = loadWorker();
+    const ours = windowClient(`${ORIGIN}/`);
+    ours.navigate.mockRejectedValue(new TypeError("not controlled"));
+    self.clients.matchAll.mockResolvedValue([ours]);
+
+    await handler("handleNotificationClick")(clickEvent("/shows/7"));
+
+    expect(self.clients.openWindow).toHaveBeenCalledWith(`${ORIGIN}/shows/7`);
+  });
+
   it.each([
     ["a protocol-relative url", "//evil.example/phish"],
     ["an absolute foreign url", "https://evil.example/"],
@@ -224,11 +235,39 @@ describe("pushsubscriptionchange", () => {
     });
   });
 
-  it("does nothing without an old subscription to take the key from", async () => {
+  it("posts the browser's new subscription as-is when the event carries one", async () => {
     const { self, fetch, handler } = loadWorker();
-    await handler("handlePushSubscriptionChange")(changeEvent(null));
+    fetch
+      .mockResolvedValueOnce(ok({ csrf_token: "tok" }))
+      .mockResolvedValueOnce({ ok: true, status: 201 });
+
+    await handler("handlePushSubscriptionChange")(
+      extendable({ oldSubscription: null, newSubscription: NEW_SUB }),
+    );
+
     expect(self.registration.pushManager.subscribe).not.toHaveBeenCalled();
-    expect(fetch).not.toHaveBeenCalled();
+    expect(fetch).toHaveBeenLastCalledWith(
+      `${API}/me/push/subscriptions`,
+      expect.objectContaining({ method: "POST" }),
+    );
+  });
+
+  it("fetches the published key when there is no old subscription to take it from", async () => {
+    const { self, fetch, handler } = loadWorker();
+    self.registration.pushManager.subscribe.mockResolvedValue(NEW_SUB);
+    fetch
+      .mockResolvedValueOnce(ok({ public_key: "BPubKey" }))
+      .mockResolvedValueOnce(ok({ csrf_token: "tok" }))
+      .mockResolvedValueOnce({ ok: true, status: 201 });
+
+    await handler("handlePushSubscriptionChange")(changeEvent(null));
+
+    expect(fetch).toHaveBeenNthCalledWith(1, `${API}/push/vapid-public-key`);
+    expect(self.registration.pushManager.subscribe).toHaveBeenCalledWith({
+      userVisibleOnly: true,
+      applicationServerKey: "BPubKey",
+    });
+    expect(fetch).toHaveBeenCalledTimes(3);
   });
 
   it("does nothing when registered without an API base", async () => {
