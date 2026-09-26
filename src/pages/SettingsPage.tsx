@@ -6,6 +6,13 @@ import { ApiError } from "@/api/client";
 import { downloadMyData } from "@/api/export";
 import { useUpdatePreferences } from "@/api/me";
 import {
+  isPushUnavailable,
+  usePushDevice,
+  useSendTestPush,
+  useSubscribePush,
+  useVapidKey,
+} from "@/api/push";
+import {
   useMySessions,
   useRevokeOtherSessions,
   useRevokeSession,
@@ -14,6 +21,7 @@ import {
 import { FieldError } from "@/components/FieldError";
 import { useFieldErrors } from "@/hooks/useFieldErrors";
 import { HANDLE_SHAPE_MESSAGE, isHandleShapeValid, normaliseHandle } from "@/lib/handle";
+import { PushPermissionError, type PushSupportState } from "@/lib/push";
 import { formatRelativeTime } from "@/lib/relativeTime";
 
 /** Settings page shell. The Profile section carries the display name and the
@@ -29,6 +37,7 @@ export function SettingsPage() {
       <ProfileSection />
       <EmailSection />
       <PrivacySection />
+      <NotificationsSection />
       <SessionsSection />
       <YourDataSection />
     </div>
@@ -682,5 +691,143 @@ function PrivacySection() {
         />
       </label>
     </section>
+  );
+}
+
+/** This device's push state line and its one action (push-notifications
+ * project spec §6.3 — state line and buttons only; the toggles, device list
+ * and install button are later tickets). */
+function NotificationsSection() {
+  const device = usePushDevice();
+
+  return (
+    <section aria-labelledby="notifications-heading" className="space-y-3">
+      <h2 id="notifications-heading" className="text-lg font-semibold">
+        Notifications
+      </h2>
+      <div className="rounded border border-border p-4 space-y-3 text-sm">
+        {device.data ? (
+          <NotificationsStateLine state={device.data.state} subscribed={device.data.subscribed} />
+        ) : (
+          <p className="text-muted-foreground" role="status">
+            Checking this device…
+          </p>
+        )}
+      </div>
+    </section>
+  );
+}
+
+function NotificationsStateLine({
+  state,
+  subscribed,
+}: {
+  state: PushSupportState;
+  subscribed: boolean;
+}) {
+  switch (state) {
+    case "unsupported":
+      return (
+        <p className="text-muted-foreground">
+          This browser can&apos;t receive notifications. Try a current version of Chrome, Edge,
+          Firefox or Safari.
+        </p>
+      );
+    case "ios_needs_install":
+      return (
+        <div className="space-y-2">
+          <p className="text-muted-foreground">
+            On iPhone and iPad, notifications work only once TV BingeFriend is on your Home Screen:
+          </p>
+          <ol className="list-decimal pl-5 text-muted-foreground">
+            <li>Tap the Share button in Safari.</li>
+            <li>Choose Add to Home Screen.</li>
+            <li>Open TV BingeFriend from your Home Screen and come back to Settings.</li>
+          </ol>
+        </div>
+      );
+    case "denied":
+      return (
+        <p className="text-muted-foreground">
+          Notifications are blocked for this site. To turn them on, allow notifications for this
+          site in your browser&apos;s settings, then reload this page.
+        </p>
+      );
+    case "prompt":
+    case "granted":
+      return subscribed ? <SubscribedLine /> : <TurnOnButton />;
+  }
+}
+
+function TurnOnButton() {
+  const key = useVapidKey();
+  const { subscribe, isPending } = useSubscribePush();
+
+  if (isPushUnavailable(key.error)) {
+    return (
+      <p className="text-muted-foreground">Notifications aren&apos;t available right now.</p>
+    );
+  }
+
+  // Not async: `subscribe` has to run in this handler's own tick so the
+  // permission prompt sees the click (see `subscribe` in lib/push.ts).
+  function onClick() {
+    if (!key.data) return;
+    subscribe(key.data).catch((e: unknown) => {
+      // A dismissed or refused prompt is not an error; the refetched state
+      // line already says what happened.
+      if (e instanceof PushPermissionError) return;
+      toast.error("Couldn't turn on notifications. Try again.");
+    });
+  }
+
+  return (
+    <div className="space-y-2">
+      <p className="text-muted-foreground">
+        Get told when an episode of a show you track airs, or when its next season is announced.
+      </p>
+      <button
+        type="button"
+        onClick={onClick}
+        disabled={!key.data || isPending}
+        className="rounded bg-foreground text-background px-3 py-1 disabled:opacity-50"
+      >
+        {isPending ? "Turning on…" : "Turn on notifications"}
+      </button>
+    </div>
+  );
+}
+
+function SubscribedLine() {
+  const sendTest = useSendTestPush();
+
+  async function onSendTest() {
+    try {
+      const res = await sendTest.mutateAsync();
+      if (res.status === "sent") toast.success("Test notification sent.");
+      else toast.error("The test notification couldn't be delivered. Try again.");
+    } catch (e) {
+      if (e instanceof ApiError && e.status === 410) {
+        toast.error("This device's subscription had expired. Turn notifications on again.");
+      } else if (e instanceof ApiError && e.status === 429) {
+        toast.error("You've sent several test notifications recently. Try again later.");
+      } else {
+        toast.error("Couldn't send a test notification. Try again.");
+      }
+    }
+  }
+
+  return (
+    <div className="flex flex-wrap items-center justify-between gap-2">
+      <p className="text-foreground">On for this device</p>
+      <button
+        type="button"
+        onClick={onSendTest}
+        disabled={sendTest.isPending}
+        className="rounded border border-border px-3 py-1 hover:bg-muted disabled:opacity-50"
+      >
+        {sendTest.isPending ? "Sending…" : "Send test notification"}
+      </button>
+    </div>
   );
 }

@@ -101,6 +101,7 @@ tvbf-frontend/src/
     auth.ts            # signup/login/logout/password-change hooks
     me.ts              # useMyShows, useWatchNext, useUpcoming, useMarkEpisode, etc.
     shows.ts           # public browse hooks
+    push.ts            # push hooks: VAPID key, my subscriptions, this device's state, subscribe / unsubscribe / send test (NEU-1487)
     types.ts           # API DTOs + FE-internal sort literals (MyShowsSort, WatchNextSort, UpcomingSort)
   components/
     AuthContext.tsx, RequireAuth.tsx, AppShell.tsx, UserMenu.tsx, SearchOverlay.tsx
@@ -115,6 +116,7 @@ tvbf-frontend/src/
   lib/
     handle.ts          # normaliseHandle + the handle shape regex — the only server rule the SPA mirrors (NEU-1169)
     userLabel.ts       # nameWithHandle: the same pairing where a surface builds prose or an accessible name
+    push.ts            # supportState + the subscription lifecycle; subscribe() must run synchronously in a click handler (NEU-1487)
     serviceWorker.ts   # registers the hand-written public/sw.js (push only, no caches); the API base rides on its URL (NEU-1483)
   pages/               # WatchNextPage, UpcomingPage, MyShowsPage, SearchPage, ShowDetailPage, EpisodesPage, EpisodePage, LoginPage, SignupPage, NotFoundPage
   test/                # MSW handlers + setup
