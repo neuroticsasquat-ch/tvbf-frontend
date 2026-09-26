@@ -75,6 +75,8 @@ src/
 
 **Auth transport:** session cookie is set by the backend at login and scoped to `.tvbf.localhost`, so the SPA at `app.tvbf.localhost` sends it automatically to `api.tvbf.localhost`. No tokens, no localStorage auth, no `Authorization` header.
 
+**Service worker:** `public/sw.js` is hand-written plain JS, served as-is at the root so it gets root scope, and registered from `src/main.tsx` after first load by `src/lib/serviceWorker.ts`. It handles Web Push only — `push`, `notificationclick`, `pushsubscriptionchange` — and deliberately has no `fetch` handler and no caches, because offline support is out of scope (push-notifications project spec §6.1, in `tvbf-backend/docs/specs/`). That is also why there is no `vite-plugin-pwa` or Workbox: they exist to generate precache manifests, and a worker this small is easier to read, review and test as source than as build output. It cannot read Vite's env, so the API base reaches it as a `?api=` query on the registration URL. `src/sw.test.ts` evaluates it against a fake `self`.
+
 ## Configuration
 
 Copy `.env.example` to `.env.local` (gitignored) to override:
