@@ -208,10 +208,17 @@ export function AppShell() {
   );
 
   return (
-    // pb-20 reserves space at the document bottom on mobile so the fixed
-    // bottom nav doesn't visually cover the footer. Removed at md+.
-    <div className={cn("flex min-h-screen flex-col overflow-x-hidden", user && "pb-20 md:pb-0")}>
-      <header className="sticky top-0 z-30 border-b border-border bg-background">
+    // pb reserves space at the document bottom on mobile so the fixed bottom
+    // nav — which grows by the home-indicator inset — doesn't visually cover
+    // the footer. Removed at md+.
+    <div
+      className={cn(
+        "flex min-h-screen flex-col overflow-x-hidden",
+        user && "pb-[calc(5rem+env(safe-area-inset-bottom))] md:pb-0",
+      )}
+    >
+      {/* The top inset clears the iOS status bar in a standalone launch (NEU-1482). */}
+      <header className="sticky top-0 z-30 border-b border-border bg-background pt-[env(safe-area-inset-top)]">
         <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-3 px-4 py-3">
           <Link
             to="/"
