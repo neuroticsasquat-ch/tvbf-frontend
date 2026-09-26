@@ -115,6 +115,7 @@ tvbf-frontend/src/
   lib/
     handle.ts          # normaliseHandle + the handle shape regex — the only server rule the SPA mirrors (NEU-1169)
     userLabel.ts       # nameWithHandle: the same pairing where a surface builds prose or an accessible name
+    serviceWorker.ts   # registers the hand-written public/sw.js (push only, no caches); the API base rides on its URL (NEU-1483)
   pages/               # WatchNextPage, UpcomingPage, MyShowsPage, SearchPage, ShowDetailPage, EpisodesPage, EpisodePage, LoginPage, SignupPage, NotFoundPage
   test/                # MSW handlers + setup
 ```

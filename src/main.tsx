@@ -6,6 +6,7 @@ import { RouterProvider } from "react-router/dom";
 import { Toaster } from "sonner";
 import { router } from "./router";
 import { AuthProvider } from "./components/AuthContext";
+import { registerServiceWorker } from "./lib/serviceWorker";
 import "./styles/globals.css";
 
 const dsn = import.meta.env.VITE_SENTRY_DSN;
@@ -49,3 +50,6 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
     </QueryClientProvider>
   </React.StrictMode>,
 );
+
+// After first render, so registration never competes with the initial load.
+window.addEventListener("load", registerServiceWorker, { once: true });
