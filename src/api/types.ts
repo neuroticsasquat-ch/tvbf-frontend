@@ -491,6 +491,11 @@ export interface MyShowEntry {
   // ShowSummary builder used inside my_shows_service doesn't carry it).
   my_rating: number | null;
   hide_from_activity?: boolean;
+  /** Whether the caller has muted push notifications for this show (NEU-1490,
+   * push project spec §6.5) — every kind, for this one show. Optional because
+   * the Watched grid adapts a `WatchedEntry` into this shape and that payload
+   * does not carry it; `GET /me/shows` always does. */
+  muted?: boolean;
 }
 
 export interface WatchNextEntry {

@@ -8,6 +8,7 @@ import { usePersistedView } from "@/hooks/usePersistedView";
 import { WatchProgressBar } from "@/components/WatchProgressBar";
 import { MyShowCard } from "@/components/MyShowCard";
 import { ShowPoster } from "@/components/ShowPoster";
+import { MuteShowButton } from "@/components/MuteShowButton";
 import { MyShowsButton } from "@/components/MyShowsButton";
 import { ListingToolbar } from "@/components/home/ListingToolbar";
 import {
@@ -259,6 +260,7 @@ export function LibraryActiveList({
                   callerLibrary,
                 )}
                 removable={viewerContext.kind === "self"}
+                mutable={viewerContext.kind === "self"}
                 onRemoved={onRemoved}
               />
             ))}
@@ -284,14 +286,20 @@ export function LibraryActiveList({
 
 /** One Active row.
  *
- * **Self mode has no action row at all** (NEU-1187 §3.4). Every row on this tab
- * is in My Shows by definition, so the labelled "✓ My Shows" chip could only
- * ever say one thing while costing a full line of the tallest rows in the app.
- * Its replacement is the compact chip in the poster's bottom-right corner — the
- * position that *means* remove-only (§3.1) — and the viewer's own rating moves
- * to the poster's top-right, matching `MyShowCard` exactly. Moving the rating is
- * what makes the height drop true for a rated row too, and it is NEU-1183's
- * last holdout: grid and list disagreed about where that fact lives.
+ * **Self mode has no My Shows chip in its action row** (NEU-1187 §3.4). Every
+ * row on this tab is in My Shows by definition, so the labelled "✓ My Shows"
+ * chip could only ever say one thing while costing a full line of the tallest
+ * rows in the app. Its replacement is the compact chip in the poster's
+ * bottom-right corner — the position that *means* remove-only (§3.1) — and the
+ * viewer's own rating moves to the poster's top-right, matching `MyShowCard`
+ * exactly. Moving the rating is what makes the height drop true for a rated row
+ * too, and it is NEU-1183's last holdout: grid and list disagreed about where
+ * that fact lives.
+ *
+ * The action row came back in self mode with the push mute toggle (NEU-1495),
+ * which is the one control there that flips both ways and so cannot take a
+ * poster corner. That line is the cost NEU-1187 removed, paid for a control
+ * that genuinely has two states rather than one.
  *
  * Friend mode keeps the action row, because adding is possible there: the row
  * is the friend's, the button reflects the *caller's* relationship, and
@@ -381,6 +389,20 @@ function ActiveRow({
         />
         {status !== "finished" && entry.upcoming_episode_count > 0 && (
           <p className="text-xs text-muted-foreground">{entry.upcoming_episode_count} upcoming</p>
+        )}
+        {owner.kind === "own" && (
+          // The mute toggle is the one self-mode control that can flip both
+          // ways, so it takes the action row rather than a poster corner
+          // (NEU-1495, NEU-1187 §3.1). Self mode only, on `owner` — the same
+          // guard the card applies — because a friend's entry carries the
+          // friend's flag, not the viewer's.
+          <div className="flex justify-end">
+            <MuteShowButton
+              showId={entry.show.id}
+              showName={entry.show.name}
+              muted={entry.muted ?? false}
+            />
+          </div>
         )}
         {caller && (
           <div className="flex flex-wrap items-center justify-end gap-2 pt-1">

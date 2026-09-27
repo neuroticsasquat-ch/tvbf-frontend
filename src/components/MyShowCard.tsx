@@ -1,4 +1,5 @@
 import type { MyShowEntry } from "@/api/types";
+import { MuteShowButton } from "@/components/MuteShowButton";
 import { MyShowsButton } from "@/components/MyShowsButton";
 import { OwnerFacts } from "@/components/OwnerFacts";
 import { RemoveWatchHistoryButton } from "@/components/RemoveWatchHistoryButton";
@@ -32,6 +33,7 @@ export function MyShowCard({
   callerRelationship,
   removable,
   historyRemovable,
+  mutable,
   onRemoved,
 }: {
   entry: MyShowEntry;
@@ -86,6 +88,15 @@ export function MyShowCard({
    * decided which from its tab would be the decision-inside-the-component this
    * seam exists to avoid. */
   historyRemovable?: boolean;
+  /** Opt-in: draw the compact push-notification mute toggle in the action row
+   * (NEU-1495). Only the viewer's own My Shows · Active passes it — a Watched
+   * entry need not be in My Shows at all, so there is no row to mute — and,
+   * like `removable`, it is honoured only when `ratingOwner.kind === "own"`: a
+   * friend's entry carries the friend's flag, not the viewer's.
+   *
+   * The action row rather than a poster corner, because the corners hold
+   * controls that can only remove (NEU-1187 §3.1) and a mute flips both ways. */
+  mutable?: boolean;
   /** Reports a landed removal back to the surface, so it can move focus once
    * this card unmounts — whichever of the two removals the card was opted into,
    * since only one can be drawn. One function reference for every card; the
@@ -190,6 +201,18 @@ export function MyShowCard({
           )}
         </div>
       </ShowPoster>
+      {mutable && ratingOwner.kind === "own" && (
+        // Outside the poster for the same sibling-not-descendant reason as the
+        // row below. Compact, because a ~97px card has no room for the label.
+        <div className="flex justify-end px-1.5 pb-1">
+          <MuteShowButton
+            showId={entry.show.id}
+            showName={entry.show.name}
+            muted={entry.muted ?? false}
+            variant="compact"
+          />
+        </div>
+      )}
       {callerRelationship && (
         // Outside the poster, so the button is a sibling of its link rather
         // than a descendant — the same structural reason `ShowCard`'s `addable`
