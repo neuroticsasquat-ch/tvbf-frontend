@@ -1,4 +1,4 @@
-import { defineConfig } from "vite";
+import { defineConfig, type Plugin } from "vite";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 import { sentryVitePlugin } from "@sentry/vite-plugin";
@@ -15,7 +15,28 @@ const apiProxyTarget = process.env.API_PROXY_TARGET;
 // (set in the prod build environment). Local/dev builds have no token and skip upload.
 const sentryAuthToken = process.env.SENTRY_AUTH_TOKEN;
 
-export default defineConfig({
+// This build's id (NEU-1504): the commit SHA where the build sets one, else a
+// per-build timestamp. Compiled into the bundle as __APP_VERSION__ and written
+// to dist/version.json, which useVersionCheck compares on returning to the
+// foreground. Build only — dev defines neither, so the check stays inert there.
+const appVersion = process.env.VITE_GIT_SHA || String(Date.now());
+
+function versionJson(): Plugin {
+  return {
+    name: "tvbf-version-json",
+    apply: "build",
+    generateBundle() {
+      this.emitFile({
+        type: "asset",
+        fileName: "version.json",
+        source: JSON.stringify({ version: appVersion }),
+      });
+    },
+  };
+}
+
+export default defineConfig(({ command }) => ({
+  define: command === "build" ? { __APP_VERSION__: JSON.stringify(appVersion) } : {},
   // "hidden" emits source maps (so the Sentry plugin can upload them) but omits the
   // //# sourceMappingURL= comment — otherwise the build would reference a map that
   // filesToDeleteAfterUpload has already removed. Sentry still resolves via debug IDs.
@@ -23,6 +44,7 @@ export default defineConfig({
   plugins: [
     react(),
     tailwindcss(),
+    versionJson(),
     ...(sentryAuthToken
       ? [
           sentryVitePlugin({
@@ -72,4 +94,4 @@ export default defineConfig({
       interval: 500,
     },
   },
-});
+}));

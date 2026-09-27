@@ -7,6 +7,7 @@ import { Toaster } from "sonner";
 import { router } from "./router";
 import { AuthProvider } from "./components/AuthContext";
 import { registerServiceWorker } from "./lib/serviceWorker";
+import { useVersionCheck } from "./hooks/useVersionCheck";
 import "./styles/globals.css";
 
 const dsn = import.meta.env.VITE_SENTRY_DSN;
@@ -38,6 +39,13 @@ const queryClient = new QueryClient({
   },
 });
 
+// Outside the router, so every route — the login page included — picks up a
+// new deploy on returning to the foreground (NEU-1504).
+function VersionCheck() {
+  useVersionCheck();
+  return null;
+}
+
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
     <QueryClientProvider client={queryClient}>
@@ -46,6 +54,7 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
           <RouterProvider router={router} />
         </Sentry.ErrorBoundary>
         <Toaster position="bottom-center" richColors closeButton />
+        <VersionCheck />
       </AuthProvider>
     </QueryClientProvider>
   </React.StrictMode>,
