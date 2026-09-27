@@ -21,6 +21,9 @@ export function TurnOnPushButton({ onAct }: { onAct?: () => void }) {
       // A dismissed or refused prompt is not an error; the refetched state
       // line already says what happened.
       if (e instanceof PushPermissionError) return;
+      // The toast is generic; the cause (no worker registered, the browser's
+      // push service refusing, the POST failing) is only ever visible here.
+      console.error("Turning on notifications failed", e);
       toast.error("Couldn't turn on notifications. Try again.");
     });
     onAct?.();
