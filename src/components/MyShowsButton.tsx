@@ -114,7 +114,7 @@ export function MyShowsButton({
 
   function onAdd() {
     setOverride(true);
-    add.mutate(showId, { onError: () => setOverride(false) });
+    add.mutate({ showId, showName }, { onError: () => setOverride(false) });
   }
   function onRemove() {
     setOverride(false);

@@ -140,7 +140,7 @@ export function ShowDetailPage() {
             </div>
           ) : null}
           <div className="flex flex-wrap items-center gap-2 pt-3">
-            <MyShowsToggle showId={show.id} />
+            <MyShowsToggle showId={show.id} showName={show.name} />
             {myEntry && (
               <ShowWatchCheckbox
                 showId={show.id}

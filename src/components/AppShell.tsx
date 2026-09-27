@@ -18,6 +18,8 @@ import { FeedbackDialog } from "./feedback/FeedbackDialog";
 import { SearchOverlay } from "./SearchOverlay";
 import { SasquatchMark } from "./SasquatchMark";
 import { UnverifiedEmailBanner } from "./UnverifiedEmailBanner";
+import { PushNudgeCard } from "./push/PushNudgeCard";
+import { clearPushNudge } from "@/lib/pushNudge";
 import { cn } from "@/lib/cn";
 
 type Placement = "desktop" | "mobile-header" | "mobile-bottom";
@@ -39,6 +41,10 @@ export function AppShell() {
     setPrevLocationKey(location.key);
     setSearchInput("");
   }
+
+  // The nudge belongs to the page the add happened on; leaving it closes the
+  // card (for good — it was recorded as seen when it appeared).
+  useEffect(() => clearPushNudge(), [location.key]);
 
   const overlayActive = !!user && searchInput.trim().length > 0;
 
@@ -208,10 +214,17 @@ export function AppShell() {
   );
 
   return (
-    // pb-20 reserves space at the document bottom on mobile so the fixed
-    // bottom nav doesn't visually cover the footer. Removed at md+.
-    <div className={cn("flex min-h-screen flex-col overflow-x-hidden", user && "pb-20 md:pb-0")}>
-      <header className="sticky top-0 z-30 border-b border-border bg-background">
+    // pb reserves space at the document bottom on mobile so the fixed bottom
+    // nav — which grows by the home-indicator inset — doesn't visually cover
+    // the footer. Removed at md+.
+    <div
+      className={cn(
+        "flex min-h-screen flex-col overflow-x-hidden",
+        user && "pb-[calc(5rem+env(safe-area-inset-bottom))] md:pb-0",
+      )}
+    >
+      {/* The top inset clears the iOS status bar in a standalone launch (NEU-1482). */}
+      <header className="sticky top-0 z-30 border-b border-border bg-background pt-[env(safe-area-inset-top)]">
         <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-3 px-4 py-3">
           <Link
             to="/"
@@ -395,6 +408,8 @@ export function AppShell() {
           {primaryLinks("mobile-bottom")}
         </nav>
       )}
+
+      {user && <PushNudgeCard />}
 
       <ChangePasswordDialog open={pwOpen} onClose={() => setPwOpen(false)} />
       <DeleteAccountDialog open={delOpen} onClose={() => setDelOpen(false)} />

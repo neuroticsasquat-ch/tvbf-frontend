@@ -68,7 +68,7 @@ function serveShrinkingList(pages: Recommendation[][]) {
  * called it. */
 function AddElsewhere({ showId }: { showId: number }) {
   const add = useAddShow();
-  return <button onClick={() => add.mutate(showId)}>add elsewhere</button>;
+  return <button onClick={() => add.mutate({ showId, showName: "Show" })}>add elsewhere</button>;
 }
 
 /** A My Shows removal taken somewhere other than the grid — the show detail

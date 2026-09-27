@@ -31,8 +31,8 @@ sufficient on a new machine.
   split was made on.
   **A spec that is a cross-repo contract belongs in `tvbf-backend/docs/specs/` instead**, even
   when the work is shared: that is where the frontend half cites the request/response shape by
-  URL. NEU-1031 drew that rule and the relocation kept it. The three project specs
-  (`tvbf-*-project-spec.md`) are in the backend repo for the same reason — both repos cite them.
+  URL. NEU-1031 drew that rule and the relocation kept it. Every project spec
+  (`tvbf-*-project-spec.md`, four as of 2026-09-26) is in the backend repo for the same reason — both repos cite them.
 - `docs/plans/` — implementation plans, when a spec needs a separate one.
 - `docs/superpowers/{specs,plans}/` — the retired layout, kept as an archive. It holds only the
   two frontend-only pairs (`2026-04-19-frontend-mvp`, `2026-05-02-home-tabs-redesign`); the
@@ -101,12 +101,14 @@ tvbf-frontend/src/
     auth.ts            # signup/login/logout/password-change hooks
     me.ts              # useMyShows, useWatchNext, useUpcoming, useMarkEpisode, etc.
     shows.ts           # public browse hooks
+    push.ts            # push hooks: VAPID key, my subscriptions, this device's state, subscribe / unsubscribe / send test (NEU-1487)
     types.ts           # API DTOs + FE-internal sort literals (MyShowsSort, WatchNextSort, UpcomingSort)
   components/
     AuthContext.tsx, RequireAuth.tsx, AppShell.tsx, UserMenu.tsx, SearchOverlay.tsx
     EpisodeWatchCheckbox.tsx, SeasonWatchCheckbox.tsx, ShowWatchCheckbox.tsx
     ShowCard.tsx, ShowList.tsx, ShowGrid.tsx, MyShowCard.tsx, NextEpisodeCard.tsx
     UserIdentity.tsx   # the display-name-over-handle pairing, for every surface drawing a person as an entity (NEU-1169)
+    push/              # Turn on / Install app / Add to Home Screen controls shared by Settings and PushNudgeCard, the one-time post-add nudge AppShell draws (NEU-1492)
     home/              # tab list components + filter pickers + sort modules (myShowsSort.ts, watchNextSort.ts)
     ui/                # shadcn primitives
   hooks/
@@ -115,6 +117,10 @@ tvbf-frontend/src/
   lib/
     handle.ts          # normaliseHandle + the handle shape regex — the only server rule the SPA mirrors (NEU-1169)
     userLabel.ts       # nameWithHandle: the same pairing where a surface builds prose or an accessible name
+    push.ts            # supportState + the subscription lifecycle; subscribe() must run synchronously in a click handler (NEU-1487)
+    pushNudge.ts       # the post-add nudge store: useAddShow's onSuccess offers, AppShell draws; localStorage["push-nudge-dismissed"] (set as it appears) makes it once per browser (NEU-1492)
+    installPrompt.ts   # captures Chromium's beforeinstallprompt at module load; canInstall / promptInstall (NEU-1492)
+    serviceWorker.ts   # registers the hand-written public/sw.js (push only, no caches); the API base rides on its URL (NEU-1483)
   pages/               # WatchNextPage, UpcomingPage, MyShowsPage, SearchPage, ShowDetailPage, EpisodesPage, EpisodePage, LoginPage, SignupPage, NotFoundPage
   test/                # MSW handlers + setup
 ```

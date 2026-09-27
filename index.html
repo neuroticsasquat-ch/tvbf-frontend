@@ -3,10 +3,18 @@
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, interactive-widget=resizes-content" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, interactive-widget=resizes-content, viewport-fit=cover" />
     <!-- Matches --color-background, so mobile browser chrome does not
          frame a dark page in white. -->
     <meta name="theme-color" content="#0f1729" />
+    <link rel="manifest" href="/manifest.webmanifest" crossorigin="use-credentials" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <!-- black-translucent draws the page under the iOS status bar once launched
+         from the home screen; viewport-fit=cover is what makes env(safe-area-*)
+         report non-zero, and AppShell's header and body padding consume it. -->
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="BingeFriend" />
     <title>TV BingeFriend</title>
   </head>
   <body>

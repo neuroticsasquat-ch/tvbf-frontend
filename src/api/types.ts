@@ -428,7 +428,26 @@ export interface AuthedUser extends User {
   csrf_token: string;
   activity_feed_enabled: boolean;
   is_admin: boolean;
+  /** One per notification kind (push-notifications project spec §4.4). */
+  notify_airs_today: boolean;
+  notify_premiere_set: boolean;
+  notify_premiere_moved: boolean;
+  notify_ended: boolean;
+  notify_revived: boolean;
 }
+
+/** What `PATCH /me/preferences` accepts: any subset of the viewer's switches. */
+export type PreferencesPatch = Partial<
+  Pick<
+    AuthedUser,
+    | "activity_feed_enabled"
+    | "notify_airs_today"
+    | "notify_premiere_set"
+    | "notify_premiere_moved"
+    | "notify_ended"
+    | "notify_revived"
+  >
+>;
 
 export interface AdminUserRow {
   id: string;
@@ -472,6 +491,11 @@ export interface MyShowEntry {
   // ShowSummary builder used inside my_shows_service doesn't carry it).
   my_rating: number | null;
   hide_from_activity?: boolean;
+  /** Whether the caller has muted push notifications for this show (NEU-1490,
+   * push project spec §6.5) — every kind, for this one show. Optional because
+   * the Watched grid adapts a `WatchedEntry` into this shape and that payload
+   * does not carry it; `GET /me/shows` always does. */
+  muted?: boolean;
 }
 
 export interface WatchNextEntry {

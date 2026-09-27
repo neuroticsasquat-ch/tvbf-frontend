@@ -27,6 +27,7 @@ export const handlers = [
   http.get(`${base}/me/watch-next`, () => HttpResponse.json([])),
   http.get(`${base}/me/upcoming`, () => HttpResponse.json([])),
   http.get(`${base}/me/sessions`, () => HttpResponse.json([])),
+  http.get(`${base}/me/push/subscriptions`, () => HttpResponse.json([])),
   // Empty is the common case and is a 200 with an empty list, never a 204 —
   // the section distinguishes "nothing to show" from "the request failed" by
   // status code (NEU-1112 contract §3).
@@ -86,6 +87,9 @@ export const handlers = [
     });
   }),
   http.delete(`${base}/me/shows/:id/rating`, () => new HttpResponse(null, { status: 204 })),
+  // The per-show push mute (NEU-1490 / NEU-1495): 204 on success, as the
+  // backend answers it. Tests asserting the body or a failure override it.
+  http.patch(`${base}/me/shows/:id/mute`, () => new HttpResponse(null, { status: 204 })),
   http.put(`${base}/me/episodes/:id/rating`, async ({ params, request }) => {
     const body = (await request.json()) as { stars: number };
     return HttpResponse.json({

@@ -1,0 +1,5 @@
+# Cloudflare Pages response headers. The manifest's MIME type is pinned rather
+# than left to the platform's extension table, which cannot be observed from
+# outside: a missing path answers 200 text/html via the SPA fallback (NEU-1482).
+/manifest.webmanifest
+  Content-Type: application/manifest+json
