@@ -324,6 +324,97 @@ describe("LibraryActiveList self-mode controls (NEU-1187)", () => {
   });
 });
 
+describe("LibraryActiveList push mute (NEU-1495)", () => {
+  beforeEach(() => window.localStorage.clear());
+
+  for (const view of ["list", "grid"] as const) {
+    it(`draws the mute toggle outside the poster on the viewer's own library in ${view} view`, () => {
+      setView("my-shows", view);
+      const { container } = renderWithProviders(
+        <LibraryActiveList data={[makeEntry({ muted: true })]} isLoading={false} />,
+      );
+      const toggle = screen.getByRole("button", { name: "Unmute notifications for The Bear" });
+      expect(container.querySelector("[data-show-poster]")?.contains(toggle)).toBe(false);
+    });
+
+    it(`draws no mute toggle on a friend's library in ${view} view`, () => {
+      // Spec §6.5: honoured only when the rating owner is the viewer.
+      setView("friend-active", view);
+      renderWithProviders(
+        <LibraryActiveList
+          data={[makeEntry()]}
+          isLoading={false}
+          viewerContext={JEANNE}
+          callerLibrary={callerLibrary}
+          storagePrefix="friend-active"
+        />,
+      );
+      expect(screen.queryByRole("button", { name: /notifications for/ })).not.toBeInTheDocument();
+    });
+  }
+
+  /** The list fed by `useMyShows()`, so the optimistic patch to `["my-shows"]`
+   * is what the row reads — not the button's own override alone. */
+  function Harness() {
+    const { data, isLoading } = useMyShows();
+    useRecommendations();
+    return <LibraryActiveList data={data} isLoading={isLoading} />;
+  }
+
+  it("patches the My Shows cache optimistically and rolls it back on failure", async () => {
+    let release!: () => void;
+    const gate = new Promise<void>((r) => (release = r));
+    server.use(
+      http.get(`${env.apiBaseUrl}/me/shows`, () =>
+        HttpResponse.json([makeEntry({ muted: false })]),
+      ),
+      http.patch(`${env.apiBaseUrl}/me/shows/1/mute`, async () => {
+        await gate;
+        return HttpResponse.json({ detail: "boom" }, { status: 500 });
+      }),
+    );
+    renderWithProviders(<Harness />);
+
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Mute notifications for The Bear" }),
+    );
+    expect(
+      screen.getByRole("button", { name: "Unmute notifications for The Bear" }),
+    ).toBeInTheDocument();
+
+    release();
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: "Mute notifications for The Bear" })).toBeEnabled(),
+    );
+  });
+
+  it("does not refetch recommendations, since a mute is not a never-recommend source", async () => {
+    let recommendationFetches = 0;
+    let showFetches = 0;
+    server.use(
+      http.get(`${env.apiBaseUrl}/me/shows`, () => {
+        showFetches += 1;
+        return HttpResponse.json([makeEntry({ muted: false })]);
+      }),
+      http.get(`${env.apiBaseUrl}/me/recommendations`, () => {
+        recommendationFetches += 1;
+        return HttpResponse.json({ recommendations: [] });
+      }),
+    );
+    renderWithProviders(<Harness />);
+    await waitFor(() => expect(recommendationFetches).toBe(1));
+
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Mute notifications for The Bear" }),
+    );
+
+    // `["my-shows"]` is refetched on settle; that refetch is the signal the
+    // mutation has finished, after which recommendations must still be at one.
+    await waitFor(() => expect(showFetches).toBe(2));
+    expect(recommendationFetches).toBe(1);
+  });
+});
+
 describe("LibraryActiveList empty states (NEU-1190 §2)", () => {
   beforeEach(() => window.localStorage.clear());
 

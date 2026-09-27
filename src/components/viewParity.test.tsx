@@ -74,6 +74,10 @@ const PARITY_PROBES: { key: string; present: (scope: HTMLElement) => boolean }[]
     present: (s) => s.querySelector('button[aria-label$="watch history"]') !== null,
   },
   {
+    key: "mute control",
+    present: (s) => s.querySelector('button[aria-label*="notifications for"]') !== null,
+  },
+  {
     key: "add/remove control",
     // Both variants, and neither the sort trigger nor the view toggle: the
     // labelled chip and the compact one share this accessible-name shape and
@@ -232,7 +236,14 @@ describe("grid and list carry the same facts and controls (NEU-1188 AC 5)", () =
     expectViewParity(
       () => <LibraryActiveList data={[makeMyShow()]} isLoading={false} />,
       "my-shows",
-      ["viewer's own rating", "owner progress", "last watched", "add/remove control"],
+      [
+        "viewer's own rating",
+        "owner progress",
+        "last watched",
+        "add/remove control",
+        // NEU-1495: the push mute, in the action row of both views.
+        "mute control",
+      ],
     );
   });
 

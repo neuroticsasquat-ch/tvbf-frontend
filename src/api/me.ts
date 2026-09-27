@@ -256,6 +256,7 @@ function placeholderMyShowEntry(showId: number): MyShowEntry {
     added_at: new Date().toISOString(),
     my_rating: null,
     hide_from_activity: false,
+    muted: false,
   };
 }
 
@@ -700,6 +701,42 @@ export function useToggleHideFromActivity(showId: number) {
     onError: (_e, _v, ctx) => {
       ctx?.snapshots.forEach(([key, data]) => qc.setQueryData(key, data));
       toast.error("Could not update show privacy.");
+    },
+    onSettled: () => {
+      qc.invalidateQueries({ queryKey: ["my-shows"] });
+    },
+  });
+}
+
+/** Mute or unmute push notifications for one show in My Shows (NEU-1495,
+ * push project spec §6.5) — the same shape as `useToggleHideFromActivity`, the
+ * other per-row flag on `app.user_show_watch`: optimistic on `["my-shows"]`,
+ * snapshot-and-restore on failure, refetch on settle.
+ *
+ * **It does not invalidate `["me-recommendations"]`.** A mute is not a
+ * never-recommend source — `recommendations/exclusion.py` does not read it —
+ * so the recommendations payload cannot change, and a refetch would spend a
+ * request to be told the same thing. */
+export function useMuteShow(showId: number) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (muted: boolean) =>
+      apiFetch<void>(`/me/shows/${showId}/mute`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ muted }),
+      }),
+    onMutate: async (muted) => {
+      await qc.cancelQueries({ queryKey: ["my-shows"] });
+      const snapshots = qc.getQueriesData<MyShowEntry[]>({ queryKey: ["my-shows"] });
+      qc.setQueriesData<MyShowEntry[]>({ queryKey: ["my-shows"] }, (prev) =>
+        prev?.map((e) => (e.show.id === showId ? { ...e, muted } : e)),
+      );
+      return { snapshots };
+    },
+    onError: (_e, _v, ctx) => {
+      ctx?.snapshots.forEach(([key, data]) => qc.setQueryData(key, data));
+      toast.error("Could not update notifications for this show.");
     },
     onSettled: () => {
       qc.invalidateQueries({ queryKey: ["my-shows"] });

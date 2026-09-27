@@ -130,6 +130,35 @@ describe("MyShowCard", () => {
     expect(container.querySelector("[data-remove-from-my-shows]")).toBeNull();
   });
 
+  it("draws the compact mute toggle in the action row when the surface opts in", () => {
+    // NEU-1495: the action row, never the poster — a poster corner holds a
+    // control that can only remove (NEU-1187 §3.1), and a mute flips both ways.
+    const { container } = renderWithProviders(
+      <MyShowCard
+        entry={makeEntry(null, { muted: true })}
+        ratingOwner={YOU}
+        inMyShows={false}
+        mutable
+      />,
+    );
+    const toggle = screen.getByRole("button", { name: "Unmute notifications for Test Show" });
+    expect(container.querySelector("[data-show-poster]")?.contains(toggle)).toBe(false);
+  });
+
+  it("renders no mute toggle on a friend's card, even when the surface asks", () => {
+    // The entry carries the friend's flag, and a PATCH would hit the viewer's
+    // row for a show they may not track.
+    renderWithProviders(
+      <MyShowCard entry={makeEntry(null)} ratingOwner={JEANNE} inMyShows={false} mutable />,
+    );
+    expect(screen.queryByRole("button", { name: /notifications for/ })).not.toBeInTheDocument();
+  });
+
+  it("renders no mute toggle by default", () => {
+    renderWithProviders(<MyShowCard entry={makeEntry(null)} ratingOwner={YOU} inMyShows={false} />);
+    expect(screen.queryByRole("button", { name: /notifications for/ })).not.toBeInTheDocument();
+  });
+
   it("renders no action row by default", () => {
     // NEU-1188's opt-in seam, asserted absent here rather than once per grid:
     // the containment pattern `ShowCard.test.tsx` established for `addable`.
