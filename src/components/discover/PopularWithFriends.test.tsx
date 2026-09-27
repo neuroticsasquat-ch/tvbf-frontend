@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { screen, waitFor } from "@testing-library/react";
+import { screen } from "@testing-library/react";
 import { http, HttpResponse } from "msw";
 
+import { usePopularWithFriends } from "@/api/me";
 import type { PopularShow } from "@/api/types";
 import { env } from "@/env";
 import { server } from "@/test/msw/server";
@@ -114,13 +115,24 @@ describe("PopularWithFriends", () => {
   });
 
   it("renders nothing and no error when the request fails", async () => {
-    const request = servePopular(() => HttpResponse.json({ detail: "boom" }, { status: 500 }));
-    const { container } = renderWithProviders(<PopularWithFriends />);
+    servePopular(() => HttpResponse.json({ detail: "boom" }, { status: 500 }));
+    // A probe on the same key, so the assertion runs once the query has
+    // actually failed — an empty container alone cannot tell failure from
+    // still-pending.
+    function Probe() {
+      return usePopularWithFriends().isError ? <span data-testid="failed" /> : null;
+    }
+    renderWithProviders(
+      <>
+        <PopularWithFriends />
+        <Probe />
+      </>,
+    );
 
-    await waitFor(() => expect(request.called()).toBe(true));
-    // Let the failure land before asserting on its render.
-    await new Promise((r) => setTimeout(r, 0));
-    expect(container).toBeEmptyDOMElement();
+    await screen.findByTestId("failed");
+    expect(screen.queryByRole("heading")).not.toBeInTheDocument();
+    expect(screen.queryByRole("link")).not.toBeInTheDocument();
+    expect(screen.queryByText(/friends/i)).not.toBeInTheDocument();
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
 });
