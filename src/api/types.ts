@@ -145,6 +145,37 @@ export interface TrendingSnapshot {
   shows: TrendingShow[];
 }
 
+/** One entry of `GET /me/friends/popular` — `MarkedShow` flattened plus the
+ * number of the viewer's friends active on the show, a sibling of
+ * `TrendingShow` for its reason: `ShowGrid` / `ShowCard` already take a
+ * `ShowSummary`, so a wrapper would cost this client something for two
+ * scalars. See tvbf-backend/docs/specs/tvbf-popular-with-friends-project-spec.md
+ * §5.2.
+ *
+ * `friend_count` counts **distinct** accepted connections with visible
+ * activity on the show in the window, so it is ≥ 1 by construction. The
+ * activity count and last-activity time that rank the list are deliberately
+ * not exposed — the viewer sees a count, never a name, on this surface (§7).
+ */
+export interface PopularShow extends MarkedShow {
+  friend_count: number;
+}
+
+/** The `GET /me/friends/popular` body.
+ *
+ * `shows` is in the server's rank order and is never re-sorted here; the rank
+ * itself is not exposed. Empty is `200` with `shows: []`, and
+ * `connection_count` — present on every response — is what tells the two
+ * empty cases apart: nobody to hear from, or nobody saying anything (contract
+ * §5.2). This client branches on it and computes nothing else; `window_days`
+ * is informational and never computed with (§7).
+ */
+export interface PopularWithFriends {
+  window_days: number;
+  connection_count: number;
+  shows: PopularShow[];
+}
+
 /** One entry of `GET /anticipated` — `ShowSummary` flattened, plus the same
  * mark `TrendingShow` carries, and for its reason: `ShowGrid` / `ShowCard`
  * already take a `ShowSummary`, so a wrapper type would cost this client

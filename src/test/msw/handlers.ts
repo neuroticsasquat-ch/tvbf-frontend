@@ -40,6 +40,12 @@ export const handlers = [
   // `captured_at` to wrap the list in (NEU-1059 contract §2). Tests that want
   // the tab populated serve their own rows.
   http.get(`${base}/anticipated`, () => HttpResponse.json([])),
+  // The viewer with no connections: `connection_count: 0` with an empty list,
+  // which is a 200 and never a 204 (Popular with Friends spec §5.2). Tests that
+  // want the other empty state or rows serve their own body.
+  http.get(`${base}/me/friends/popular`, () =>
+    HttpResponse.json({ window_days: 14, connection_count: 0, shows: [] }),
+  ),
   http.get(`${base}/genres`, () => HttpResponse.json(fixtureGenres)),
   http.get(`${base}/networks`, () => HttpResponse.json(fixtureNetworks)),
   http.get(`${base}/shows`, () => HttpResponse.json(fixtureShowListPage)),

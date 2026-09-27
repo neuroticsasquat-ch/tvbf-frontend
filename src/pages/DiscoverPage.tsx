@@ -2,6 +2,7 @@ import { useEffect } from "react";
 
 import { useRecommendations } from "@/api/me";
 import { Anticipated } from "@/components/discover/Anticipated";
+import { PopularWithFriends } from "@/components/discover/PopularWithFriends";
 import { RecommendedForYou } from "@/components/discover/RecommendedForYou";
 import { Trending } from "@/components/discover/Trending";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -10,9 +11,15 @@ import { usePersistedString } from "@/hooks/usePersistedString";
 
 /** The tabs holding Discover's browsing surfaces. "My Recommendations" leads
  * because it is the one surface addressed to this user; Trending is a claim
- * about right now, and Most Anticipated is the same catalog seen forwards. A
+ * about right now, Popular with Friends is the same claim about your own
+ * people (NEU-1500), and Most Anticipated is the catalog seen forwards. A
  * further surface is one entry here and one `TabsContent`. */
-const DISCOVER_TABS = ["my-recommendations", "trending", "most-anticipated"] as const;
+const DISCOVER_TABS = [
+  "my-recommendations",
+  "trending",
+  "popular-with-friends",
+  "most-anticipated",
+] as const;
 type DiscoverTab = (typeof DISCOVER_TABS)[number];
 const DEFAULT_TAB: DiscoverTab = "my-recommendations";
 /** Where a user with no recommendations lands, and where a stored
@@ -29,7 +36,7 @@ function isDiscoverTab(value: string): value is DiscoverTab {
 
 /** The Discover page.
  *
- * All three surfaces are tabs, and "My Recommendations" (NEU-1114) is the
+ * Every surface is a tab, and "My Recommendations" (NEU-1114) is the
  * first and the default: it is the one addressed to this user, so it is what
  * the page should open on for anybody who has it.
  *
@@ -93,11 +100,20 @@ export function DiscoverPage() {
     <section className="flex flex-col gap-4">
       <h1 className="text-2xl font-semibold">Discover</h1>
       <Tabs value={tab} onValueChange={setStored}>
-        <TabsList>
+        {/* Measured at a 375px viewport the four triggers need 640px against
+          343px inside the page gutter (NEU-1500), so the list scrolls
+          sideways rather than abbreviating a label or dropping a tab.
+          `justify-start` keeps the first trigger reachable — centred
+          overflow spills off the left edge, where no scroll can reach it. */}
+        <TabsList className="max-w-full justify-start overflow-x-auto">
           {showRecommendations && (
             <TabsTrigger value="my-recommendations">My Recommendations</TabsTrigger>
           )}
           <TabsTrigger value="trending">Trending</TabsTrigger>
+          {/* Always present, unlike My Recommendations: its two empty states
+            are the point — they say something true about the viewer's
+            friends rather than advertising absent machinery. */}
+          <TabsTrigger value="popular-with-friends">Popular with Friends</TabsTrigger>
           <TabsTrigger value="most-anticipated">Most Anticipated</TabsTrigger>
         </TabsList>
         <TabsContent value="my-recommendations">
@@ -105,6 +121,9 @@ export function DiscoverPage() {
         </TabsContent>
         <TabsContent value="trending">
           <Trending />
+        </TabsContent>
+        <TabsContent value="popular-with-friends">
+          <PopularWithFriends />
         </TabsContent>
         <TabsContent value="most-anticipated">
           <Anticipated />
