@@ -11,6 +11,7 @@ import type {
   FeedPage,
   MyShowEntry,
   MyShowsSort,
+  PopularWithFriends,
   PreferencesPatch,
   Rating,
   RecommendationsResponse,
@@ -159,7 +160,8 @@ function invalidateAll(qc: ReturnType<typeof useQueryClient>) {
   // Friend engagement may include the caller in the future; keep honest.
   qc.invalidateQueries({ queryKey: ["friend-activity"] });
   // Every grid surface carries a per-user `in_my_shows` mark, so adding or
-  // removing a show changes all four bodies (NEU-1057, NEU-1060, NEU-1186).
+  // removing a show changes all five bodies (NEU-1057, NEU-1060, NEU-1186,
+  // NEU-1500).
   // Invalidation is the mechanism, not `staleTime`: `staleTime: 0` alone only
   // refetches on mount, which would leave a Discover tab showing the
   // pre-toggle mark until it remounted — and `["shows"]` / `["show-similar"]`
@@ -167,6 +169,7 @@ function invalidateAll(qc: ReturnType<typeof useQueryClient>) {
   // there is.
   qc.invalidateQueries({ queryKey: ["trending"] });
   qc.invalidateQueries({ queryKey: ["anticipated"] });
+  qc.invalidateQueries({ queryKey: ["popular-with-friends"] });
   qc.invalidateQueries({ queryKey: ["shows"] });
   qc.invalidateQueries({ queryKey: ["show-similar"] });
   invalidateRecommendations(qc);
@@ -531,6 +534,9 @@ export function useShowRating(showId: number) {
       // changes that body too — and a show is routinely similar to one the
       // viewer is rating, which is the case a browse-only invalidation misses.
       qc.invalidateQueries({ queryKey: ["show-similar"] });
+      // `/me/friends/popular` fills `my_rating` too, and a show friends are
+      // talking about is one the viewer is likely to be rating (NEU-1500).
+      qc.invalidateQueries({ queryKey: ["popular-with-friends"] });
       invalidateRecommendations(qc);
     },
   });
@@ -585,6 +591,28 @@ export function useFeed(limit = 20) {
     queryFn: ({ pageParam }) => fetchFeed((pageParam as string | null) ?? null, limit),
     initialPageParam: null as string | null,
     getNextPageParam: (lastPage) => lastPage.next_cursor,
+    staleTime: 0,
+  });
+}
+
+/** The shows the viewer's friends have been active on lately, ranked by how
+ * many of them (tvbf-backend/docs/specs/tvbf-popular-with-friends-project-spec.md
+ * §5.2, §6.1).
+ *
+ * Lives here rather than in `friends.ts` because the path is `/me/...`: the
+ * body is about the viewer's own friend graph. The list arrives ranked,
+ * windowed and capped — this client never slices, filters or re-sorts it, and
+ * branches on `connection_count` only (§7).
+ *
+ * `staleTime: 0` on `useTrending`'s reasoning: the route answers `no-store`
+ * because `in_my_shows` and `my_rating` make the body per-user *and*
+ * user-mutable. Invalidation from `invalidateAll` and `useShowRating` is what
+ * keeps those marks fresh while the tab stays mounted.
+ */
+export function usePopularWithFriends() {
+  return useQuery<PopularWithFriends>({
+    queryKey: ["popular-with-friends"],
+    queryFn: () => apiFetch<PopularWithFriends>("/me/friends/popular"),
     staleTime: 0,
   });
 }
