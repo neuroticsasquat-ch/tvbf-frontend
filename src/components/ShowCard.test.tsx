@@ -173,6 +173,49 @@ describe("ShowCard", () => {
     expect(chip.className).not.toContain("absolute");
   });
 
+  it("renders no friend count by default", () => {
+    // The containment rule (NEU-1501): only Popular with Friends carries a
+    // `friend_count`, so the line is absent on every other grid by default —
+    // asserted here once rather than per surface.
+    renderWithProviders(<ShowCard show={makeShow()} />);
+    expect(screen.queryByText(/\bfriends?\b/)).not.toBeInTheDocument();
+  });
+
+  it("renders the friend count in the singular and the plural", () => {
+    const { unmount } = renderWithProviders(<ShowCard show={makeShow()} friendCount={1} />);
+    expect(screen.getByText("1 friend")).toBeInTheDocument();
+    unmount();
+
+    renderWithProviders(<ShowCard show={makeShow()} friendCount={3} />);
+    expect(screen.getByText("3 friends")).toBeInTheDocument();
+  });
+
+  it("puts the friend count in the caption, not on the poster's badges or controls", () => {
+    // A fact that takes no corner (project spec §6.2): both fact corners are
+    // assigned, so it goes inline beneath the title, and the card is otherwise
+    // unchanged — same mark, same rating badges, same My Shows button.
+    renderWithProviders(
+      <ShowCard
+        show={makeShow({ rating_average: 8.4, my_rating: 4.5 })}
+        inMyShows
+        addable
+        friendCount={2}
+      />,
+    );
+    const line = screen.getByText("2 friends");
+    expect(line.closest("a")).toHaveTextContent("Kastanjemanden");
+    expect(
+      screen.getByRole("heading", { name: "Kastanjemanden" }).compareDocumentPosition(line) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    expect(screen.getByRole("img", { name: "In your My Shows" })).toBeInTheDocument();
+    expect(screen.getByRole("img", { name: "Your rating: 4.5 out of 5" })).toBeInTheDocument();
+    expect(screen.getByRole("img", { name: "TMDB average: 4.2 out of 5" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Remove Kastanjemanden from My Shows" }),
+    ).toBeInTheDocument();
+  });
+
   it("hides rating badges when both are null", () => {
     renderWithProviders(<ShowCard show={makeShow()} />);
     expect(screen.queryByTitle("TMDB average")).not.toBeInTheDocument();

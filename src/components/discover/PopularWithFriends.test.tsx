@@ -70,6 +70,19 @@ describe("PopularWithFriends", () => {
     );
   });
 
+  it("carries each entry's friend count through the grid to its card", async () => {
+    // NEU-1501: `ShowGrid` threads `friend_count` as a flat value, the way it
+    // threads `in_my_shows`; the copy itself is asserted in `ShowCard.test.tsx`.
+    serveBody(4, [
+      makeShow({ id: 1, name: "Lanterns", friend_count: 3 }),
+      makeShow({ id: 2, name: "Neagley", friend_count: 1 }),
+    ]);
+    renderWithProviders(<PopularWithFriends />);
+
+    expect(await screen.findByText("3 friends")).toBeInTheDocument();
+    expect(screen.getByText("1 friend")).toBeInTheDocument();
+  });
+
   it("marks a show already in My Shows, and does not drop it", async () => {
     serveBody(2, [
       makeShow({ id: 1, name: "Lanterns", in_my_shows: true }),
