@@ -113,6 +113,42 @@ export function useUnsubscribePush() {
   });
 }
 
+/** Remove one of the viewer's devices from the list.
+ *
+ * When the row is this browser's own, the local subscription goes too — else
+ * the state line would keep saying "On for this device" over a row the server
+ * no longer has. `GET` never returns endpoints, so the only way to know is to
+ * ask the upsert which id this browser's subscription is (see
+ * `registerSubscription`); a user's click is what licenses that call. */
+export function useRemovePushSubscription() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const local = await currentSubscription();
+      if (local && (await registerSubscription(local)) === id) return unsubscribe();
+      await apiFetch<void>(`/me/push/subscriptions/${encodeURIComponent(id)}`, {
+        method: "DELETE",
+      });
+    },
+    onSettled: () => invalidatePush(qc),
+  });
+}
+
+/** Turn notifications off on every device: this browser's subscription
+ * locally, then every row the server holds for the viewer. Local first, as in
+ * `unsubscribe`, so nothing reaches this browser even if the server call
+ * fails. */
+export function useTurnOffPushEverywhere() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async () => {
+      await (await currentSubscription())?.unsubscribe();
+      await apiFetch<void>("/me/push/subscriptions", { method: "DELETE" });
+    },
+    onSettled: () => invalidatePush(qc),
+  });
+}
+
 /** Send a test push to this device.
  *
  * A 410 means the push service has retired the subscription and the server

@@ -10,6 +10,7 @@ import type {
   FeedPage,
   MyShowEntry,
   MyShowsSort,
+  PreferencesPatch,
   Rating,
   RecommendationsResponse,
   ShowDetail,
@@ -639,7 +640,7 @@ export function useDismissRecommendation() {
   });
 }
 
-export function patchPreferences(opts: { activity_feed_enabled?: boolean }): Promise<AuthedUser> {
+export function patchPreferences(opts: PreferencesPatch): Promise<AuthedUser> {
   return apiFetch<AuthedUser>("/me/preferences", {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
@@ -654,13 +655,7 @@ export function useUpdatePreferences() {
     onMutate: async (vars) => {
       await qc.cancelQueries({ queryKey: ["me"] });
       const prev = qc.getQueryData<AuthedUser | null>(["me"]);
-      if (prev && typeof vars.activity_feed_enabled === "boolean") {
-        const next: AuthedUser = {
-          ...prev,
-          activity_feed_enabled: vars.activity_feed_enabled,
-        };
-        qc.setQueryData<AuthedUser | null>(["me"], next);
-      }
+      if (prev) qc.setQueryData<AuthedUser | null>(["me"], { ...prev, ...vars });
       return { prev };
     },
     onError: (_e, _v, ctx) => {

@@ -7,10 +7,14 @@ import { downloadMyData } from "@/api/export";
 import { useUpdatePreferences } from "@/api/me";
 import {
   isPushUnavailable,
+  useMyPushSubscriptions,
   usePushDevice,
+  useRemovePushSubscription,
   useSendTestPush,
   useSubscribePush,
+  useTurnOffPushEverywhere,
   useVapidKey,
+  type PushSubscriptionSummary,
 } from "@/api/push";
 import {
   useMySessions,
@@ -18,8 +22,10 @@ import {
   useRevokeSession,
   type SessionSummary,
 } from "@/api/sessions";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { FieldError } from "@/components/FieldError";
 import { useFieldErrors } from "@/hooks/useFieldErrors";
+import { deviceLabel } from "@/lib/deviceLabel";
 import { HANDLE_SHAPE_MESSAGE, isHandleShapeValid, normaliseHandle } from "@/lib/handle";
 import { PushPermissionError, type PushSupportState } from "@/lib/push";
 import { formatRelativeTime } from "@/lib/relativeTime";
@@ -694,11 +700,12 @@ function PrivacySection() {
   );
 }
 
-/** This device's push state line and its one action (push-notifications
- * project spec §6.3 — state line and buttons only; the toggles, device list
- * and install button are later tickets). */
+/** Push notifications (push-notifications project spec §6.3): this device's
+ * state line and its one action, the per-kind toggles, and every device the
+ * viewer has subscribed. The install button is a later ticket. */
 function NotificationsSection() {
   const device = usePushDevice();
+  const subscriptions = useMyPushSubscriptions();
 
   return (
     <section aria-labelledby="notifications-heading" className="space-y-3">
@@ -714,7 +721,152 @@ function NotificationsSection() {
           </p>
         )}
       </div>
+      <NotificationToggles hasDevice={(subscriptions.data?.length ?? 0) > 0} />
+      {subscriptions.data && subscriptions.data.length > 0 && (
+        <DeviceList subscriptions={subscriptions.data} />
+      )}
     </section>
+  );
+}
+
+type NotifyKey =
+  | "notify_airs_today"
+  | "notify_premiere_set"
+  | "notify_premiere_moved"
+  | "notify_ended"
+  | "notify_revived";
+
+const NOTIFY_KINDS: { key: NotifyKey; label: string }[] = [
+  { key: "notify_airs_today", label: "Episode airs today" },
+  { key: "notify_premiere_set", label: "Premiere date set" },
+  { key: "notify_premiere_moved", label: "Premiere date moved" },
+  { key: "notify_ended", label: "Show ended or cancelled" },
+  { key: "notify_revived", label: "Show revived" },
+];
+
+/** One switch per notification kind, saved as it is flipped. They are
+ * account-wide, so they are usable from any browser once *some* device is
+ * subscribed — this one need not be — and meaningless before that.
+ *
+ * One mutation for all five, disabled while it is in flight: its rollback
+ * restores a snapshot of the whole user, so two overlapping flips would let
+ * the first's failure undo the second. */
+function NotificationToggles({ hasDevice }: { hasDevice: boolean }) {
+  const { user } = useAuth();
+  const update = useUpdatePreferences();
+  if (!user) return null;
+  return (
+    <fieldset className="space-y-3" aria-describedby={hasDevice ? undefined : "notify-hint"}>
+      <legend className="text-base font-medium text-foreground">Notify me when</legend>
+      {!hasDevice && (
+        <p id="notify-hint" className="text-sm text-muted-foreground">
+          Turn on notifications on a device first.
+        </p>
+      )}
+      {NOTIFY_KINDS.map(({ key, label }) => (
+        <label key={key} className="flex items-center justify-between gap-3">
+          <span className="text-base text-foreground">{label}</span>
+          <input
+            type="checkbox"
+            role="switch"
+            aria-label={label}
+            checked={user[key]}
+            disabled={!hasDevice || update.isPending}
+            onChange={(e) => update.mutate({ [key]: e.currentTarget.checked })}
+            className="h-5 w-5"
+          />
+        </label>
+      ))}
+    </fieldset>
+  );
+}
+
+function formatDate(iso: string): string {
+  return new Date(iso).toLocaleDateString(undefined, {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+  });
+}
+
+function DeviceList({ subscriptions }: { subscriptions: PushSubscriptionSummary[] }) {
+  const turnOff = useTurnOffPushEverywhere();
+  const [confirming, setConfirming] = useState(false);
+
+  function onConfirm() {
+    setConfirming(false);
+    turnOff.mutate(undefined, {
+      onSuccess: () => toast.success("Notifications turned off on every device."),
+      onError: () => toast.error("Couldn't turn notifications off everywhere. Try again."),
+    });
+  }
+
+  return (
+    <div className="space-y-2">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h3 id="devices-heading" className="text-base font-medium text-foreground">
+          Devices
+        </h3>
+        <button
+          type="button"
+          onClick={() => setConfirming(true)}
+          disabled={turnOff.isPending}
+          className="rounded border border-border px-3 py-1 text-sm hover:bg-muted disabled:opacity-50"
+        >
+          {turnOff.isPending ? "Turning off…" : "Turn off everywhere"}
+        </button>
+      </div>
+      <ul aria-labelledby="devices-heading" className="rounded border border-border divide-y divide-border">
+        {subscriptions.map((s) => (
+          <DeviceRow key={s.id} subscription={s} />
+        ))}
+      </ul>
+      {confirming && (
+        <ConfirmDialog
+          title="Turn off everywhere"
+          description="Stop notifications on every device you've turned them on for? You can turn them on again on each device."
+          confirmLabel="Turn off"
+          destructive
+          pending={turnOff.isPending}
+          onConfirm={onConfirm}
+          onClose={() => setConfirming(false)}
+        />
+      )}
+    </div>
+  );
+}
+
+function DeviceRow({ subscription: s }: { subscription: PushSubscriptionSummary }) {
+  const remove = useRemovePushSubscription();
+  const label = deviceLabel(s.user_agent);
+  const added = formatDate(s.created_at);
+
+  function onRemove() {
+    remove.mutate(s.id, {
+      onError: () => toast.error("Couldn't remove that device. Try again."),
+    });
+  }
+
+  return (
+    <li className="flex flex-wrap items-center gap-x-4 gap-y-1 p-4 text-sm">
+      <span className="flex-1 min-w-0 truncate font-medium text-foreground">{label}</span>
+      <div className="text-xs text-muted-foreground sm:text-right">
+        <p>Added {added}</p>
+        <p>
+          Last delivered{" "}
+          {s.last_success_at ? formatRelativeTime(s.last_success_at) : "never"}
+        </p>
+      </div>
+      <button
+        type="button"
+        onClick={onRemove}
+        disabled={remove.isPending}
+        aria-label={`Remove ${label}, added ${added}`}
+        className="rounded border border-border px-2 py-1 text-xs hover:bg-muted disabled:opacity-50"
+      >
+        {remove.isPending ? "Removing…" : "Remove"}
+      </button>
+    </li>
   );
 }
 
