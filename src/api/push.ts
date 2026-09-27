@@ -125,7 +125,7 @@ export function useRemovePushSubscription() {
   return useMutation({
     mutationFn: async (id: string) => {
       const local = await currentSubscription();
-      if (local && (await registerSubscription(local)) === id) return unsubscribe();
+      if (local && (await registerSubscription(local)) === id) await local.unsubscribe();
       await apiFetch<void>(`/me/push/subscriptions/${encodeURIComponent(id)}`, {
         method: "DELETE",
       });

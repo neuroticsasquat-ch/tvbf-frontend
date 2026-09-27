@@ -275,6 +275,18 @@ describe("Notification toggles", () => {
     }
   });
 
+  it("stay disabled without the hint when the device list fails to load", async () => {
+    server.use(
+      http.get(`${base}/me/push/subscriptions`, () =>
+        HttpResponse.json({ detail: "boom" }, { status: 500 }),
+      ),
+    );
+    const section = await renderSection();
+    expect(await section.findByRole("switch", { name: "Show revived" })).toBeDisabled();
+    await new Promise((r) => setTimeout(r, 50));
+    expect(section.queryByText("Turn on notifications on a device first.")).not.toBeInTheDocument();
+  });
+
   it("round-trip a flip through PATCH /me/preferences", async () => {
     const bodies: unknown[] = [];
     server.use(

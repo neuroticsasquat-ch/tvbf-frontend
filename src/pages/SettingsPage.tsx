@@ -721,7 +721,7 @@ function NotificationsSection() {
           </p>
         )}
       </div>
-      <NotificationToggles hasDevice={(subscriptions.data?.length ?? 0) > 0} />
+      <NotificationToggles devices={subscriptions.data?.length} />
       {subscriptions.data && subscriptions.data.length > 0 && (
         <DeviceList subscriptions={subscriptions.data} />
       )}
@@ -751,14 +751,18 @@ const NOTIFY_KINDS: { key: NotifyKey; label: string }[] = [
  * One mutation for all five, disabled while it is in flight: its rollback
  * restores a snapshot of the whole user, so two overlapping flips would let
  * the first's failure undo the second. */
-function NotificationToggles({ hasDevice }: { hasDevice: boolean }) {
+function NotificationToggles({ devices }: { devices: number | undefined }) {
   const { user } = useAuth();
   const update = useUpdatePreferences();
   if (!user) return null;
+  // Unknown (loading, or the list failed) disables without the hint: a viewer
+  // with devices must not be told to go and turn one on.
+  const hasDevice = (devices ?? 0) > 0;
+  const showHint = devices === 0;
   return (
-    <fieldset className="space-y-3" aria-describedby={hasDevice ? undefined : "notify-hint"}>
+    <fieldset className="space-y-3" aria-describedby={showHint ? "notify-hint" : undefined}>
       <legend className="text-base font-medium text-foreground">Notify me when</legend>
-      {!hasDevice && (
+      {showHint && (
         <p id="notify-hint" className="text-sm text-muted-foreground">
           Turn on notifications on a device first.
         </p>

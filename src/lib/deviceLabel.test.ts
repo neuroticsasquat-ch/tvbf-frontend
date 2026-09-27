@@ -17,6 +17,8 @@ const UA = {
     "Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0.0.0 Mobile Safari/537.36",
   androidSamsung:
     "Mozilla/5.0 (Linux; Android 14; SM-S921B) AppleWebKit/537.36 (KHTML, like Gecko) SamsungBrowser/26.0 Chrome/122.0.0.0 Mobile Safari/537.36",
+  iphoneHomeScreen:
+    "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148",
   linuxFirefox: "Mozilla/5.0 (X11; Linux x86_64; rv:130.0) Gecko/20100101 Firefox/130.0",
   linuxOpera:
     "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0.0.0 Safari/537.36 OPR/114.0.0.0",
@@ -26,6 +28,7 @@ describe("deviceLabel", () => {
   it.each([
     [UA.iphoneSafari, "iPhone · Safari"],
     [UA.iphoneChrome, "iPhone · Chrome"],
+    [UA.iphoneHomeScreen, "iPhone · Safari"],
     [UA.windowsChrome, "Windows · Chrome"],
     [UA.windowsEdge, "Windows · Edge"],
     [UA.macSafari, "Mac · Safari"],

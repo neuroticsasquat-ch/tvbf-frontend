@@ -5,7 +5,7 @@
  * (§4.2) — reads "Unknown device".
  *
  * Order matters within each list: Edge and Opera also claim Chrome, Chrome
- * also claims Safari, and Android also claims Linux. */
+ * also claims Safari and WebKit, and Android also claims Linux. */
 const PLATFORMS: [RegExp, string][] = [
   [/iPhone|iPod/, "iPhone"],
   [/iPad/, "iPad"],
@@ -23,6 +23,9 @@ const BROWSERS: [RegExp, string][] = [
   [/Firefox\/|FxiOS\//, "Firefox"],
   [/Chrome\/|CriOS\//, "Chrome"],
   [/Safari\//, "Safari"],
+  // A Home Screen web app on iOS — the only place iOS can subscribe — drops
+  // the `Safari/` token, leaving bare WebKit.
+  [/AppleWebKit\//, "Safari"],
 ];
 
 function firstMatch(ua: string, table: [RegExp, string][]): string | null {
