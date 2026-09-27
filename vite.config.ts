@@ -43,7 +43,12 @@ export default defineConfig({
     hmr: {
       clientPort: 443,
       protocol: "wss",
-      host: "app.tvbf.localhost",
+      // The hostname the browser loaded the page from. Defaults to the Traefik
+      // one; a dev environment served under another name (a Coder workspace URL)
+      // sets HMR_HOST, alongside Vite's own __VITE_ADDITIONAL_SERVER_ALLOWED_HOSTS
+      // for the allowedHosts check below. Not VITE_-prefixed, so it stays out of
+      // the client bundle.
+      host: process.env.HMR_HOST ?? "app.tvbf.localhost",
     },
     allowedHosts: ["app.tvbf.localhost"],
     watch: {
