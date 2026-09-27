@@ -139,8 +139,7 @@ describe("AppShell push nudge", () => {
     localStorage.clear();
   });
 
-  // The card belongs to the page the add happened on: leaving closes it, and
-  // does not count as dismissing it.
+  // The card belongs to the page the add happened on: leaving closes it.
   it("draws the nudge over the page, and closes it on navigation", async () => {
     server.use(meHandler(VERIFIED_AT));
     installFakePush({ permission: "default" });
@@ -154,6 +153,5 @@ describe("AppShell push nudge", () => {
 
     await userEvent.click(watchNext);
     expect(screen.queryByRole("complementary", { name: /get told/i })).not.toBeInTheDocument();
-    expect(localStorage.getItem("push-nudge-dismissed")).toBeNull();
   });
 });

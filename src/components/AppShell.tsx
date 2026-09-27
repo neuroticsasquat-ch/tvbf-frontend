@@ -43,7 +43,7 @@ export function AppShell() {
   }
 
   // The nudge belongs to the page the add happened on; leaving it closes the
-  // card without counting as a dismissal.
+  // card (for good — it was recorded as seen when it appeared).
   useEffect(() => clearPushNudge(), [location.key]);
 
   const overlayActive = !!user && searchInput.trim().length > 0;

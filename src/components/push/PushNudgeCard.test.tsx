@@ -62,6 +62,25 @@ describe("PushNudgeCard", () => {
     expect(push.requestPermission).not.toHaveBeenCalled();
   });
 
+  it("shows once: closed without an answer, it still never comes back", async () => {
+    renderAddSurface();
+    await add();
+    await screen.findByRole("heading", { name: "Get told when Severance airs" });
+    // What leaving the page does (AppShell clears on navigation).
+    act(() => clearPushNudge());
+    expect(card()).not.toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: "Remove Severance from My Shows" }));
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: "Add Severance to My Shows" })).toBeEnabled(),
+    );
+    await add();
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: "Remove Severance from My Shows" })).toBeEnabled(),
+    );
+    expect(card()).not.toBeInTheDocument();
+  });
+
   it("does not appear when the add fails", async () => {
     server.use(http.put(`${base}/me/shows/:id`, () => new HttpResponse(null, { status: 500 })));
     renderAddSurface();

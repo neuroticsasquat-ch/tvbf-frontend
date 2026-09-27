@@ -27,30 +27,38 @@ function emit() {
   listeners.forEach((l) => l());
 }
 
+function recordNudgeSeen(): void {
+  try {
+    localStorage.setItem(NUDGE_DISMISSED_KEY, "1");
+  } catch {
+    // Nothing to do: the card still closes for this page load.
+  }
+}
+
 /** Called after an add lands. Shows the card only where there is something to
  * turn on — permission not yet asked, or an iOS tab that must be installed
- * first — and only until the viewer has dismissed or acted on it once. Reads
- * state; never asks for permission. */
+ * first. Reads state; never asks for permission.
+ *
+ * The key is set as the card appears, not only when it is dismissed or acted
+ * on: the spec's "at most once per browser" would otherwise break for a viewer
+ * who simply navigates away, and the card would return after every add. */
 export function offerPushNudge(name: string): void {
   if (nudgeDismissed()) return;
   const state = supportState();
   if (state !== "prompt" && state !== "ios_needs_install") return;
+  recordNudgeSeen();
   showName = name;
   emit();
 }
 
 /** Dismissing **or** acting: either way the card never comes back. */
 export function dismissPushNudge(): void {
-  try {
-    localStorage.setItem(NUDGE_DISMISSED_KEY, "1");
-  } catch {
-    // Nothing to do: the card still closes for this page load.
-  }
+  recordNudgeSeen();
   clearPushNudge();
 }
 
-/** Close the card without recording anything — the viewer left the page the
- * add happened on, which is neither a dismissal nor an answer. */
+/** Close the card — the viewer left the page the add happened on. It was
+ * already recorded as seen when it appeared, so it does not come back. */
 export function clearPushNudge(): void {
   if (showName === null) return;
   showName = null;
