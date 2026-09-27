@@ -436,6 +436,123 @@ describe("DiscoverPage", () => {
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
 
+  describe("the picker below md", () => {
+    // jsdom applies no media queries, so the tab row and the picker are both
+    // in the DOM here; these assert what the picker does, not when it shows.
+    const trigger = () => screen.getByRole("button", { name: /^Discover section: / });
+
+    async function openSheet(): Promise<HTMLElement> {
+      await userEvent.click(trigger());
+      return screen.findByRole("dialog", { name: "Discover" });
+    }
+
+    function optionLabels(sheet: HTMLElement): (string | null)[] {
+      return within(sheet)
+        .getAllByRole("button")
+        .map((b) => b.textContent);
+    }
+
+    function tabLabels(): (string | null)[] {
+      return screen.getAllByRole("tab").map((t) => t.textContent);
+    }
+
+    it("lists every tab the row does, in the same order, with recommendations", async () => {
+      serveRows([makeRecommendation()]);
+      renderWithProviders(<DiscoverPage />);
+
+      await screen.findByRole("link", { name: /Severance/ });
+      // Read before opening: the modal sheet hides the rest of the page from
+      // the accessibility tree, tab row included.
+      const row = tabLabels();
+      const sheet = await openSheet();
+      expect(optionLabels(sheet)).toEqual([
+        "My Recommendations",
+        "Trending",
+        "Popular with Friends",
+        "Most Anticipated",
+      ]);
+      expect(optionLabels(sheet)).toEqual(row);
+    });
+
+    it("drops My Recommendations exactly when the row does", async () => {
+      const request = serveRows([]);
+      serveTrending([makeTrendingShow()]);
+      renderWithProviders(<DiscoverPage />);
+
+      await waitFor(() => expect(request.called()).toBe(true));
+      await waitFor(() =>
+        expect(screen.queryByRole("tab", { name: "My Recommendations" })).not.toBeInTheDocument(),
+      );
+      // Read before opening: the modal sheet hides the rest of the page from
+      // the accessibility tree, tab row included.
+      const row = tabLabels();
+      const sheet = await openSheet();
+      expect(optionLabels(sheet)).toEqual(["Trending", "Popular with Friends", "Most Anticipated"]);
+      expect(optionLabels(sheet)).toEqual(row);
+    });
+
+    it("keeps My Recommendations while the row's latch does", async () => {
+      let call = 0;
+      server.use(
+        http.get(`${env.apiBaseUrl}/me/recommendations`, () => {
+          call += 1;
+          return HttpResponse.json({ recommendations: call === 1 ? [makeRecommendation()] : [] });
+        }),
+        http.put(`${env.apiBaseUrl}/me/shows/1`, () => new HttpResponse(null, { status: 204 })),
+      );
+      renderWithProviders(<DiscoverPage />);
+
+      await userEvent.click(await screen.findByRole("button", { name: /^Add .+ to My Shows$/ }));
+      expect(await screen.findByText(/new recommendations on Sunday/i)).toBeInTheDocument();
+
+      const row = tabLabels();
+      expect(row).toContain("My Recommendations");
+      const sheet = await openSheet();
+      expect(optionLabels(sheet)).toEqual(row);
+    });
+
+    it("switches the panel and persists the choice, then closes", async () => {
+      serveRows([makeRecommendation()]);
+      servePopular(3, [makePopularShow()]);
+      renderWithProviders(<DiscoverPage />);
+
+      await screen.findByRole("link", { name: /Severance/ });
+      const sheet = await openSheet();
+      await userEvent.click(within(sheet).getByRole("button", { name: "Popular with Friends" }));
+
+      expect(screen.queryByRole("dialog", { name: "Discover" })).not.toBeInTheDocument();
+      expect(await screen.findByRole("link", { name: /Slow Horses/ })).toBeInTheDocument();
+      expect(screen.getByRole("tab", { name: "Popular with Friends" })).toHaveAttribute(
+        "aria-selected",
+        "true",
+      );
+      await waitFor(() =>
+        expect(window.localStorage.getItem("tvbf:str:discover-tab")).toBe("popular-with-friends"),
+      );
+    });
+
+    it("names the active tab, including after a switch made through the row", async () => {
+      window.localStorage.setItem("tvbf:str:discover-tab", "trending");
+      serveAnticipated([makeAnticipatedShow()]);
+      renderWithProviders(<DiscoverPage />);
+
+      expect(trigger()).toHaveAccessibleName("Discover section: Trending");
+      expect(trigger()).toHaveTextContent("Trending");
+
+      await userEvent.click(screen.getByRole("tab", { name: "Most Anticipated" }));
+
+      expect(trigger()).toHaveAccessibleName("Discover section: Most Anticipated");
+      expect(trigger()).toHaveTextContent("Most Anticipated");
+      const sheet = await openSheet();
+      // The check sits on the active option only.
+      const checked = within(sheet)
+        .getAllByRole("button")
+        .filter((b) => b.querySelector("svg"))
+        .map((b) => b.textContent);
+      expect(checked).toEqual(["Most Anticipated"]);
+    });
+  });
+
   describe("Popular with Friends", () => {
     // The tab is always present, unlike My Recommendations: its empty states
     // are the point (project spec §6.1). Each case below asserts the trigger
