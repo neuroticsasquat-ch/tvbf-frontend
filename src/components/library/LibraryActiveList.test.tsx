@@ -362,30 +362,44 @@ describe("LibraryActiveList push mute (NEU-1495)", () => {
   }
 
   it("patches the My Shows cache optimistically and rolls it back on failure", async () => {
+    // The cache, not the button: `MuteShowButton` also resets its own override
+    // on error, so asserting on the button alone passes with no cache rollback.
+    // The settle refetch is held open, so the snapshot restore in `useMuteShow`
+    // is the only thing that can put `muted` back.
     let release!: () => void;
     const gate = new Promise<void>((r) => (release = r));
+    let showFetches = 0;
     server.use(
-      http.get(`${env.apiBaseUrl}/me/shows`, () =>
-        HttpResponse.json([makeEntry({ muted: false })]),
-      ),
+      http.get(`${env.apiBaseUrl}/me/shows`, async () => {
+        showFetches += 1;
+        if (showFetches > 1) await new Promise(() => {});
+        return HttpResponse.json([makeEntry({ muted: false })]);
+      }),
       http.patch(`${env.apiBaseUrl}/me/shows/1/mute`, async () => {
         await gate;
         return HttpResponse.json({ detail: "boom" }, { status: 500 });
       }),
     );
-    renderWithProviders(<Harness />);
+    function CacheProbe() {
+      const { data, isLoading } = useMyShows();
+      return (
+        <>
+          <output data-testid="cached-muted">{String(data?.[0]?.muted)}</output>
+          <LibraryActiveList data={data} isLoading={isLoading} />
+        </>
+      );
+    }
+    renderWithProviders(<CacheProbe />);
+    const cached = () => screen.getByTestId("cached-muted");
 
     await userEvent.click(
       await screen.findByRole("button", { name: "Mute notifications for The Bear" }),
     );
-    expect(
-      screen.getByRole("button", { name: "Unmute notifications for The Bear" }),
-    ).toBeInTheDocument();
+    expect(cached()).toHaveTextContent("true");
 
     release();
-    await waitFor(() =>
-      expect(screen.getByRole("button", { name: "Mute notifications for The Bear" })).toBeEnabled(),
-    );
+    await waitFor(() => expect(showFetches).toBe(2));
+    await waitFor(() => expect(cached()).toHaveTextContent("false"));
   });
 
   it("does not refetch recommendations, since a mute is not a never-recommend source", async () => {
