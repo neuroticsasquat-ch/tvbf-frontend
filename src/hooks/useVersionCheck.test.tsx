@@ -84,6 +84,33 @@ describe("useVersionCheck", () => {
     expect(screen.queryByText("A new version is available")).not.toBeInTheDocument();
   });
 
+  it("keeps a long absence for the next return when the check on resume fails", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    let networkUp = false;
+    const calls = serveVersion(() =>
+      networkUp ? HttpResponse.json({ version: "def" }) : HttpResponse.error(),
+    );
+    const reload = vi.fn();
+    render(<Harness reload={reload} />);
+
+    setVisibility("hidden");
+    vi.setSystemTime(Date.now() + RELOAD_AFTER_HIDDEN_MS);
+    setVisibility("visible");
+    await waitFor(() => expect(calls.count).toBe(1));
+    expect(reload).not.toHaveBeenCalled();
+
+    // A brief switch away, with the network back: the failed check neither
+    // throttled this one nor shrank the absence it answers for.
+    networkUp = true;
+    setVisibility("hidden");
+    vi.setSystemTime(Date.now() + 1000);
+    setVisibility("visible");
+
+    await waitFor(() => expect(reload).toHaveBeenCalledTimes(1));
+    expect(calls.count).toBe(2);
+    expect(screen.queryByText("A new version is available")).not.toBeInTheDocument();
+  });
+
   it("shows nothing when the versions match", async () => {
     const calls = serveVersion(() => HttpResponse.json({ version: "abc" }));
     render(<Harness reload={vi.fn()} />);

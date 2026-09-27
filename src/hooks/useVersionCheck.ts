@@ -44,6 +44,10 @@ export function useVersionCheck(
 
     let hiddenAt = document.visibilityState === "hidden" ? Date.now() : null;
     let lastCheckAt: number | null = null;
+    // The longest absence no check has answered yet. A fetch on resume can fail
+    // before iOS has the network back, and that must not cost the long-absence
+    // reload: it carries to the next return instead.
+    let unansweredHiddenMs = 0;
     let promptedVersion: string | null = null;
     let active = true;
 
@@ -54,13 +58,17 @@ export function useVersionCheck(
         return;
       }
       if (document.visibilityState !== "visible") return;
-      const hiddenMs = hiddenAt === null ? 0 : now - hiddenAt;
+      if (hiddenAt !== null) unansweredHiddenMs = Math.max(unansweredHiddenMs, now - hiddenAt);
       hiddenAt = null;
+      // Throttled on answered checks only, so a failed one leaves the next
+      // return free to try again.
       if (lastCheckAt !== null && now - lastCheckAt < VERSION_CHECK_THROTTLE_MS) return;
-      lastCheckAt = now;
 
       const deployed = await fetchDeployedVersion();
       if (!active || deployed === null) return;
+      lastCheckAt = now;
+      const hiddenMs = unansweredHiddenMs;
+      unansweredHiddenMs = 0;
       const action = decideVersionAction({ current, deployed, hiddenMs, promptedVersion });
       if (action === "reload") {
         reload();
