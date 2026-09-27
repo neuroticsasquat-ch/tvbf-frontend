@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { act, screen, within } from "@testing-library/react";
+import { act, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { http, HttpResponse } from "msw";
 import { server } from "@/test/msw/server";
@@ -153,5 +153,48 @@ describe("AppShell push nudge", () => {
 
     await userEvent.click(watchNext);
     expect(screen.queryByRole("complementary", { name: /get told/i })).not.toBeInTheDocument();
+  });
+});
+
+describe("AppShell search-running indicator (NEU-1502)", () => {
+  it("spins and announces while the overlay reports a search running, and stops when it settles", async () => {
+    let release!: () => void;
+    const opened = new Promise<void>((resolve) => (release = resolve));
+    server.use(
+      http.get(`${env.apiBaseUrl}/me`, () =>
+        HttpResponse.json({
+          id: "u1",
+          email: "a@b.com",
+          display_name: "A",
+          created_at: new Date().toISOString(),
+        }),
+      ),
+      http.get(`${env.apiBaseUrl}/me/connection-requests`, () =>
+        HttpResponse.json({ incoming: [], outgoing: [] }),
+      ),
+      http.get(`${env.apiBaseUrl}/shows`, async () => {
+        await opened;
+        return HttpResponse.json({ items: [], page: 1, per_page: 50, total: 0, total_pages: 1 });
+      }),
+    );
+    const user = userEvent.setup();
+    renderWithProviders(<AppShell />);
+
+    const form = await screen.findByRole("search", { name: "Search shows" });
+    const status = within(form).getByRole("status");
+    expect(status).toHaveTextContent("");
+    expect(form.querySelector(".animate-spin")).toBeNull();
+
+    await user.type(within(form).getByRole("searchbox", { name: "Search shows" }), "fixture");
+
+    const results = screen.getByRole("region", { name: "Search results" });
+    expect(status).toHaveTextContent("Searching…");
+    expect(form.querySelector(".animate-spin")).not.toBeNull();
+    expect(results).toHaveAttribute("aria-busy", "true");
+
+    release();
+    await waitFor(() => expect(status).toHaveTextContent(""));
+    expect(form.querySelector(".animate-spin")).toBeNull();
+    expect(results).toHaveAttribute("aria-busy", "false");
   });
 });

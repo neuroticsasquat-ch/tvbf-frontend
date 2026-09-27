@@ -2,7 +2,7 @@ import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { HttpResponse, http } from "msw";
 import { Route, Routes } from "react-router";
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { env } from "@/env";
 import { server } from "@/test/msw/server";
@@ -284,5 +284,186 @@ describe("SearchOverlay", () => {
 
     expect(await screen.findByRole("heading", { name: "Shows (87)" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "People (40)" })).toBeInTheDocument();
+  });
+
+  describe("the search-running signal (NEU-1502)", () => {
+    /** A handler that holds its response until `release()` — so a test can
+     * look at the screen while one section is in flight, for as long as it
+     * likes, instead of racing a timer. */
+    function gate() {
+      let release!: () => void;
+      const opened = new Promise<void>((resolve) => (release = resolve));
+      return { opened, release };
+    }
+
+    function lastCall(spy: ReturnType<typeof vi.fn>) {
+      return spy.mock.calls.at(-1)?.[0];
+    }
+
+    function renderBusy(search: string, onBusyChange = vi.fn()) {
+      const utils = renderWithProviders(
+        <SearchOverlay search={search} onBusyChange={onBusyChange} />,
+      );
+      const rerender = (next: string) =>
+        utils.rerender(<SearchOverlay search={next} onBusyChange={onBusyChange} />);
+      return { ...utils, rerender, onBusyChange };
+    }
+
+    it("is lit from the first keystroke, before the debounce fires any request", async () => {
+      const searched: string[] = [];
+      server.use(
+        http.get(`${base}/shows`, ({ request }) => {
+          searched.push(new URL(request.url).searchParams.get("search") ?? "");
+          return HttpResponse.json(fixtureShowListPage);
+        }),
+      );
+      const { onBusyChange } = renderBusy("z");
+
+      expect(onBusyChange).toHaveBeenLastCalledWith(true);
+      expect(searched).toEqual([]);
+      await waitFor(() => expect(lastCall(onBusyChange)).toBe(false));
+      expect(searched).toEqual(["z"]);
+    });
+
+    it("goes dark only once both sections have settled", async () => {
+      const people = gate();
+      server.use(
+        http.get(`${base}/people`, async () => {
+          await people.opened;
+          return HttpResponse.json(fixturePersonListPage);
+        }),
+      );
+      const { onBusyChange } = renderBusy("fixture");
+
+      expect(await screen.findByRole("link", { name: /Fixture Show/i })).toBeInTheDocument();
+      expect(lastCall(onBusyChange)).toBe(true);
+
+      people.release();
+      expect(await screen.findByRole("heading", { name: /^People/ })).toBeInTheDocument();
+      await waitFor(() => expect(lastCall(onBusyChange)).toBe(false));
+    });
+
+    it("is not lit by the refetch an add from a result card fires", async () => {
+      // NEU-1192's `invalidateAll` refetches every cached `["shows"]` page, so
+      // `isFetching` goes true with nothing typed — the reason it is not used.
+      const user = userEvent.setup();
+      noPeople();
+      let showRequests = 0;
+      const tracked = new Set<number>();
+      server.use(
+        http.get(`${base}/shows`, () => {
+          showRequests += 1;
+          return HttpResponse.json({
+            ...fixtureShowListPage,
+            items: fixtureShowListPage.items.map((s) => ({ ...s, in_my_shows: tracked.has(s.id) })),
+          });
+        }),
+        http.put(`${base}/me/shows/:id`, ({ params }) => {
+          tracked.add(Number(params.id));
+          return new HttpResponse(null, { status: 204 });
+        }),
+      );
+      const { onBusyChange } = renderBusy("fixture");
+      await waitFor(() => expect(lastCall(onBusyChange)).toBe(false));
+      onBusyChange.mockClear();
+
+      await user.click(await screen.findByRole("button", { name: "Add Fixture Show to My Shows" }));
+      await waitFor(() => expect(showRequests).toBe(2));
+      await screen.findByRole("button", { name: "Remove Fixture Show from My Shows" });
+
+      expect(onBusyChange).not.toHaveBeenCalledWith(true);
+    });
+
+    it("keeps the previous results on screen while the next query runs", async () => {
+      const { rerender, onBusyChange } = renderBusy("fixture");
+      expect(await screen.findByRole("link", { name: /Fixture Show/i })).toBeInTheDocument();
+      await waitFor(() => expect(lastCall(onBusyChange)).toBe(false));
+
+      const shows = gate();
+      server.use(
+        http.get(`${base}/shows`, async () => {
+          await shows.opened;
+          return HttpResponse.json({
+            ...fixtureShowListPage,
+            items: [{ ...fixtureShowListPage.items[0], id: 999, name: "Second Show" }],
+            total: 1,
+          });
+        }),
+      );
+      rerender("second");
+
+      expect(lastCall(onBusyChange)).toBe(true);
+      // Past the debounce, with the request in flight: still the old grid,
+      // and never a skeleton.
+      await waitFor(() => expect(lastCall(onBusyChange)).toBe(true));
+      await new Promise((resolve) => setTimeout(resolve, 400));
+      expect(screen.getByRole("link", { name: /Fixture Show/i })).toBeInTheDocument();
+      expect(screen.queryByTestId("loading")).not.toBeInTheDocument();
+
+      shows.release();
+      expect(await screen.findByRole("link", { name: /Second Show/i })).toBeInTheDocument();
+      expect(screen.queryByRole("link", { name: /Fixture Show/i })).not.toBeInTheDocument();
+      await waitFor(() => expect(lastCall(onBusyChange)).toBe(false));
+    });
+
+    it("says nothing matched only once the new query has answered", async () => {
+      // The spec's own scenario (§4): a stale non-empty grid never gives way to
+      // "no results" early. The old grid keeps the Shows section rendered, so
+      // this holds even without the `settled` guard — the next test is the one
+      // that fails without it.
+      const { rerender } = renderBusy("fixture");
+      expect(await screen.findByRole("link", { name: /Fixture Show/i })).toBeInTheDocument();
+
+      const shows = gate();
+      server.use(
+        http.get(`${base}/shows`, async () => {
+          await shows.opened;
+          return HttpResponse.json(emptyShows);
+        }),
+      );
+      noPeople();
+      rerender("nothing");
+
+      await new Promise((resolve) => setTimeout(resolve, 400));
+      expect(screen.getByRole("link", { name: /Fixture Show/i })).toBeInTheDocument();
+      expect(screen.queryByText(/No shows or people match/i)).not.toBeInTheDocument();
+
+      shows.release();
+      expect(await screen.findByText('No shows or people match "nothing".')).toBeInTheDocument();
+    });
+
+    it("does not name a new query as matching nothing while an older empty answer is up", async () => {
+      // The case the placeholder guard on `settled` exists for: both sections
+      // hold an older key's *empty* answer, so neither renders, and only
+      // `settled` stands between the viewer and a verdict on a query that has
+      // not been answered yet.
+      noShows();
+      noPeople();
+      const { rerender } = renderBusy("aaa");
+      expect(await screen.findByText('No shows or people match "aaa".')).toBeInTheDocument();
+
+      const shows = gate();
+      server.use(
+        http.get(`${base}/shows`, async () => {
+          await shows.opened;
+          return HttpResponse.json(emptyShows);
+        }),
+      );
+      rerender("bbb");
+
+      await new Promise((resolve) => setTimeout(resolve, 400));
+      expect(screen.queryByText('No shows or people match "bbb".')).not.toBeInTheDocument();
+
+      shows.release();
+      expect(await screen.findByText('No shows or people match "bbb".')).toBeInTheDocument();
+    });
+
+    it("reports idle when it unmounts", async () => {
+      const { unmount, onBusyChange } = renderBusy("fixture");
+      expect(lastCall(onBusyChange)).toBe(true);
+
+      unmount();
+      expect(lastCall(onBusyChange)).toBe(false);
+    });
   });
 });

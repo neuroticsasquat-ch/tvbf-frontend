@@ -5,6 +5,7 @@ import {
   Calendar as CalendarIcon,
   Compass as DiscoverIcon,
   Library as MyShowsIcon,
+  Loader2 as SpinnerIcon,
   Users as FriendsIcon,
   Search as SearchIcon,
   Tv as TvIcon,
@@ -32,6 +33,9 @@ export function AppShell() {
   const [delOpen, setDelOpen] = useState(false);
   const [feedbackOpen, setFeedbackOpen] = useState(false);
   const [searchInput, setSearchInput] = useState("");
+  // Reported up by `SearchOverlay`, which owns the debounce and both queries
+  // and so is the only place that knows when a search is running (NEU-1502).
+  const [searchBusy, setSearchBusy] = useState(false);
   const searchFormRef = useRef<HTMLFormElement>(null);
   const overlayRef = useRef<HTMLElement>(null);
 
@@ -240,6 +244,7 @@ export function AppShell() {
                 ref={searchFormRef}
                 value={searchInput}
                 onChange={setSearchInput}
+                busy={searchBusy}
                 className="order-last w-full md:order-none md:ml-auto md:w-auto md:max-w-md md:flex-1"
               />
               <nav className="hidden md:flex shrink-0 items-center gap-1" aria-label="Primary">
@@ -264,9 +269,10 @@ export function AppShell() {
           ref={overlayRef}
           role="region"
           aria-label="Search results"
+          aria-busy={searchBusy}
           className="mx-auto w-full max-w-6xl flex-1 px-4 py-6"
         >
-          <SearchOverlay search={searchInput} />
+          <SearchOverlay search={searchInput} onBusyChange={setSearchBusy} />
         </section>
       ) : (
         <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-6">
@@ -421,11 +427,13 @@ export function AppShell() {
 function HeaderSearch({
   value,
   onChange,
+  busy = false,
   ref,
   className,
 }: {
   value: string;
   onChange: (next: string) => void;
+  busy?: boolean;
   ref?: React.Ref<HTMLFormElement>;
   className?: string;
 }) {
@@ -458,9 +466,23 @@ function HeaderSearch({
           autoComplete="off"
           // text-base (16px) on mobile prevents iOS Safari auto-zoom on focus;
           // sm:text-sm restores the tighter desktop visual.
-          className="w-full rounded border border-border bg-background py-1.5 pl-7 pr-2 text-base sm:text-sm focus:outline-none focus:ring-1 focus:ring-foreground"
+          // `pr-7` whether or not the spinner is up, so the text never shifts
+          // when it appears.
+          className="w-full rounded border border-border bg-background py-1.5 pl-7 pr-7 text-base sm:text-sm focus:outline-none focus:ring-1 focus:ring-foreground"
         />
+        {/* The app's one spinner (NEU-1502 §3.4): a search in flight has no
+            layout for a skeleton to hold, and the results below it stay on
+            screen while it turns. The search icon stays — it names the field. */}
+        {busy && (
+          <SpinnerIcon
+            className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin motion-reduce:animate-none text-muted-foreground"
+            aria-hidden
+          />
+        )}
       </div>
+      <span role="status" aria-live="polite" className="sr-only">
+        {busy ? "Searching…" : ""}
+      </span>
     </form>
   );
 }
