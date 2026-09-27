@@ -467,6 +467,23 @@ export interface AdminUserRow {
   disabled_at: string | null;
 }
 
+/** One UTC day of `GET /admin/push/stats` (NEU-1493). `retired` is a subset
+ * of `failed` — the failures that deleted their subscription. */
+export interface AdminPushStatsDay {
+  day: string;
+  sent: number;
+  failed: number;
+  retired: number;
+}
+
+/** `GET /admin/push/stats`: live totals plus exactly 30 UTC days, oldest
+ * first, zero-filled (project spec §5.4). */
+export interface AdminPushStats {
+  subscriptions: number;
+  users_subscribed: number;
+  by_day: AdminPushStatsDay[];
+}
+
 export interface InviteRow {
   code: string;
   email_hint: string | null;

@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { apiFetch } from "./client";
-import type { AdminUserRow } from "./types";
+import type { AdminPushStats, AdminUserRow } from "./types";
 
 export function fetchAdminUsers(): Promise<AdminUserRow[]> {
   return apiFetch<AdminUserRow[]>("/admin/users");
@@ -81,5 +81,16 @@ export function useToggleDisabled() {
       toast.error("Could not update account status.");
       qc.invalidateQueries({ queryKey: ["admin-users"] });
     },
+  });
+}
+
+export function fetchAdminPushStats(): Promise<AdminPushStats> {
+  return apiFetch<AdminPushStats>("/admin/push/stats");
+}
+
+export function useAdminPushStats() {
+  return useQuery<AdminPushStats>({
+    queryKey: ["admin-push-stats"],
+    queryFn: fetchAdminPushStats,
   });
 }
