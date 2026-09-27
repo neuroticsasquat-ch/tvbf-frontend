@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { apiFetch } from "./client";
 import type { PersonCredits, PersonListPage, PersonOut } from "./types";
 
@@ -24,6 +24,8 @@ export function usePersonSearch(
     queryFn: ({ signal }) => apiFetch<PersonListPage>(`/people?${params.toString()}`, { signal }),
     staleTime: FIVE_MINUTES,
     enabled: enabled && search.length > 0,
+    // Same as `useShows`, its one caller being the same overlay (NEU-1502).
+    placeholderData: keepPreviousData,
   });
 }
 

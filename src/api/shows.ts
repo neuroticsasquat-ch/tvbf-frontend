@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { apiFetch, buildShowsQuery } from "./client";
 import type {
   AnticipatedShow,
@@ -34,6 +34,9 @@ export function useShows(filters: ShowFilters, options: { enabled?: boolean } = 
       apiFetch<ShowListPage>(`/shows${queryString ? `?${queryString}` : ""}`, { signal }),
     staleTime: FIVE_MINUTES,
     enabled: options.enabled ?? true,
+    // Search is the one caller: the last results stay on screen while the next
+    // query runs, and the search box's spinner says they are stale (NEU-1502).
+    placeholderData: keepPreviousData,
   });
 }
 

@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 
 import { usePersonSearch } from "@/api/people";
 import { useShows } from "@/api/shows";
@@ -107,8 +107,21 @@ function SearchSection({
  * continuously and Enter activates whichever is focused. Roving arrow-key
  * focus is deliberately not used: this is a page of links, not a listbox, and
  * the search box that owns focus while typing needs arrow keys for the caret.
+ *
+ * Both queries keep their previous results as placeholder data, so a new query
+ * swaps the grid in place instead of flashing it to skeletons — skeletons are
+ * for the first query of a session only. What says "these are stale" is the
+ * search box's spinner, fed by `onBusyChange` (NEU-1502).
  */
-export function SearchOverlay({ search }: { search: string }) {
+export function SearchOverlay({
+  search,
+  onBusyChange,
+}: {
+  search: string;
+  /** Called with whether a search is running: from the keystroke that changes
+   * the query until both sections have settled for it. `false` on unmount. */
+  onBusyChange?: (busy: boolean) => void;
+}) {
   const trimmed = search.trim();
   const query = useDebouncedValue(trimmed, DEBOUNCE_MS, "");
   const [view, setView] = usePersistedView("search", "grid");
@@ -154,6 +167,24 @@ export function SearchOverlay({ search }: { search: string }) {
     per_page: PEOPLE_PER_PAGE,
     enabled,
   });
+
+  // "Searching", as the viewer means it (NEU-1502 §3.1). The first term is the
+  // debounce window, which would otherwise be a silent 250 ms after every
+  // keystroke. Placeholder data is an older key's answer still on screen.
+  // Deliberately not `isFetching`: that is also true while an add/remove from
+  // a card refetches the same key (NEU-1192), when nothing typed is running.
+  const busy =
+    trimmed !== query ||
+    showsQuery.isPending ||
+    showsQuery.isPlaceholderData ||
+    peopleQuery.isPending ||
+    peopleQuery.isPlaceholderData;
+
+  useEffect(() => {
+    onBusyChange?.(busy);
+  }, [busy, onBusyChange]);
+  // The overlay unmounts when the input empties; the spinner must not outlive it.
+  useEffect(() => () => onBusyChange?.(false), [onBusyChange]);
 
   const filtersActive = status !== "all" || genre !== "all";
 
@@ -253,7 +284,14 @@ export function SearchOverlay({ search }: { search: string }) {
 
   const shows = renderShows();
   const people = renderPeople();
-  const settled = !showsQuery.isPending && !peopleQuery.isPending;
+  // A placeholder is an older query's answer, so it cannot settle this one:
+  // without that, the combined "no match" line could flash for the new query
+  // while the old grid is still what the viewer is looking at.
+  const settled =
+    !showsQuery.isPending &&
+    !showsQuery.isPlaceholderData &&
+    !peopleQuery.isPending &&
+    !peopleQuery.isPlaceholderData;
 
   return (
     <div className="space-y-8">
