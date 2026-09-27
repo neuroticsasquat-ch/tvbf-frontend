@@ -4,6 +4,13 @@ import tailwindcss from "@tailwindcss/vite";
 import { sentryVitePlugin } from "@sentry/vite-plugin";
 import path from "node:path";
 
+// Where the dev server forwards `/api/*`, stripped of the prefix. Unset under
+// Traefik, where the SPA calls https://api.tvbf.localhost directly. Set by a dev
+// environment that exposes only this server's origin (a Coder workspace): the
+// browser calls `/api` on the page's own origin (VITE_API_BASE_URL=/api), so
+// there is no CORS and the backend's host-only session cookie lands on it.
+const apiProxyTarget = process.env.API_PROXY_TARGET;
+
 // Upload source maps + create a Sentry release only when an auth token is present
 // (set in the prod build environment). Local/dev builds have no token and skip upload.
 const sentryAuthToken = process.env.SENTRY_AUTH_TOKEN;
@@ -51,6 +58,15 @@ export default defineConfig({
       host: process.env.HMR_HOST ?? "app.tvbf.localhost",
     },
     allowedHosts: ["app.tvbf.localhost"],
+    proxy: apiProxyTarget
+      ? {
+          "/api": {
+            target: apiProxyTarget,
+            changeOrigin: true,
+            rewrite: (p) => p.replace(/^\/api/, ""),
+          },
+        }
+      : undefined,
     watch: {
       usePolling: true,
       interval: 500,
