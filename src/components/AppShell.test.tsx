@@ -1,9 +1,13 @@
-import { describe, expect, it } from "vitest";
-import { screen, within } from "@testing-library/react";
+import { afterEach, describe, expect, it } from "vitest";
+import { act, screen, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { http, HttpResponse } from "msw";
 import { server } from "@/test/msw/server";
 import { env } from "@/env";
 import { renderWithProviders } from "@/test/renderWithProviders";
+import { meHandler, VERIFIED_AT } from "@/test/msw/me";
+import { installFakePush, uninstallFakePush } from "@/test/push";
+import { clearPushNudge, offerPushNudge } from "@/lib/pushNudge";
 import { AppShell } from "./AppShell";
 
 // TMDB's attribution terms require this sentence verbatim. Do not reword it —
@@ -125,5 +129,29 @@ describe("AppShell primary nav", () => {
       .getAllByRole("link")
       .map((a) => a.getAttribute("href"));
     expect(hrefs).toEqual(["/", "/upcoming", "/discover", "/my-shows", "/friends"]);
+  });
+});
+
+describe("AppShell push nudge", () => {
+  afterEach(() => {
+    act(() => clearPushNudge());
+    uninstallFakePush();
+    localStorage.clear();
+  });
+
+  // The card belongs to the page the add happened on: leaving closes it.
+  it("draws the nudge over the page, and closes it on navigation", async () => {
+    server.use(meHandler(VERIFIED_AT));
+    installFakePush({ permission: "default" });
+    renderWithProviders(<AppShell />, { route: "/discover" });
+    const [watchNext] = await screen.findAllByRole("link", { name: "Watch Next" });
+
+    act(() => offerPushNudge("Severance"));
+    expect(
+      screen.getByRole("complementary", { name: "Get told when Severance airs" }),
+    ).toBeVisible();
+
+    await userEvent.click(watchNext);
+    expect(screen.queryByRole("complementary", { name: /get told/i })).not.toBeInTheDocument();
   });
 });

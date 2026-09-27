@@ -6,14 +6,11 @@ import { ApiError } from "@/api/client";
 import { downloadMyData } from "@/api/export";
 import { useUpdatePreferences } from "@/api/me";
 import {
-  isPushUnavailable,
   useMyPushSubscriptions,
   usePushDevice,
   useRemovePushSubscription,
   useSendTestPush,
-  useSubscribePush,
   useTurnOffPushEverywhere,
-  useVapidKey,
   type PushSubscriptionSummary,
 } from "@/api/push";
 import {
@@ -24,10 +21,13 @@ import {
 } from "@/api/sessions";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { FieldError } from "@/components/FieldError";
+import { AddToHomeScreenSteps } from "@/components/push/AddToHomeScreenSteps";
+import { InstallAppButton } from "@/components/push/InstallAppButton";
+import { TurnOnPushButton } from "@/components/push/TurnOnPushButton";
 import { useFieldErrors } from "@/hooks/useFieldErrors";
 import { deviceLabel } from "@/lib/deviceLabel";
 import { HANDLE_SHAPE_MESSAGE, isHandleShapeValid, normaliseHandle } from "@/lib/handle";
-import { PushPermissionError, type PushSupportState } from "@/lib/push";
+import type { PushSupportState } from "@/lib/push";
 import { formatRelativeTime } from "@/lib/relativeTime";
 
 /** Settings page shell. The Profile section carries the display name and the
@@ -702,7 +702,7 @@ function PrivacySection() {
 
 /** Push notifications (push-notifications project spec §6.3): this device's
  * state line and its one action, the per-kind toggles, and every device the
- * viewer has subscribed. The install button is a later ticket. */
+ * viewer has subscribed, plus Install app wherever the browser offers it. */
 function NotificationsSection() {
   const device = usePushDevice();
   const subscriptions = useMyPushSubscriptions();
@@ -720,6 +720,7 @@ function NotificationsSection() {
             Checking this device…
           </p>
         )}
+        <InstallAppButton />
       </div>
       <NotificationToggles devices={subscriptions.data?.length} />
       {subscriptions.data && subscriptions.data.length > 0 && (
@@ -820,7 +821,10 @@ function DeviceList({ subscriptions }: { subscriptions: PushSubscriptionSummary[
           {turnOff.isPending ? "Turning off…" : "Turn off everywhere"}
         </button>
       </div>
-      <ul aria-labelledby="devices-heading" className="rounded border border-border divide-y divide-border">
+      <ul
+        aria-labelledby="devices-heading"
+        className="rounded border border-border divide-y divide-border"
+      >
         {subscriptions.map((s) => (
           <DeviceRow key={s.id} subscription={s} />
         ))}
@@ -856,10 +860,7 @@ function DeviceRow({ subscription: s }: { subscription: PushSubscriptionSummary 
       <span className="flex-1 min-w-0 truncate font-medium text-foreground">{label}</span>
       <div className="text-xs text-muted-foreground sm:text-right">
         <p>Added {added}</p>
-        <p>
-          Last delivered{" "}
-          {s.last_success_at ? formatRelativeTime(s.last_success_at) : "never"}
-        </p>
+        <p>Last delivered {s.last_success_at ? formatRelativeTime(s.last_success_at) : "never"}</p>
       </div>
       <button
         type="button"
@@ -890,18 +891,7 @@ function NotificationsStateLine({
         </p>
       );
     case "ios_needs_install":
-      return (
-        <div className="space-y-2">
-          <p className="text-muted-foreground">
-            On iPhone and iPad, notifications work only once TV BingeFriend is on your Home Screen:
-          </p>
-          <ol className="list-decimal pl-5 text-muted-foreground">
-            <li>Tap the Share button in Safari.</li>
-            <li>Choose Add to Home Screen.</li>
-            <li>Open TV BingeFriend from your Home Screen and come back to Settings.</li>
-          </ol>
-        </div>
-      );
+      return <AddToHomeScreenSteps />;
     case "denied":
       return (
         <p className="text-muted-foreground">
@@ -911,47 +901,17 @@ function NotificationsStateLine({
       );
     case "prompt":
     case "granted":
-      return subscribed ? <SubscribedLine /> : <TurnOnButton />;
+      return subscribed ? (
+        <SubscribedLine />
+      ) : (
+        <div className="space-y-2">
+          <p className="text-muted-foreground">
+            Get told when an episode of a show you track airs, or when its next season is announced.
+          </p>
+          <TurnOnPushButton />
+        </div>
+      );
   }
-}
-
-function TurnOnButton() {
-  const key = useVapidKey();
-  const { subscribe, isPending } = useSubscribePush();
-
-  if (isPushUnavailable(key.error)) {
-    return (
-      <p className="text-muted-foreground">Notifications aren&apos;t available right now.</p>
-    );
-  }
-
-  // Not async: `subscribe` has to run in this handler's own tick so the
-  // permission prompt sees the click (see `subscribe` in lib/push.ts).
-  function onClick() {
-    if (!key.data) return;
-    subscribe(key.data).catch((e: unknown) => {
-      // A dismissed or refused prompt is not an error; the refetched state
-      // line already says what happened.
-      if (e instanceof PushPermissionError) return;
-      toast.error("Couldn't turn on notifications. Try again.");
-    });
-  }
-
-  return (
-    <div className="space-y-2">
-      <p className="text-muted-foreground">
-        Get told when an episode of a show you track airs, or when its next season is announced.
-      </p>
-      <button
-        type="button"
-        onClick={onClick}
-        disabled={!key.data || isPending}
-        className="rounded bg-foreground text-background px-3 py-1 disabled:opacity-50"
-      >
-        {isPending ? "Turning on…" : "Turn on notifications"}
-      </button>
-    </div>
-  );
 }
 
 function SubscribedLine() {

@@ -63,7 +63,7 @@ describe("a My Shows toggle refreshes both marked browse surfaces", () => {
       label: "adding a show",
       useFire: () => {
         const m = useAddShow();
-        return () => m.mutate(SHOW_ID);
+        return () => m.mutate({ showId: SHOW_ID, showName: "Show" });
       },
     },
     {
@@ -181,7 +181,10 @@ describe.each([
     from: false,
     to: true,
     method: http.put,
-    useMutation: () => useAddShow(),
+    useMutation: () => {
+      const m = useAddShow();
+      return { ...m, mutate: (showId: number) => m.mutate({ showId, showName: "Show" }) };
+    },
   },
   {
     direction: "remove",

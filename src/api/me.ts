@@ -2,6 +2,7 @@ import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tansta
 import { toast } from "sonner";
 import { apiFetch } from "./client";
 import type { ApiError } from "./client";
+import { offerPushNudge } from "@/lib/pushNudge";
 import { localToday } from "./today";
 import type {
   AuthedUser,
@@ -260,11 +261,18 @@ function placeholderMyShowEntry(showId: number): MyShowEntry {
   };
 }
 
+/** What an add names: the show, and its name for the post-add push nudge. */
+export interface AddShowVariables {
+  showId: number;
+  showName: string;
+}
+
 export function useAddShow() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (showId: number) => apiFetch<void>(`/me/shows/${showId}`, { method: "PUT" }),
-    onMutate: async (showId: number) => {
+    mutationFn: ({ showId }: AddShowVariables) =>
+      apiFetch<void>(`/me/shows/${showId}`, { method: "PUT" }),
+    onMutate: async ({ showId }: AddShowVariables) => {
       // Both keys are cancelled before either is patched, for the reason the
       // `["my-shows"]` cancel already existed: an in-flight search response
       // landing after the patch would write the pre-toggle body back and
@@ -284,12 +292,16 @@ export function useAddShow() {
       setBrowseMembership(qc, showId, true);
       return { snapshots };
     },
-    onError: (_err, _showId, ctx) => {
+    onError: (_err, _vars, ctx) => {
       // Snapshot-and-restore rather than an inverse flip: that is the shape
       // this mutation already used for `["my-shows"]`, and an inverse flip
       // would be a second expression of the same guess.
       ctx?.snapshots.forEach(([key, data]) => qc.setQueryData(key, data));
     },
+    // Every add surface gets the nudge from here rather than by threading a
+    // prop through it (push-notifications project spec §6.4). The store decides
+    // whether this browser should see it; nothing here asks for permission.
+    onSuccess: (_data, { showName }) => offerPushNudge(showName),
     onSettled: () => invalidateAll(qc),
   });
 }
