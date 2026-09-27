@@ -108,6 +108,7 @@ tvbf-frontend/src/
     EpisodeWatchCheckbox.tsx, SeasonWatchCheckbox.tsx, ShowWatchCheckbox.tsx
     ShowCard.tsx, ShowList.tsx, ShowGrid.tsx, MyShowCard.tsx, NextEpisodeCard.tsx
     UserIdentity.tsx   # the display-name-over-handle pairing, for every surface drawing a person as an entity (NEU-1169)
+    push/              # Turn on / Install app / Add to Home Screen controls shared by Settings and PushNudgeCard, the one-time post-add nudge AppShell draws (NEU-1492)
     home/              # tab list components + filter pickers + sort modules (myShowsSort.ts, watchNextSort.ts)
     ui/                # shadcn primitives
   hooks/
@@ -117,6 +118,8 @@ tvbf-frontend/src/
     handle.ts          # normaliseHandle + the handle shape regex — the only server rule the SPA mirrors (NEU-1169)
     userLabel.ts       # nameWithHandle: the same pairing where a surface builds prose or an accessible name
     push.ts            # supportState + the subscription lifecycle; subscribe() must run synchronously in a click handler (NEU-1487)
+    pushNudge.ts       # the post-add nudge store: useAddShow's onSuccess offers, AppShell draws; localStorage["push-nudge-dismissed"] makes it once per browser (NEU-1492)
+    installPrompt.ts   # captures Chromium's beforeinstallprompt at module load; canInstall / promptInstall (NEU-1492)
     serviceWorker.ts   # registers the hand-written public/sw.js (push only, no caches); the API base rides on its URL (NEU-1483)
   pages/               # WatchNextPage, UpcomingPage, MyShowsPage, SearchPage, ShowDetailPage, EpisodesPage, EpisodePage, LoginPage, SignupPage, NotFoundPage
   test/                # MSW handlers + setup

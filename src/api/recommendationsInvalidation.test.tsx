@@ -81,7 +81,7 @@ describe("mutations refresh the recommendations key", () => {
       label: "adding a show",
       useFire: () => {
         const m = useAddShow();
-        return () => m.mutate(1);
+        return () => m.mutate({ showId: 1, showName: "Show" });
       },
     },
     {

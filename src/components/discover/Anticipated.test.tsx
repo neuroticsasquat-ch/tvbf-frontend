@@ -132,7 +132,7 @@ describe("Anticipated", () => {
 
     function AddButton() {
       const add = useAddShow();
-      return <button onClick={() => add.mutate(1)}>add</button>;
+      return <button onClick={() => add.mutate({ showId: 1, showName: "Show" })}>add</button>;
     }
     renderWithProviders(
       <>

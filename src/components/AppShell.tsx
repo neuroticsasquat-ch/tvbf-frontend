@@ -18,6 +18,8 @@ import { FeedbackDialog } from "./feedback/FeedbackDialog";
 import { SearchOverlay } from "./SearchOverlay";
 import { SasquatchMark } from "./SasquatchMark";
 import { UnverifiedEmailBanner } from "./UnverifiedEmailBanner";
+import { PushNudgeCard } from "./push/PushNudgeCard";
+import { clearPushNudge } from "@/lib/pushNudge";
 import { cn } from "@/lib/cn";
 
 type Placement = "desktop" | "mobile-header" | "mobile-bottom";
@@ -39,6 +41,10 @@ export function AppShell() {
     setPrevLocationKey(location.key);
     setSearchInput("");
   }
+
+  // The nudge belongs to the page the add happened on; leaving it closes the
+  // card without counting as a dismissal.
+  useEffect(() => clearPushNudge(), [location.key]);
 
   const overlayActive = !!user && searchInput.trim().length > 0;
 
@@ -402,6 +408,8 @@ export function AppShell() {
           {primaryLinks("mobile-bottom")}
         </nav>
       )}
+
+      {user && <PushNudgeCard />}
 
       <ChangePasswordDialog open={pwOpen} onClose={() => setPwOpen(false)} />
       <DeleteAccountDialog open={delOpen} onClose={() => setDelOpen(false)} />

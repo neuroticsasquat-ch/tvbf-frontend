@@ -6,6 +6,7 @@ import { env } from "@/env";
 import { server } from "@/test/msw/server";
 import { meHandler } from "@/test/msw/me";
 import { installFakePush, pretendIos, uninstallFakePush } from "@/test/push";
+import { offerInstall, withdrawInstall } from "@/test/installPrompt";
 import { renderWithProviders } from "@/test/renderWithProviders";
 import { SettingsPage } from "./SettingsPage";
 
@@ -199,7 +200,9 @@ describe("Send test notification", () => {
     const section = await renderSection();
     await userEvent.click(await section.findByRole("button", { name: "Send test notification" }));
 
-    expect(await section.findByRole("button", { name: "Turn on notifications" })).toBeInTheDocument();
+    expect(
+      await section.findByRole("button", { name: "Turn on notifications" }),
+    ).toBeInTheDocument();
     expect(fake.localUnsubscribe).toHaveBeenCalledTimes(1);
     expect(fake.current()).toBeNull();
     expect(toastError).toHaveBeenCalled();
@@ -269,7 +272,9 @@ const KINDS = [
 describe("Notification toggles", () => {
   it("are disabled with a hint when no device is subscribed", async () => {
     const section = await renderSection();
-    expect(await section.findByText("Turn on notifications on a device first.")).toBeInTheDocument();
+    expect(
+      await section.findByText("Turn on notifications on a device first."),
+    ).toBeInTheDocument();
     for (const name of KINDS) {
       expect(section.getByRole("switch", { name })).toBeDisabled();
     }
@@ -382,9 +387,7 @@ describe("Device list", () => {
     server.use(...d.handlers, registers("sub-1"));
     const section = await renderSection();
 
-    await userEvent.click(
-      await section.findByRole("button", { name: /^Remove Windows · Chrome/ }),
-    );
+    await userEvent.click(await section.findByRole("button", { name: /^Remove Windows · Chrome/ }));
 
     await waitFor(() => expect(section.queryByText("Windows · Chrome")).not.toBeInTheDocument());
     expect(d.state.deleted).toEqual(["sub-2"]);
@@ -403,7 +406,9 @@ describe("Device list", () => {
 
     await userEvent.click(await section.findByRole("button", { name: /^Remove iPhone · Safari/ }));
 
-    expect(await section.findByRole("button", { name: "Turn on notifications" })).toBeInTheDocument();
+    expect(
+      await section.findByRole("button", { name: "Turn on notifications" }),
+    ).toBeInTheDocument();
     expect(d.state.deleted).toEqual(["sub-1"]);
     expect(fake.localUnsubscribe).toHaveBeenCalledTimes(1);
     expect(fake.current()).toBeNull();
@@ -420,9 +425,7 @@ describe("Device list", () => {
       ...devices([{ id: "sub-2", user_agent: WINDOWS_CHROME }]).handlers,
     );
     const section = await renderSection();
-    await userEvent.click(
-      await section.findByRole("button", { name: /^Remove Windows · Chrome/ }),
-    );
+    await userEvent.click(await section.findByRole("button", { name: /^Remove Windows · Chrome/ }));
     await waitFor(() =>
       expect(toastError).toHaveBeenCalledWith("Couldn't remove that device. Try again."),
     );
@@ -443,10 +446,14 @@ describe("Device list", () => {
     expect(d.state.deletedAll).toBe(0);
     await userEvent.click(within(dialog).getByRole("button", { name: "Turn off" }));
 
-    await waitFor(() => expect(section.queryByRole("list", { name: "Devices" })).not.toBeInTheDocument());
+    await waitFor(() =>
+      expect(section.queryByRole("list", { name: "Devices" })).not.toBeInTheDocument(),
+    );
     expect(d.state.deletedAll).toBe(1);
     expect(fake.localUnsubscribe).toHaveBeenCalledTimes(1);
-    expect(await section.findByRole("button", { name: "Turn on notifications" })).toBeInTheDocument();
+    expect(
+      await section.findByRole("button", { name: "Turn on notifications" }),
+    ).toBeInTheDocument();
     expect(section.getByText("Turn on notifications on a device first.")).toBeInTheDocument();
     expect(toastSuccess).toHaveBeenCalledWith("Notifications turned off on every device.");
   });
@@ -463,5 +470,30 @@ describe("Device list", () => {
     await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
     expect(d.state.deletedAll).toBe(0);
     expect(section.getByText("Windows · Chrome")).toBeInTheDocument();
+  });
+});
+
+describe("Settings → Notifications Install app button", () => {
+  afterEach(() => withdrawInstall());
+
+  it("is hidden when the browser has not offered an install", async () => {
+    installFakePush({ permission: "default" });
+    server.use(vapidKey());
+    const section = await renderSection();
+    await section.findByRole("button", { name: "Turn on notifications" });
+    expect(section.queryByRole("button", { name: "Install app" })).not.toBeInTheDocument();
+  });
+
+  it("appears once beforeinstallprompt is captured, and prompts from its click", async () => {
+    const section = await renderSection();
+    await section.findByText(/can't receive notifications/i);
+    const { prompt } = offerInstall();
+    const install = section.getByRole("button", { name: "Install app" });
+    expect(prompt).not.toHaveBeenCalled();
+    await userEvent.click(install);
+    expect(prompt).toHaveBeenCalledTimes(1);
+    await waitFor(() =>
+      expect(section.queryByRole("button", { name: "Install app" })).not.toBeInTheDocument(),
+    );
   });
 });

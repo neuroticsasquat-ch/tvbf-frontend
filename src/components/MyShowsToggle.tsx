@@ -2,7 +2,7 @@ import { Library } from "lucide-react";
 import { useAuth } from "./AuthContext";
 import { useAddShow, useMyShows, useRemoveShow } from "@/api/me";
 
-export function MyShowsToggle({ showId }: { showId: number }) {
+export function MyShowsToggle({ showId, showName }: { showId: number; showName: string }) {
   const { user } = useAuth();
   const { data, isPending } = useMyShows();
   const add = useAddShow();
@@ -28,7 +28,7 @@ export function MyShowsToggle({ showId }: { showId: number }) {
 
   function onClick() {
     if (tracked) remove.mutate(showId);
-    else add.mutate(showId);
+    else add.mutate({ showId, showName });
   }
 
   return (
