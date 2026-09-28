@@ -108,6 +108,7 @@ tvbf-frontend/src/
                        # SearchOverlay computes "a search is running" and reports it via `onBusyChange`; AppShell's HeaderSearch draws it (NEU-1502)
     EpisodeWatchCheckbox.tsx, SeasonWatchCheckbox.tsx, ShowWatchCheckbox.tsx
     ShowCard.tsx, ShowList.tsx, ShowGrid.tsx, MyShowCard.tsx, NextEpisodeCard.tsx
+    BrandLockup.tsx    # the mark + wordmark, header and hero sizes; the only place either is drawn (NEU-1509)
     UserIdentity.tsx   # the display-name-over-handle pairing, for every surface drawing a person as an entity (NEU-1169)
     push/              # Turn on / Install app / Add to Home Screen controls shared by Settings and PushNudgeCard, the one-time post-add nudge AppShell draws (NEU-1492)
     home/              # tab list components + filter pickers + sort modules (myShowsSort.ts, watchNextSort.ts)

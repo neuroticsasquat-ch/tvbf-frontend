@@ -80,6 +80,16 @@ describe("AppShell footer publisher line", () => {
   });
 });
 
+describe("AppShell header brand (NEU-1509)", () => {
+  it("draws the lockup inside the home link, in place of lucide's Tv", () => {
+    renderWithProviders(<AppShell />);
+    const home = screen.getByRole("link", { name: "TV BingeFriend home" });
+    expect(home).toHaveAttribute("href", "/");
+    expect(home.querySelector("[data-brand-lockup]")).not.toBeNull();
+    expect(home.querySelector(".lucide")).toBeNull();
+  });
+});
+
 describe("AppShell primary nav", () => {
   // Both the desktop header nav and the mobile bottom bar render the same
   // primaryLinks() and carry aria-label="Primary", so there are always two.

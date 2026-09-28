@@ -26,6 +26,19 @@ function renderAt(path: string) {
 }
 
 describe("LoginPage", () => {
+  it("draws the brand lockup in the hero (NEU-1509)", () => {
+    server.use(
+      http.get(`${env.apiBaseUrl}/me`, () =>
+        HttpResponse.json({ detail: "auth_required" }, { status: 401 }),
+      ),
+    );
+    renderAt("/login");
+    // The hero is the column holding the pitch; the lockup heads it.
+    const hero = screen.getByText(/track your tv shows/i).parentElement;
+    expect(hero?.querySelector(":scope > [data-brand-lockup]")).not.toBeNull();
+    expect(document.querySelector(".lucide-tv")).toBeNull();
+  });
+
   it("shows a page-level error state for the IP throttle's 429", async () => {
     server.use(
       http.get(`${env.apiBaseUrl}/me`, () =>
