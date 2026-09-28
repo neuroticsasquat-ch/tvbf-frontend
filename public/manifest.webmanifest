@@ -1,6 +1,6 @@
 {
   "name": "TV BingeFriend",
-  "short_name": "BingeFriend",
+  "short_name": "TVBF",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#0f1729",

@@ -27,3 +27,7 @@ _Avoid_: logo, banner, header brand
 **Brand amber**:
 The one accent colour the brand owns, used by the mark and by the wordmark's "TV" and nowhere else.
 _Avoid_: primary, accent, orange, gold
+
+**Short name**:
+"TVBF" — the app's name where "TV BingeFriend" will not fit, chiefly the home-screen label (the manifest's `short_name` and iOS's `apple-mobile-web-app-title`). The product has two names, the full one and this; there is no third.
+_Avoid_: BingeFriend
