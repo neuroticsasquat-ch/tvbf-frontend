@@ -232,7 +232,7 @@ export function AppShell() {
         <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-3 px-4 py-3">
           <Link
             to="/"
-            className="inline-flex shrink-0 items-center hover:underline"
+            className="inline-flex shrink-0 items-center"
             aria-label="TV BingeFriend home"
           >
             <BrandLockup size="header" />

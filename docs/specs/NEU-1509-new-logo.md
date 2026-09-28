@@ -170,10 +170,11 @@ Gap between mark and wordmark is `gap-2` in both. `size` is a variant on the
 `ShowPoster` / `UserIdentity` precedent: a surface that wants a third size
 adds it here, not a `className`.
 
-**The header link** keeps `aria-label="TV BingeFriend home"`, `to="/"`,
-`shrink-0` and `hover:underline`; it drops `text-lg font-semibold` (the
-lockup owns its type) and the `TvIcon` import goes with it. The `hover:underline`
-underlines the wordmark only — acceptable, it did the same to the text before.
+**The header link** keeps `aria-label="TV BingeFriend home"`, `to="/"` and
+`shrink-0`; it drops `text-lg font-semibold` (the lockup owns its type) and the
+`TvIcon` import goes with it. It also drops `hover:underline`: underlining the
+wordmark on hover defaces the brand, and a logo linking home is a convention
+that needs no hover cue.
 
 **The login hero** replaces its `div` + `Tv` + text with
 `<BrandLockup size="hero" />` and drops the `Tv` import if nothing else uses
