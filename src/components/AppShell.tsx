@@ -8,7 +8,6 @@ import {
   Loader2 as SpinnerIcon,
   Users as FriendsIcon,
   Search as SearchIcon,
-  Tv as TvIcon,
 } from "lucide-react";
 import { useAuth } from "./AuthContext";
 import { useIncomingRequestCount } from "@/api/incomingRequests";
@@ -18,6 +17,7 @@ import { DeleteAccountDialog } from "./DeleteAccountDialog";
 import { FeedbackDialog } from "./feedback/FeedbackDialog";
 import { SearchOverlay } from "./SearchOverlay";
 import { SasquatchMark } from "./SasquatchMark";
+import { BrandLockup } from "./BrandLockup";
 import { UnverifiedEmailBanner } from "./UnverifiedEmailBanner";
 import { PushNudgeCard } from "./push/PushNudgeCard";
 import { clearPushNudge } from "@/lib/pushNudge";
@@ -232,11 +232,10 @@ export function AppShell() {
         <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-3 px-4 py-3">
           <Link
             to="/"
-            className="inline-flex shrink-0 items-center gap-2 text-lg font-semibold hover:underline"
+            className="inline-flex shrink-0 items-center"
             aria-label="TV BingeFriend home"
           >
-            <TvIcon className="h-5 w-5" aria-hidden />
-            TV BingeFriend
+            <BrandLockup size="header" />
           </Link>
           {user && (
             <>

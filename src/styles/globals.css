@@ -1,4 +1,8 @@
 @import "tailwindcss";
+/* The wordmark's face, self-hosted so no visitor's IP reaches Google Fonts
+ * (NEU-1509 §3.1). Split by unicode-range: "TV BingeFriend" fetches the Latin
+ * file only. */
+@import "@fontsource-variable/manrope";
 @plugin "tailwindcss-animate";
 
 /* `dark:` always matches, because the app is always dark.
@@ -52,6 +56,15 @@
   /* Declared once, in the light block that no longer exists. Keeping it here is
      the one thing the collapse could have silently dropped. */
   --radius: 0.5rem;
+}
+
+/* The brand's own tokens (NEU-1509 §3.2), used by `BrandLockup` and nothing
+ * else. Deliberately not shadcn semantic roles: `--color-brand` is the icon
+ * tile's amber, not `primary` or `accent`, and `--font-brand` is the wordmark's
+ * face, not the body's or the headings'. */
+@theme {
+  --font-brand: "Manrope Variable", system-ui, sans-serif;
+  --color-brand: #f5a524;
 }
 
 :root {

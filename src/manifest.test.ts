@@ -70,6 +70,13 @@ describe("index.html", () => {
     expect(attr('link[rel="apple-touch-icon"]', "href")).toBe("/apple-touch-icon.png");
   });
 
+  // The standard pair (NEU-1509 §3.4): browsers that take SVG icons prefer the
+  // tile's SVG, the rest fall back to the .ico rather than to nothing.
+  it("links the .ico favicon at 32px and keeps the SVG favicon", () => {
+    expect(attr('link[rel="icon"][href="/favicon.ico"]', "sizes")).toBe("32x32");
+    expect(attr('link[rel="icon"][href="/favicon.svg"]', "type")).toBe("image/svg+xml");
+  });
+
   it("declares the iOS standalone metas and keeps theme-color", () => {
     expect(attr('meta[name="apple-mobile-web-app-capable"]', "content")).toBe("yes");
     expect(attr('meta[name="apple-mobile-web-app-status-bar-style"]', "content")).toBe(
