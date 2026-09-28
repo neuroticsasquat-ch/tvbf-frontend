@@ -35,7 +35,7 @@ describe("web manifest", () => {
   it("carries the spec's identity and colours", () => {
     expect(manifest).toMatchObject({
       name: "TV BingeFriend",
-      short_name: "BingeFriend",
+      short_name: "TVBF",
       start_url: "/",
       display: "standalone",
       background_color: "#0f1729",
@@ -82,7 +82,7 @@ describe("index.html", () => {
     expect(attr('meta[name="apple-mobile-web-app-status-bar-style"]', "content")).toBe(
       "black-translucent",
     );
-    expect(attr('meta[name="apple-mobile-web-app-title"]', "content")).toBe("BingeFriend");
+    expect(attr('meta[name="apple-mobile-web-app-title"]', "content")).toBe("TVBF");
     expect(attr('meta[name="theme-color"]', "content")).toBe("#0f1729");
   });
 });
