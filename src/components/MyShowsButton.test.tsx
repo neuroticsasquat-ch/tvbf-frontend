@@ -7,6 +7,7 @@ import { useState } from "react";
 import { env } from "@/env";
 import { server } from "@/test/msw/server";
 import { meHandler } from "@/test/msw/me";
+import { useRecommendations } from "@/api/me";
 import { renderWithProviders } from "@/test/renderWithProviders";
 import { MyShowsButton } from "./MyShowsButton";
 
@@ -41,7 +42,8 @@ describe("MyShowsButton", () => {
     await waitFor(() => expect(put).toBe(1));
   });
 
-  it("removes the show and flips optimistically", async () => {
+  it("asks first, and sends nothing until the removal is confirmed", async () => {
+    // NEU-1511 AC 2: every removal from My Shows asks first.
     let deleted = 0;
     server.use(
       http.delete(`${env.apiBaseUrl}/me/shows/7`, () => {
@@ -53,8 +55,106 @@ describe("MyShowsButton", () => {
 
     await userEvent.click(screen.getByRole("button", { name: "Remove The Bear from My Shows" }));
 
+    const dialog = screen.getByRole("dialog", { name: "Remove from My Shows" });
+    expect(dialog).toHaveTextContent("The Bear");
+    // Nothing flips while the viewer is still deciding.
+    expect(
+      screen.getByRole("button", { name: "Remove The Bear from My Shows", hidden: true }),
+    ).toBeInTheDocument();
+    expect(deleted).toBe(0);
+  });
+
+  it("leaves the show tracked and sends nothing when the removal is cancelled", async () => {
+    let deleted = 0;
+    server.use(
+      http.delete(`${env.apiBaseUrl}/me/shows/7`, () => {
+        deleted += 1;
+        return new HttpResponse(null, { status: 204 });
+      }),
+    );
+    renderWithProviders(<MyShowsButton showId={7} showName="The Bear" inMyShows />);
+
+    await userEvent.click(screen.getByRole("button", { name: "Remove The Bear from My Shows" }));
+    await userEvent.click(screen.getByRole("button", { name: "Cancel" }));
+
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Remove The Bear from My Shows" }),
+    ).toBeInTheDocument();
+    expect(deleted).toBe(0);
+  });
+
+  it("removes the show and flips optimistically once confirmed", async () => {
+    let deleted = 0;
+    server.use(
+      http.delete(`${env.apiBaseUrl}/me/shows/7`, () => {
+        deleted += 1;
+        return new HttpResponse(null, { status: 204 });
+      }),
+    );
+    renderWithProviders(<MyShowsButton showId={7} showName="The Bear" inMyShows />);
+
+    await userEvent.click(screen.getByRole("button", { name: "Remove The Bear from My Shows" }));
+    await userEvent.click(screen.getByRole("button", { name: "Remove" }));
+
     expect(screen.getByRole("button", { name: "Add The Bear to My Shows" })).toBeInTheDocument();
     await waitFor(() => expect(deleted).toBe(1));
+  });
+
+  it("hands focus back to the button once a confirmed removal flips it to add", async () => {
+    // The button must keep its DOM node across the flip: that is what lets
+    // `ConfirmDialog` hand focus back to it as it closes, rather than to
+    // `<body>`.
+    server.use(
+      http.delete(`${env.apiBaseUrl}/me/shows/7`, () => new HttpResponse(null, { status: 204 })),
+    );
+    renderWithProviders(<MyShowsButton showId={7} showName="The Bear" inMyShows />);
+
+    await userEvent.click(screen.getByRole("button", { name: "Remove The Bear from My Shows" }));
+    await userEvent.click(screen.getByRole("button", { name: "Remove" }));
+
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: "Add The Bear to My Shows" })).toHaveFocus(),
+    );
+  });
+
+  it("never asks before adding", async () => {
+    // NEU-1511 AC 3: a stray add costs one un-toggle and loses nothing.
+    server.use(
+      http.put(`${env.apiBaseUrl}/me/shows/7`, () => new HttpResponse(null, { status: 204 })),
+    );
+    renderWithProviders(<MyShowsButton showId={7} showName="The Bear" inMyShows={false} />);
+
+    await userEvent.click(screen.getByRole("button", { name: "Add The Bear to My Shows" }));
+
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
+
+  it("invalidates the recommendations grid when a confirmed removal lands", async () => {
+    // NEU-1187 AC 5, re-homed from `LibraryActiveList` (which no longer
+    // removes). `GET /me/recommendations` suppresses a suggestion the viewer
+    // has a record for as a live join (NEU-1175), so a removal changes that
+    // body — and the rule lives in `api/me.ts`, not in any component.
+    let recommendationFetches = 0;
+    server.use(
+      http.delete(`${env.apiBaseUrl}/me/shows/7`, () => new HttpResponse(null, { status: 204 })),
+      http.get(`${env.apiBaseUrl}/me/recommendations`, () => {
+        recommendationFetches += 1;
+        return HttpResponse.json({ recommendations: [] });
+      }),
+    );
+
+    function Harness() {
+      useRecommendations();
+      return <MyShowsButton showId={7} showName="The Bear" inMyShows />;
+    }
+    renderWithProviders(<Harness />);
+    await waitFor(() => expect(recommendationFetches).toBe(1));
+
+    await userEvent.click(screen.getByRole("button", { name: "Remove The Bear from My Shows" }));
+    await userEvent.click(screen.getByRole("button", { name: "Remove" }));
+
+    await waitFor(() => expect(recommendationFetches).toBe(2));
   });
 
   it("reverts the optimistic flip when the add fails", async () => {
@@ -83,6 +183,7 @@ describe("MyShowsButton", () => {
     renderWithProviders(<MyShowsButton showId={7} showName="The Bear" inMyShows />);
 
     await userEvent.click(screen.getByRole("button", { name: "Remove The Bear from My Shows" }));
+    await userEvent.click(screen.getByRole("button", { name: "Remove" }));
 
     await waitFor(() =>
       expect(
@@ -112,6 +213,7 @@ describe("MyShowsButton", () => {
 
     // Override to "not tracked" while upstream still says tracked.
     await userEvent.click(screen.getByRole("button", { name: "Remove The Bear from My Shows" }));
+    await userEvent.click(screen.getByRole("button", { name: "Remove" }));
     expect(screen.getByRole("button", { name: "Add The Bear to My Shows" })).toBeInTheDocument();
 
     // Upstream catches up, then moves back on its own. The override must not
@@ -123,82 +225,13 @@ describe("MyShowsButton", () => {
       screen.getByRole("button", { name: "Remove The Bear from My Shows" }),
     ).toBeInTheDocument();
   });
+
   it("names the show on the labelled variant, where twelve identical labels otherwise sit on one grid", () => {
     // NEU-1187 §D3. The visible text stays "My Shows"; the accessible name is
     // what carries the show.
     renderWithProviders(<MyShowsButton showId={1} showName="Severance" inMyShows={false} />);
     const button = screen.getByRole("button", { name: "Add Severance to My Shows" });
     expect(button).toHaveTextContent("My Shows");
-  });
-
-  it("draws the compact variant icon-only, with the show's name as its accessible name", () => {
-    renderWithProviders(
-      <MyShowsButton showId={1} showName="Severance" inMyShows variant="compact" />,
-    );
-    const chip = screen.getByRole("button", { name: "Remove Severance from My Shows" });
-    // Icon-only: no visible label to read, which is what makes the accessible
-    // name load-bearing rather than nice.
-    expect(chip).toHaveTextContent("");
-    expect(chip).toHaveAttribute("data-remove-from-my-shows");
-    // `BookMinus`, never the emerald ✓ — that means *watched* everywhere else.
-    expect(chip.querySelector(".lucide-book-minus")).not.toBeNull();
-  });
-
-  it("renders the compact variant's add state too, rather than hard-coding remove", () => {
-    // Its one surface can only ever reach the remove state; hard-coding it
-    // would put a second decision inside a component that takes the answer.
-    renderWithProviders(
-      <MyShowsButton showId={1} showName="Severance" inMyShows={false} variant="compact" />,
-    );
-    expect(screen.getByRole("button", { name: "Add Severance to My Shows" })).toBeInTheDocument();
-  });
-
-  it("reports a landed removal to its surface, so focus can move after the card unmounts", async () => {
-    server.use(
-      http.delete(`${env.apiBaseUrl}/me/shows/7`, () => new HttpResponse(null, { status: 204 })),
-    );
-    const removed: number[] = [];
-    renderWithProviders(
-      <MyShowsButton
-        showId={7}
-        showName="The Bear"
-        inMyShows
-        variant="compact"
-        onRemoved={(id) => removed.push(id)}
-      />,
-    );
-
-    await userEvent.click(screen.getByRole("button", { name: "Remove The Bear from My Shows" }));
-
-    await waitFor(() => expect(removed).toEqual([7]));
-  });
-
-  it("does not report a removal that failed", async () => {
-    // Nothing left the list, so nothing freed a slot and nobody's focus moves.
-    server.use(
-      http.delete(`${env.apiBaseUrl}/me/shows/7`, () =>
-        HttpResponse.json({ detail: "boom" }, { status: 500 }),
-      ),
-    );
-    const removed: number[] = [];
-    renderWithProviders(
-      <MyShowsButton
-        showId={7}
-        showName="The Bear"
-        inMyShows
-        variant="compact"
-        onRemoved={(id) => removed.push(id)}
-      />,
-    );
-
-    await userEvent.click(screen.getByRole("button", { name: "Remove The Bear from My Shows" }));
-
-    await waitFor(() =>
-      expect(
-        screen.getByRole("button", { name: "Remove The Bear from My Shows" }),
-      ).toBeInTheDocument(),
-    );
-    expect(removed).toEqual([]);
   });
 
   it("adds a show for an unverified viewer — verification gates social, not tracking", async () => {

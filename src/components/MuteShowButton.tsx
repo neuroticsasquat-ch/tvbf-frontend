@@ -27,7 +27,7 @@ import { Button } from "@/components/ui/button";
  * Only a surface drawn from the **viewer's own** library may render it: a
  * friend's entry carries the friend's flags, and this would PATCH the viewer's
  * row for a show the viewer may not track (a 404). The callers enforce that the
- * way they enforce `removable`, on `ratingOwner.kind === "own"`.
+ * way they enforce `historyRemovable`, on `ratingOwner.kind === "own"`.
  */
 export function MuteShowButton({
   showId,

@@ -15,7 +15,7 @@ import { Button } from "@/components/ui/button";
  *
  * **Two variants, and the position is what says what is possible** (NEU-1187
  * §3.1). `labelled` is the row's action-row chip, unchanged from where it has
- * always been; `compact` is icon-only and reuses `MyShowsButton`'s compact
+ * always been; `compact` is icon-only and reuses `DismissRecommendationButton`'s
  * shell, in the poster's bottom-right corner. That corner is the remove-only
  * position, which this act always is — there is no "add watch history" — and it
  * is the placement NEU-1188 declined to invent, handing the card drawing here
@@ -69,10 +69,9 @@ export function RemoveWatchHistoryButton({
   const label = `Remove ${showName} watch history`;
 
   // The handle `useFocusAfterRemoval` queries for, deliberately explicit for
-  // the reason `data-dismiss-recommendation` and `data-remove-from-my-shows`
-  // are: the surface reaches into the rendered card by attribute rather than
-  // through three levels of ref forwarding (NEU-1193, and not in its scope to
-  // revisit).
+  // the reason `data-dismiss-recommendation` is: the surface reaches into the
+  // rendered card by attribute rather than through three levels of ref
+  // forwarding (NEU-1193, and not in its scope to revisit).
   const handle = { "data-remove-watch-history": "" };
 
   const dialog = confirming && (

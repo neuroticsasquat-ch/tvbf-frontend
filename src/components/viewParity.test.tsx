@@ -79,9 +79,8 @@ const PARITY_PROBES: { key: string; present: (scope: HTMLElement) => boolean }[]
   },
   {
     key: "add/remove control",
-    // Both variants, and neither the sort trigger nor the view toggle: the
-    // labelled chip and the compact one share this accessible-name shape and
-    // nothing else on the surface does.
+    // Neither the sort trigger nor the view toggle: the labelled chip carries
+    // this accessible-name shape and nothing else on a surface does.
     present: (s) =>
       s.querySelector('button[aria-label$="to My Shows"], button[aria-label$="from My Shows"]') !==
       null,
@@ -231,8 +230,8 @@ describe("grid and list carry the same facts and controls (NEU-1188 AC 5)", () =
 
   it("My Shows · Active, the viewer's own", () => {
     // No mark by design (NEU-1187 §2.2: every row here is tracked, so the badge
-    // could only ever be true), and the control is the compact chip in both
-    // views. `last watched` is the item this surface was dropping from the card.
+    // could only ever be true), and no add/remove control in either view
+    // (below). `last watched` is the item this surface was dropping from the card.
     expectViewParity(
       () => <LibraryActiveList data={[makeMyShow()]} isLoading={false} />,
       "my-shows",
@@ -240,7 +239,10 @@ describe("grid and list carry the same facts and controls (NEU-1188 AC 5)", () =
         "viewer's own rating",
         "owner progress",
         "last watched",
-        "add/remove control",
+        // No "add/remove control" in either view (NEU-1511 D1): every row here
+        // is tracked, so a control could only remove, and the remove-only chip
+        // over the poster is what got tapped by mistake. Removal is the show
+        // page's, and asks first.
         // NEU-1495: the push mute, in the action row of both views.
         "mute control",
       ],

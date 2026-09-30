@@ -50,8 +50,8 @@ type Failure = "rate_limited" | "generic";
  * already knows.
  *
  * **Both variants' accessible name carries the person's name**, for the reason
- * NEU-1187 requires it of `MyShowsButton`: the compact chip has no visible text
- * at all, and twenty rows render twenty identical controls. `Flag` is the
+ * `MyShowsButton` carries the show's (NEU-1187): this compact chip has no
+ * visible text at all, and twenty rows render twenty identical controls. `Flag` is the
  * glyph, and it is shared with no other control in the app. */
 export function ReportUserButton({
   userId,

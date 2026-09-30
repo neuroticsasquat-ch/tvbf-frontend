@@ -81,10 +81,9 @@ describe("ShowList", () => {
     );
     const add = screen.getByRole("button", { name: "Add Kastanjemanden to My Shows" });
     expect(add).toBeInTheDocument();
-    // The **labelled** variant, asserted on its visible text: the compact chip
-    // is icon-only and shares this accessible-name shape, so the name alone
-    // would pass for the variant NEU-1187 §3.1 reserves for surfaces where
-    // adding is impossible — which search is not.
+    // The **labelled** chip, asserted on its visible text: an icon-only
+    // control could share this accessible-name shape, and a My Shows control
+    // is never a poster overlay (NEU-1511).
     expect(add).toHaveTextContent("My Shows");
 
     rerender(<ShowList shows={[{ ...makeShow(), in_my_shows: true }]} addable />);

@@ -108,28 +108,6 @@ describe("MyShowCard", () => {
     expect(container.querySelector("[data-show-poster]")).not.toBeNull();
   });
 
-  it("draws the compact remove chip when the surface opts in", () => {
-    // NEU-1187 §3.3 — through the poster, which is what assigns the corner.
-    const { container } = renderWithProviders(
-      <MyShowCard entry={makeEntry(null)} ratingOwner={YOU} inMyShows={false} removable />,
-    );
-    const poster = container.querySelector("[data-show-poster]");
-    expect(poster?.querySelector("[data-remove-from-my-shows]")).not.toBeNull();
-    expect(
-      screen.getByRole("button", { name: "Remove Test Show from My Shows" }),
-    ).toBeInTheDocument();
-  });
-
-  it("renders no remove chip on a friend's card, even when the surface asks", () => {
-    // The card is shared with a friend's library, where the entry is in *their*
-    // My Shows: a chip there would offer to remove a show the viewer may never
-    // have had, and would DELETE one they do.
-    const { container } = renderWithProviders(
-      <MyShowCard entry={makeEntry(null)} ratingOwner={JEANNE} inMyShows={false} removable />,
-    );
-    expect(container.querySelector("[data-remove-from-my-shows]")).toBeNull();
-  });
-
   it("draws the compact mute toggle in the action row when the surface opts in", () => {
     // NEU-1495: the action row, never the poster — a poster corner holds a
     // control that can only remove (NEU-1187 §3.1), and a mute flips both ways.
@@ -217,15 +195,6 @@ describe("MyShowCard", () => {
     expect(screen.getByText(/Last Watched:/i)).toBeInTheDocument();
   });
 
-  it("renders no remove chip by default", () => {
-    // The containment-seam assertion, per `ShowCard.test.tsx`'s pattern: an
-    // affordance belonging to one surface is absent everywhere else.
-    const { container } = renderWithProviders(
-      <MyShowCard entry={makeEntry(null)} ratingOwner={YOU} inMyShows={false} />,
-    );
-    expect(container.querySelector("[data-remove-from-my-shows]")).toBeNull();
-  });
-
   it("draws the compact watch-history removal when the surface opts in", () => {
     // NEU-1193 — the same seam one control over, and through the poster, which
     // is what assigns the corner.
@@ -240,8 +209,7 @@ describe("MyShowCard", () => {
   });
 
   it("renders no watch-history removal on a friend's card, even when asked", () => {
-    // A friend's watch history is not the viewer's to delete — the same guard
-    // `removable` carries, and for a strictly worse failure if it were missing.
+    // A friend's watch history is not the viewer's to delete.
     const { container } = renderWithProviders(
       <MyShowCard
         entry={makeEntry(null)}

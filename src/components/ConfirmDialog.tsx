@@ -1,3 +1,5 @@
+import { useState } from "react";
+
 import {
   Dialog,
   DialogContent,
@@ -31,7 +33,14 @@ import { Button } from "@/components/ui/button";
  * Rendering is conditional at every call site (`{pending && <ConfirmDialog …>}`),
  * which is what the previous overlay required; `open` is therefore hard-coded
  * true and dismissal is reported through `onClose` alone — the same one-way
- * signal the callers already pass. */
+ * signal the callers already pass.
+ *
+ * **It hands focus back to whatever opened it** (NEU-1511). Radix returns focus
+ * on close only to a `DialogTrigger`, and there is none here — the caller's
+ * button opens this by setting state — so without this focus fell to `<body>`
+ * on every Cancel, Escape and Confirm. The opener is read on first render,
+ * before Radix moves focus into the dialog. A caller whose opener unmounts on
+ * confirm (a Watched row leaving the list) still owns its own focus move. */
 export function ConfirmDialog({
   title,
   description,
@@ -49,6 +58,9 @@ export function ConfirmDialog({
   onConfirm: () => void;
   onClose: () => void;
 }) {
+  const [opener] = useState(() =>
+    document.activeElement instanceof HTMLElement ? document.activeElement : null,
+  );
   return (
     <Dialog
       open
@@ -56,7 +68,12 @@ export function ConfirmDialog({
         if (!next) onClose();
       }}
     >
-      <DialogContent>
+      <DialogContent
+        onCloseAutoFocus={(event) => {
+          event.preventDefault();
+          opener?.focus();
+        }}
+      >
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
           <DialogDescription>{description}</DialogDescription>
