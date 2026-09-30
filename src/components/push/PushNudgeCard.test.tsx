@@ -71,6 +71,7 @@ describe("PushNudgeCard", () => {
     expect(card()).not.toBeInTheDocument();
 
     await userEvent.click(screen.getByRole("button", { name: "Remove Severance from My Shows" }));
+    await userEvent.click(screen.getByRole("button", { name: "Remove" }));
     await waitFor(() =>
       expect(screen.getByRole("button", { name: "Add Severance to My Shows" })).toBeEnabled(),
     );
@@ -100,6 +101,7 @@ describe("PushNudgeCard", () => {
     expect(localStorage.getItem(NUDGE_DISMISSED_KEY)).not.toBeNull();
 
     await userEvent.click(screen.getByRole("button", { name: "Remove Severance from My Shows" }));
+    await userEvent.click(screen.getByRole("button", { name: "Remove" }));
     await waitFor(() =>
       expect(screen.getByRole("button", { name: "Add Severance to My Shows" })).toBeEnabled(),
     );

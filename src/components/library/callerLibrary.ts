@@ -107,8 +107,8 @@ export interface CallerRelationship {
 
 /** The Active tab's answer — **null in self mode**, and that is the whole
  * shape of the tab: every Active row is in My Shows by definition, so there is
- * no add to offer and no comparison to draw. Its one control is the compact
- * remove chip on the poster (NEU-1187 §3.1), which both views already carry.
+ * no add to offer and no comparison to draw. It carries no My Shows control at
+ * all, in either view: that tab's removal path is the show page (NEU-1511).
  * Friend mode is where adding is possible, so it gets the labelled button and
  * the comparison — in both views, which is what NEU-1188 AC 3 fixes.
  */
