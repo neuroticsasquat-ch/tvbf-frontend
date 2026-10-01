@@ -6,7 +6,9 @@ export type SortKey =
   | "tvmaze_updated"
   | "-tvmaze_updated"
   | "last_aired"
-  | "-last_aired";
+  | "-last_aired"
+  | "popularity"
+  | "-popularity";
 
 export const ALL_SORT_KEYS: readonly SortKey[] = [
   "name",
@@ -17,6 +19,8 @@ export const ALL_SORT_KEYS: readonly SortKey[] = [
   "-tvmaze_updated",
   "last_aired",
   "-last_aired",
+  "popularity",
+  "-popularity",
 ] as const;
 
 export interface NetworkRef {

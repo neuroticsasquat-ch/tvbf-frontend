@@ -466,4 +466,87 @@ describe("SearchOverlay", () => {
       expect(lastCall(onBusyChange)).toBe(false);
     });
   });
+
+  describe("show sort (NEU-1513)", () => {
+    /** Records the `sort` param of every `/shows` request. */
+    function recordShowSorts() {
+      const sorts: (string | null)[] = [];
+      server.use(
+        http.get(`${base}/shows`, ({ request }) => {
+          sorts.push(new URL(request.url).searchParams.get("sort"));
+          return HttpResponse.json(fixtureShowListPage);
+        }),
+      );
+      return sorts;
+    }
+
+    it("defaults to Popularity on a fresh browser", async () => {
+      const sorts = recordShowSorts();
+      noPeople();
+      renderOverlay();
+      await screen.findByRole("link", { name: /Fixture Show/i });
+
+      expect(sorts[0]).toBe("-popularity");
+      expect(
+        screen.getByRole("button", { name: "Sort Shows (current: Popularity)" }),
+      ).toBeInTheDocument();
+    });
+
+    it("lists Popularity first, then the four existing options", async () => {
+      recordShowSorts();
+      noPeople();
+      const user = userEvent.setup();
+      renderOverlay();
+      await screen.findByRole("link", { name: /Fixture Show/i });
+
+      await user.click(screen.getByRole("button", { name: /^Sort Shows/ }));
+      const sheet = await screen.findByRole("dialog", { name: "Sort Shows" });
+      const labels = within(sheet)
+        .getAllByRole("button")
+        .map((b) => b.textContent?.trim())
+        .filter((t) => t && t !== "Close");
+      expect(labels).toEqual([
+        "Popularity",
+        "Last Aired",
+        "Premiered First",
+        "Premiered Last",
+        "Show Title",
+      ]);
+    });
+
+    it("persists a re-picked Last Aired under the new key", async () => {
+      const sorts = recordShowSorts();
+      noPeople();
+      const user = userEvent.setup();
+      const { unmount } = renderOverlay();
+      await screen.findByRole("link", { name: /Fixture Show/i });
+
+      await user.click(screen.getByRole("button", { name: /^Sort Shows/ }));
+      await user.click(await screen.findByRole("button", { name: "Last Aired" }));
+      await waitFor(() => expect(sorts.at(-1)).toBe("-last_aired"));
+      expect(window.localStorage.getItem("tvbf:sort:search-sort-v2")).toBe("-last_aired");
+
+      unmount();
+      renderOverlay();
+      expect(
+        await screen.findByRole("button", { name: "Sort Shows (current: Last Aired)" }),
+      ).toBeInTheDocument();
+    });
+
+    it("ignores a choice stored under the old key, so everyone lands on Popularity once", async () => {
+      // The whole point of renaming the key: a stored `-last_aired` is
+      // indistinguishable from the old default. A "tidy the key names" edit
+      // that renamed it back would silently undo the new default for everyone.
+      window.localStorage.setItem("tvbf:sort:search", "-last_aired");
+      const sorts = recordShowSorts();
+      noPeople();
+      renderOverlay();
+      await screen.findByRole("link", { name: /Fixture Show/i });
+
+      expect(sorts[0]).toBe("-popularity");
+      expect(
+        screen.getByRole("button", { name: "Sort Shows (current: Popularity)" }),
+      ).toBeInTheDocument();
+    });
+  });
 });
