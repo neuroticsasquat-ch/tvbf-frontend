@@ -2,7 +2,7 @@ import { useState } from "react";
 import { ChevronLeft, ChevronRight, Layers, Tv } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Link, useParams, useSearchParams } from "react-router";
-import { useShow, useShowEpisodes } from "@/api/shows";
+import { useSeasonCast, useSeasonCrew, useShow, useShowEpisodes } from "@/api/shows";
 import { seasonLabel } from "@/lib/season";
 import { ApiError } from "@/api/client";
 import { useAuth } from "@/components/AuthContext";
@@ -14,6 +14,10 @@ import { FilterSheet } from "@/components/home/FilterSheet";
 import { EpisodeWatchCheckbox } from "@/components/EpisodeWatchCheckbox";
 import { SeasonWatchToggle } from "@/components/SeasonWatchToggle";
 import { CollapsibleSummary } from "@/components/CollapsibleSummary";
+import { CastList } from "@/components/CastList";
+import { CrewList } from "@/components/CrewList";
+import { TabCount } from "@/components/TabCount";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 const DATE_FMT = new Intl.DateTimeFormat("en-US", {
   weekday: "short",
@@ -43,6 +47,12 @@ export function EpisodesPage() {
   const episodesQuery = useShowEpisodes(showId, season);
   const { user } = useAuth();
   const watchedQuery = useWatchedEpisodes(showId, !!user);
+  // The season's credits (NEU-1512). Keyed on the same season the page shows,
+  // which is the first season until `?season=` says otherwise — so they wait
+  // for the show when the URL names none.
+  const creditSeason = season ?? showQuery.data?.seasons[0]?.number;
+  const castQuery = useSeasonCast(showId, creditSeason);
+  const crewQuery = useSeasonCrew(showId, creditSeason);
 
   if (showQuery.isError && showQuery.error instanceof ApiError && showQuery.error.status === 404) {
     return <NotFoundPage />;
@@ -73,6 +83,30 @@ export function EpisodesPage() {
     next.set("season", String(n));
     setParams(next);
   };
+  // Episodes is never disabled. Cast and Crew are disabled with a zero count once
+  // their query has answered empty, as the show page's tabs are, and a link to
+  // an empty one lands on Episodes rather than on a disabled tab.
+  const regulars = castQuery.data?.regulars ?? [];
+  const guests = castQuery.data?.guests ?? [];
+  const castCount = regulars.length + guests.length;
+  const crewCount = crewQuery.data?.length ?? 0;
+  const castEmpty = castQuery.isSuccess && castCount === 0;
+  const crewEmpty = crewQuery.isSuccess && crewCount === 0;
+  const requested = params.get("tab");
+  const tab =
+    (requested === "cast" && !castEmpty) || (requested === "crew" && !crewEmpty)
+      ? requested
+      : "episodes";
+
+  function selectTab(next: string) {
+    const nextParams = new URLSearchParams(params);
+    // Episodes is the default, so it stays out of the URL. A season change
+    // copies the params, which is what carries the tab across seasons.
+    if (next === "episodes") nextParams.delete("tab");
+    else nextParams.set("tab", next);
+    setParams(nextParams, { replace: true });
+  }
+
   const today = todayIso();
   const watched = watchedQuery.data;
   const filteredEpisodes =
@@ -154,93 +188,152 @@ export function EpisodesPage() {
         </div>
       </header>
 
-      <section>
-        <div className="mb-3 flex items-center justify-between gap-2">
-          <h2 className="text-lg font-semibold">
-            Episodes{" "}
-            <span className="font-normal text-muted-foreground">({episodesQuery.data.length})</span>
-          </h2>
-          {user && (
-            <div
-              role="radiogroup"
-              aria-label="Filter episodes"
-              className="inline-flex rounded border border-border text-sm"
-            >
-              {(["all", "unwatched"] as const).map((key) => (
-                <button
-                  key={key}
-                  type="button"
-                  role="radio"
-                  aria-checked={episodeFilter === key}
-                  onClick={() => setEpisodeFilter(key)}
-                  className={`px-3 py-1 capitalize ${
-                    episodeFilter === key
-                      ? "bg-foreground text-background"
-                      : "text-foreground hover:bg-accent"
-                  }`}
-                >
-                  {key}
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
+      <Tabs value={tab} onValueChange={selectTab}>
+        <TabsList>
+          <TabsTrigger value="episodes">
+            Episodes <TabCount value={episodesQuery.data.length} />
+          </TabsTrigger>
+          <TabsTrigger value="cast" disabled={castEmpty}>
+            Cast {castQuery.isSuccess && <TabCount value={castCount} />}
+          </TabsTrigger>
+          <TabsTrigger value="crew" disabled={crewEmpty}>
+            Crew {crewQuery.isSuccess && <TabCount value={crewCount} />}
+          </TabsTrigger>
+        </TabsList>
 
-        {episodesQuery.data.length === 0 ? (
-          <p className="py-16 text-center text-muted-foreground">No episodes for this season.</p>
-        ) : filteredEpisodes.length === 0 ? (
-          <p className="text-sm text-muted-foreground">No unwatched episodes.</p>
-        ) : (
-          <ul className="space-y-3">
-            {filteredEpisodes.map((ep) => {
-              const thumbnail = ep.image_medium ?? seasonImage;
-              return (
-                <li key={ep.id} className="border border-border rounded p-3 hover:bg-accent">
-                  <div className="flex items-center gap-4">
-                    <Link
-                      to={`/episodes/${ep.id}`}
-                      className="flex min-w-0 flex-1 items-center gap-4"
-                    >
-                      {thumbnail ? (
-                        <img
-                          src={thumbnail}
-                          alt=""
-                          className="w-32 aspect-video object-cover rounded shrink-0"
-                          loading="lazy"
-                        />
-                      ) : (
-                        <div
-                          aria-hidden
-                          className="w-32 aspect-video rounded shrink-0 bg-muted text-muted-foreground flex items-center justify-center"
-                        >
-                          <Tv className="h-6 w-6" />
-                        </div>
-                      )}
-                      <div className="flex-1 min-w-0">
-                        <p className="text-xs text-muted-foreground leading-tight">
-                          S{ep.season}E{ep.number ?? "—"}
-                        </p>
-                        {ep.name && (
-                          <p className="text-sm font-semibold text-foreground leading-tight truncate">
-                            {ep.name}
-                          </p>
+        <TabsContent value="episodes">
+        <section>
+          <div className="mb-3 flex items-center justify-end gap-2">
+            {/* The tab label carries the visible title and count; this stays for
+                the document outline and screen readers. */}
+            <h2 className="sr-only">
+              Episodes{" "}
+              <span className="font-normal text-muted-foreground">({episodesQuery.data.length})</span>
+            </h2>
+            {user && (
+              <div
+                role="radiogroup"
+                aria-label="Filter episodes"
+                className="inline-flex rounded border border-border text-sm"
+              >
+                {(["all", "unwatched"] as const).map((key) => (
+                  <button
+                    key={key}
+                    type="button"
+                    role="radio"
+                    aria-checked={episodeFilter === key}
+                    onClick={() => setEpisodeFilter(key)}
+                    className={`px-3 py-1 capitalize ${
+                      episodeFilter === key
+                        ? "bg-foreground text-background"
+                        : "text-foreground hover:bg-accent"
+                    }`}
+                  >
+                    {key}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {episodesQuery.data.length === 0 ? (
+            <p className="py-16 text-center text-muted-foreground">No episodes for this season.</p>
+          ) : filteredEpisodes.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No unwatched episodes.</p>
+          ) : (
+            <ul className="space-y-3">
+              {filteredEpisodes.map((ep) => {
+                const thumbnail = ep.image_medium ?? seasonImage;
+                return (
+                  <li key={ep.id} className="border border-border rounded p-3 hover:bg-accent">
+                    <div className="flex items-center gap-4">
+                      <Link
+                        to={`/episodes/${ep.id}`}
+                        className="flex min-w-0 flex-1 items-center gap-4"
+                      >
+                        {thumbnail ? (
+                          <img
+                            src={thumbnail}
+                            alt=""
+                            className="w-32 aspect-video object-cover rounded shrink-0"
+                            loading="lazy"
+                          />
+                        ) : (
+                          <div
+                            aria-hidden
+                            className="w-32 aspect-video rounded shrink-0 bg-muted text-muted-foreground flex items-center justify-center"
+                          >
+                            <Tv className="h-6 w-6" />
+                          </div>
                         )}
-                        <p className="text-xs text-muted-foreground leading-tight">
-                          {ep.airdate ? formatAirdate(ep.airdate) : "TBA"}
-                          {ep.runtime ? ` · ${ep.runtime} min` : ""}
-                        </p>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs text-muted-foreground leading-tight">
+                            S{ep.season}E{ep.number ?? "—"}
+                          </p>
+                          {ep.name && (
+                            <p className="text-sm font-semibold text-foreground leading-tight truncate">
+                              {ep.name}
+                            </p>
+                          )}
+                          <p className="text-xs text-muted-foreground leading-tight">
+                            {ep.airdate ? formatAirdate(ep.airdate) : "TBA"}
+                            {ep.runtime ? ` · ${ep.runtime} min` : ""}
+                          </p>
+                        </div>
+                      </Link>
+                      <div className="ml-auto shrink-0">
+                        <EpisodeWatchCheckbox showId={ep.show_id} episodeId={ep.id} />
                       </div>
-                    </Link>
-                    <div className="ml-auto shrink-0">
-                      <EpisodeWatchCheckbox showId={ep.show_id} episodeId={ep.id} />
                     </div>
-                  </div>
-                </li>
-              );
-            })}
-          </ul>
-        )}
-      </section>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+          </section>
+        </TabsContent>
+
+        <TabsContent value="cast">
+          {castQuery.isError ? (
+            <ErrorState message={castQuery.error.message} onRetry={() => castQuery.refetch()} />
+          ) : (
+            <section aria-labelledby="season-cast-heading" className="space-y-6">
+              <h2 id="season-cast-heading" className="sr-only">
+                Cast
+              </h2>
+              {/* Regulars carry no count — TMDB credits them on every episode
+                  of the season, a claim rather than a count — and guests carry
+                  their appearances in this season. Both follow from the
+                  payload, which is why neither list is told which it is. */}
+              <CastList
+                entries={regulars}
+                title="Regular cast"
+                headingId="season-regulars-heading"
+                headingLevel="h3"
+              />
+              <CastList
+                entries={guests}
+                title="Guest stars"
+                headingId="season-guests-heading"
+                headingLevel="h3"
+              />
+            </section>
+          )}
+        </TabsContent>
+
+        <TabsContent value="crew">
+          {crewQuery.isError ? (
+            <ErrorState message={crewQuery.error.message} onRetry={() => crewQuery.refetch()} />
+          ) : (
+            <CrewList
+              entries={crewQuery.data ?? []}
+              title="Crew"
+              headingId="season-crew-heading"
+              headingHidden
+            />
+          )}
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

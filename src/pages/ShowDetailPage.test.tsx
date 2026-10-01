@@ -1,4 +1,4 @@
-import { screen, waitFor } from "@testing-library/react";
+import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
 import { HttpResponse, http } from "msw";
@@ -35,49 +35,95 @@ describe("ShowDetailPage", () => {
     await waitFor(() => expect(screen.getByText(/not found/i)).toBeInTheDocument());
   });
 
-  it("carries a count on every tab and opens on seasons", async () => {
+  it("carries six tabs in order, each with a count, and opens on seasons", async () => {
     renderWithProviders(routed(), { route: "/shows/100" });
 
-    // Counts come from the fixtures: 3 cast, 6 crew, 0 similar.
-    expect(await screen.findByRole("tab", { name: /Cast \(3\)/ })).toBeInTheDocument();
-    expect(screen.getByRole("tab", { name: /Crew \(6\)/ })).toBeInTheDocument();
-    expect(await screen.findByRole("tab", { name: /Similar/ })).toBeInTheDocument();
+    // Counts come from the fixtures: 3 cast, 2 guest stars, 6 crew, 2 episode
+    // crew, 0 similar.
+    expect(await screen.findByRole("tab", { name: /^Cast \(3\)/ })).toBeInTheDocument();
+    await waitFor(() =>
+      expect(screen.getAllByRole("tab").map((t) => t.textContent)).toEqual([
+        "Seasons (2)",
+        "Cast (3)",
+        "Guest stars (2)",
+        "Crew (6)",
+        "Episode crew (2)",
+        "Similar (0)",
+      ]),
+    );
     expect(screen.getByRole("tab", { name: /Seasons/ })).toHaveAttribute("aria-selected", "true");
     // Only the active panel is mounted, so cast content is not on the page yet.
     expect(screen.queryByText("Zoe Lead")).not.toBeInTheDocument();
+    // Six triggers overflow a phone: the strip scrolls rather than wraps.
+    expect(screen.getByRole("tablist")).toHaveClass("overflow-x-auto");
   });
 
-  it("shows cast and crew content when their tabs are selected", async () => {
+  it("shows each credit panel when its tab is selected", async () => {
     renderWithProviders(routed(), { route: "/shows/100" });
 
-    await userEvent.click(await screen.findByRole("tab", { name: /Cast/ }));
+    await userEvent.click(await screen.findByRole("tab", { name: /^Cast/ }));
     expect(await screen.findByText("Zoe Lead")).toBeInTheDocument();
+    // Regulars carry their episode count after the character.
+    expect(screen.getByText("42 episodes")).toBeInTheDocument();
 
-    await userEvent.click(screen.getByRole("tab", { name: /Crew/ }));
-    expect(await screen.findByText("Wes Creator")).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("tab", { name: /^Guest stars/ }));
+    expect(await screen.findByText("Gus Guest")).toBeInTheDocument();
+    expect(screen.getByText("3 episodes")).toBeInTheDocument();
     // Panels swap rather than stack — that is the point of the tabs.
     expect(screen.queryByText("Zoe Lead")).not.toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("tab", { name: /^Crew/ }));
+    expect(await screen.findByText("Wes Creator")).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("tab", { name: /^Episode crew/ }));
+    expect(await screen.findByRole("heading", { name: "Director" })).toBeInTheDocument();
+    expect(screen.getByText("5 episodes")).toBeInTheDocument();
+    expect(screen.queryByText("Wes Creator")).not.toBeInTheDocument();
+  });
+
+  it("pages a long guest stars list: 12, then 48 more per Show more", async () => {
+    const many = Array.from({ length: 60 }, (_, i) => ({
+      person: { id: 1000 + i, name: `Guest ${i}`, image_medium: null },
+      character: { id: 2000 + i, name: `Role ${i}`, image_medium: null },
+      self: false,
+      voice: false,
+      episode_count: 1,
+    }));
+    server.use(http.get(`${base}/shows/100/guest-cast`, () => HttpResponse.json(many)));
+    renderWithProviders(routed(), { route: "/shows/100?tab=guest-stars" });
+
+    const panel = await screen.findByRole("tabpanel");
+    await within(panel).findByText("Guest 0");
+    expect(within(panel).getAllByRole("listitem")).toHaveLength(12);
+
+    await userEvent.click(within(panel).getByRole("button", { name: /^Show more/ }));
+    expect(within(panel).getAllByRole("listitem")).toHaveLength(60);
   });
 
   it("disables the crew tab when a show has cast but no crew", async () => {
     server.use(http.get(`${base}/shows/100/crew`, () => HttpResponse.json([])));
     renderWithProviders(routed(), { route: "/shows/100" });
 
-    expect(await screen.findByRole("tab", { name: /Cast \(3\)/ })).toBeEnabled();
-    await waitFor(() => expect(screen.getByRole("tab", { name: /Crew \(0\)/ })).toBeDisabled());
+    expect(await screen.findByRole("tab", { name: /^Cast \(3\)/ })).toBeEnabled();
+    await waitFor(() => expect(screen.getByRole("tab", { name: /^Crew \(0\)/ })).toBeDisabled());
+    // The other half of the split is its own question.
+    expect(screen.getByRole("tab", { name: /^Episode crew \(2\)/ })).toBeEnabled();
   });
 
-  it("disables both credit tabs when a show has neither", async () => {
+  it("disables every credit tab when a show has no credits", async () => {
     server.use(
       http.get(`${base}/shows/100/cast`, () => HttpResponse.json([])),
+      http.get(`${base}/shows/100/guest-cast`, () => HttpResponse.json([])),
       http.get(`${base}/shows/100/crew`, () => HttpResponse.json([])),
+      http.get(`${base}/shows/100/episode-crew`, () => HttpResponse.json([])),
     );
     renderWithProviders(routed(), { route: "/shows/100" });
     await screen.findByRole("heading", { name: "Fixture Show" });
 
     await waitFor(() => {
-      expect(screen.getByRole("tab", { name: /Cast \(0\)/ })).toBeDisabled();
-      expect(screen.getByRole("tab", { name: /Crew \(0\)/ })).toBeDisabled();
+      for (const name of ["Cast", "Guest stars", "Crew", "Episode crew"]) {
+        expect(screen.getByRole("tab", { name: new RegExp(`^${name} \\(0\\)`) })).toBeDisabled();
+      }
     });
     expect(screen.getByRole("tab", { name: /Seasons/ })).toHaveAttribute("aria-selected", "true");
   });
@@ -86,7 +132,24 @@ describe("ShowDetailPage", () => {
     renderWithProviders(routed(), { route: "/shows/100?tab=cast" });
 
     expect(await screen.findByText("Zoe Lead")).toBeInTheDocument();
-    expect(screen.getByRole("tab", { name: /Cast/ })).toHaveAttribute("aria-selected", "true");
+    expect(screen.getByRole("tab", { name: /^Cast/ })).toHaveAttribute("aria-selected", "true");
+  });
+
+  it("deep-links to guest stars and episode crew", async () => {
+    const { unmount } = renderWithProviders(routed(), { route: "/shows/100?tab=guest-stars" });
+    expect(await screen.findByText("Gus Guest")).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: /^Guest stars/ })).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
+    unmount();
+
+    renderWithProviders(routed(), { route: "/shows/100?tab=episode-crew" });
+    expect(await screen.findByText("Di Director")).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: /^Episode crew/ })).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
   });
 
   it("falls back to seasons for an unknown tab, and for a tab the show cannot fill", async () => {
@@ -97,6 +160,14 @@ describe("ShowDetailPage", () => {
       "true",
     );
     unmount();
+
+    // An inherited object key is not a tab either.
+    const second = renderWithProviders(routed(), { route: "/shows/100?tab=constructor" });
+    expect(await screen.findByRole("tab", { name: /Seasons/ })).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
+    second.unmount();
 
     // A crewless show linked straight to ?tab=crew lands on seasons rather than
     // on a disabled tab with an empty panel.

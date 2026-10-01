@@ -3,6 +3,7 @@
 **Ticket:** [NEU-1007](https://linear.app/neuroticsasquatch/issue/NEU-1007/frontend-group-person-page-credits-by-show-within-each-category)
 **Related:** [NEU-964](https://linear.app/neuroticsasquatch/issue/NEU-964), [NEU-965](https://linear.app/neuroticsasquatch/issue/NEU-965) (both shipped)
 **Repo:** `tvbf-frontend` — **frontend only**
+**Superseded in part:** [NEU-1512](../../../tvbf-backend/docs/specs/NEU-1512-list-full-episode-cast.md) §5.4 reshaped the person page to two tabs (Cast, Crew) with one card per show, merging regular and guest credits (and series and episode crew); its tab counts are shows, and `?tab=guest` / `?tab=episode-crew` alias onto Cast / Crew.
 
 ## Problem
 

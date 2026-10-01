@@ -5,7 +5,7 @@ import { HttpResponse, http } from "msw";
 import { Route, Routes, useLocation } from "react-router";
 import { env } from "@/env";
 import { server } from "@/test/msw/server";
-import { fixtureEpisodeCrew, fixtureEpisodes } from "@/test/msw/fixtures";
+import { fixtureEpisodeCrew, fixtureEpisodes, fixtureShow } from "@/test/msw/fixtures";
 import { renderWithProviders } from "@/test/renderWithProviders";
 import { EpisodePage } from "./EpisodePage";
 
@@ -47,6 +47,43 @@ describe("EpisodePage", () => {
     await waitFor(() =>
       expect(screen.getByRole("heading", { name: /Pilot/i })).toBeInTheDocument(),
     );
+  });
+
+  it("links to the season's regular cast", async () => {
+    renderWithProviders(routed(), { route: "/episodes/5000" });
+
+    expect(await screen.findByRole("link", { name: "Regular cast for Season 1" })).toHaveAttribute(
+      "href",
+      "/shows/100/episodes?season=1&tab=cast",
+    );
+  });
+
+  it("links to the season's cast even when the episode has no credits region", async () => {
+    // Episode 5001 has neither guests nor crew, so there are no tabs — but every
+    // episode has a season.
+    renderWithProviders(routed(), { route: "/episodes/5001" });
+
+    expect(await screen.findByRole("link", { name: "Regular cast for Season 1" })).toBeInTheDocument();
+    expect(screen.queryByRole("tab")).not.toBeInTheDocument();
+  });
+
+  it("reads the specials season by its name", async () => {
+    server.use(
+      http.get(`${base}/episodes/5000`, () =>
+        HttpResponse.json({ ...fixtureEpisodes[0], season: 0, number: 1 }),
+      ),
+      http.get(`${base}/shows/100`, () =>
+        HttpResponse.json({
+          ...fixtureShow,
+          seasons: [{ ...fixtureShow.seasons[0], id: 999, number: 0, name: "Specials" }],
+        }),
+      ),
+    );
+    renderWithProviders(routed(), { route: "/episodes/5000" });
+
+    expect(
+      await screen.findByRole("link", { name: "Regular cast for Specials" }),
+    ).toHaveAttribute("href", "/shows/100/episodes?season=0&tab=cast");
   });
 
   it("renders the credits region only when there is something to show", async () => {

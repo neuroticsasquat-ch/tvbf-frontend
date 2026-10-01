@@ -284,18 +284,28 @@ export interface CastMember {
   /** Credited as themselves (matches upstream's `self` key). */
   self: boolean;
   voice: boolean;
-  /** Episodes this person appeared in as this character, and the key the API
-   * orders show cast by (NEU-1039). Optional because it is absent at two
-   * grains: the credits routes read `catalog` since NEU-1047 and order show
-   * cast by this count, but a show mirrored before the credit writers merged
-   * carries none; and episode guest cast is a per-episode row, so it has no
-   * count at all. */
-  episode_count?: number | null;
+  /** What the count means depends on the route (NEU-1512 §4.1): the show's
+   * aggregate on `/shows/{id}/cast` and `/guest-cast`, appearances in the
+   * season for a season's guests, and null for a season's regulars (upstream
+   * credits a regular on every episode — a claim, not a count) and on an
+   * episode's guest cast (one appearance by definition). */
+  episode_count: number | null;
 }
 
 export interface CrewMember {
   person: PersonRef;
   role: string;
+  /** The show's aggregate on `/shows/{id}/crew` and `/episode-crew`, the
+   * season's episodes on the season route, null on an episode's crew. */
+  episode_count: number | null;
+}
+
+/** `GET /shows/{id}/seasons/{number}/cast` — a season's regulars in billing
+ * order, then everyone who guested in its episodes, by appearances. A pair on
+ * both lists is upstream inconsistency and the server keeps it in `regulars`. */
+export interface SeasonCast {
+  regulars: CastMember[];
+  guests: CastMember[];
 }
 
 /** A person as served by `GET /people/{id}`. Richer than `PersonRef`, which is
@@ -330,16 +340,29 @@ export interface EpisodeRef {
   airdate: string | null;
 }
 
+/** A regular credit: one (show, character) the person is a season regular as
+ * (NEU-1512). Guest turns on the same show arrive separately, in `guest_cast`. */
 export interface PersonCastCredit {
   show: ShowRef;
   character: CharacterRef;
   self: boolean;
   voice: boolean;
+  /** The show's aggregate for this role — upstream counts guest turns into it.
+   * Null when the aggregate does not list the role. */
+  episode_count: number | null;
+  /** Season numbers they were a regular in, ascending. */
+  seasons: number[];
+  /** The latest air date across those seasons' episodes. */
+  last_credited: string | null;
 }
 
+/** A series crew credit (Executive Producer, Creator, Composer) — a job whose
+ * aggregate exceeds the person's episode credits in it. Episode-by-episode jobs
+ * arrive in `episode_crew` instead. */
 export interface PersonCrewCredit {
   show: ShowRef;
   role: string;
+  episode_count: number | null;
 }
 
 export interface PersonGuestCredit {
@@ -351,10 +374,9 @@ export interface PersonGuestCredit {
 }
 
 /** A crew credit on one episode — "Director of *Show* S1E3". Distinct from
- * `PersonCrewCredit`, which is show-level: the glossary keeps *crew credit* and
- * *episode crew credit* apart because they answer different questions, and the
- * vocabularies are disjoint (Director/Writer/Story/Teleplay here, production
- * functions like Executive Producer there). */
+ * `PersonCrewCredit`, which is show-level: the glossary keeps *series crew
+ * credit* and *episode crew credit* apart because they answer different
+ * questions — a job held across the series, or one held episode by episode. */
 export interface PersonEpisodeCrewCredit {
   show: ShowRef;
   episode: EpisodeRef;

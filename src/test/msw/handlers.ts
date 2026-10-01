@@ -4,6 +4,10 @@ import { normaliseHandle } from "@/lib/handle";
 import {
   fixtureCast,
   fixtureCrew,
+  fixtureSeasonCast,
+  fixtureSeasonCrew,
+  fixtureShowEpisodeCrew,
+  fixtureShowGuestCast,
   fixtureEpisodeCrew,
   fixtureEpisodes,
   fixtureGenres,
@@ -54,10 +58,21 @@ export const handlers = [
     HttpResponse.json({ detail: "show not found" }, { status: 404 }),
   ),
   http.get(`${base}/shows/100/cast`, () => HttpResponse.json(fixtureCast)),
+  http.get(`${base}/shows/100/guest-cast`, () => HttpResponse.json(fixtureShowGuestCast)),
   http.get(`${base}/shows/100/crew`, () => HttpResponse.json(fixtureCrew)),
-  // Every other show has no credits — the empty case is 27% of the catalog.
+  http.get(`${base}/shows/100/episode-crew`, () => HttpResponse.json(fixtureShowEpisodeCrew)),
+  http.get(`${base}/shows/100/seasons/1/cast`, () => HttpResponse.json(fixtureSeasonCast)),
+  http.get(`${base}/shows/100/seasons/1/crew`, () => HttpResponse.json(fixtureSeasonCrew)),
+  // Every other show and season has no credits — the empty case is 27% of the
+  // catalog.
   http.get(`${base}/shows/:id/cast`, () => HttpResponse.json([])),
+  http.get(`${base}/shows/:id/guest-cast`, () => HttpResponse.json([])),
   http.get(`${base}/shows/:id/crew`, () => HttpResponse.json([])),
+  http.get(`${base}/shows/:id/episode-crew`, () => HttpResponse.json([])),
+  http.get(`${base}/shows/:id/seasons/:number/cast`, () =>
+    HttpResponse.json({ regulars: [], guests: [] }),
+  ),
+  http.get(`${base}/shows/:id/seasons/:number/crew`, () => HttpResponse.json([])),
   // A show with no recommendations is 200 [] and renders no section at all —
   // roughly 8% of the long tail (NEU-1054). Tests that want the section serve
   // their own rows.
