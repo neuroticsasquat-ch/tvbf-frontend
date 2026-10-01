@@ -38,9 +38,10 @@ export function usePerson(id: number) {
   });
 }
 
-/** Filmography, grouped into cast/crew/guest by the API. Each group arrives in
- * a deliberate order — cast and crew by show premiere date descending, guest
- * credits by air date descending — so never re-sort it client-side. */
+/** Filmography, in four lists the API keeps apart: regular credits, series
+ * crew, guest credits and episode crew. The lists are consumed in API order;
+ * the person page merges them into one card per show and orders the *cards*
+ * itself (`personCredits.ts`, NEU-1512 §5.4). */
 export function usePersonCredits(id: number) {
   return useQuery<PersonCredits>({
     queryKey: ["person-credits", id],

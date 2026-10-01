@@ -7,6 +7,7 @@
 **Related:** —
 **Precedent consumed:** `src/pages/ShowDetailPage.tsx` (the Tabs pattern: `Tabs`/`TabsTrigger`/`TabsContent`, `?tab=` URL sync, `TabCount`, disabled-when-empty, errored-stays-enabled, page-fetches-for-counts) and its test `src/pages/ShowDetailPage.test.tsx`
 **Status:** approved for implementation
+**Superseded in part:** [NEU-1512](../../../tvbf-backend/docs/specs/NEU-1512-list-full-episode-cast.md) §5.2 keeps these two tabs and adds a link above them to the season's regular cast, which TMDB credits per season rather than per episode.
 
 This spec lives in this repo's `docs/specs/` because nothing in another repo cites
 it: it is entirely a `tvbf-frontend` change consuming contracts that already

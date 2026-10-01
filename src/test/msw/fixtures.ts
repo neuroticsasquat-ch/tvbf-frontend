@@ -1,6 +1,7 @@
 import type {
   CastMember,
   CrewMember,
+  SeasonCast,
   GenreOut,
   NetworkOut,
   PersonCredits,
@@ -218,22 +219,81 @@ export const fixtureCast: CastMember[] = [
   },
 ];
 
-/** Guest cast is the same payload as show cast — distinct people so a test can
- * tell the two sections apart. No `episode_count`: a guest credit is already
- * per-episode, so upstream sends no count at that grain. */
+/** Episode guest cast is the same payload as show cast — distinct people so a
+ * test can tell the two sections apart. `episode_count` is null: a guest credit
+ * on an episode is one appearance, so the route sends no count at that grain. */
 export const fixtureGuestCast: CastMember[] = [
   {
     person: { id: 6, name: "Gus Guest", image_medium: "https://example.com/gus.jpg" },
     character: { id: 16, name: "The Stranger", image_medium: null },
     self: false,
     voice: false,
+    episode_count: null,
   },
   {
     person: { id: 7, name: "Ana Cameo", image_medium: null },
     character: { id: 17, name: "Radio Announcer", image_medium: null },
     self: false,
     voice: true,
+    episode_count: null,
   },
+];
+
+/** A show's guest stars (`/shows/{id}/guest-cast`, NEU-1512) — the `show_cast`
+ * rows that are not regular credits, by aggregate episode count. */
+export const fixtureShowGuestCast: CastMember[] = [
+  {
+    person: { id: 6, name: "Gus Guest", image_medium: null },
+    character: { id: 16, name: "The Stranger", image_medium: null },
+    self: false,
+    voice: false,
+    episode_count: 3,
+  },
+  {
+    person: { id: 7, name: "Ana Cameo", image_medium: null },
+    character: { id: 17, name: "Radio Announcer", image_medium: null },
+    self: false,
+    voice: true,
+    episode_count: 1,
+  },
+];
+
+/** Season 1 of show 100 (`/shows/100/seasons/1/cast`): one regular, in billing
+ * order and with no count, and two guests by appearances in the season — one of
+ * them twice. */
+export const fixtureSeasonCast: SeasonCast = {
+  regulars: [
+    {
+      person: { id: 1, name: "Zoe Lead", image_medium: null },
+      character: { id: 11, name: "Captain Alpha", image_medium: null },
+      self: false,
+      voice: false,
+      episode_count: null,
+    },
+  ],
+  guests: [
+    {
+      person: { id: 6, name: "Gus Guest", image_medium: null },
+      character: { id: 16, name: "The Stranger", image_medium: null },
+      self: false,
+      voice: false,
+      episode_count: 2,
+    },
+    {
+      person: { id: 7, name: "Ana Cameo", image_medium: null },
+      character: { id: 17, name: "Radio Announcer", image_medium: null },
+      self: false,
+      voice: false,
+      episode_count: 1,
+    },
+  ],
+};
+
+/** Season 1 of show 100's crew, one entry per (person, role) with its episodes
+ * in the season. */
+export const fixtureSeasonCrew: CrewMember[] = [
+  { person: { id: 8, name: "Di Director", image_medium: null }, role: "Director", episode_count: 2 },
+  { person: { id: 7, name: "Cy Writer", image_medium: null }, role: "Writer", episode_count: 1 },
 ];
 
 /** Episode crew. Deliberately not in name or role alphabetical order — the API
@@ -244,27 +304,41 @@ export const fixtureEpisodeCrew: CrewMember[] = [
   {
     person: { id: 8, name: "Di Director", image_medium: "https://example.com/di.jpg" },
     role: "Director",
+    episode_count: null,
   },
-  { person: { id: 7, name: "Cy Writer", image_medium: null }, role: "Writer" },
-  { person: { id: 7, name: "Cy Writer", image_medium: null }, role: "Story" },
+  { person: { id: 7, name: "Cy Writer", image_medium: null }, role: "Writer", episode_count: null },
+  { person: { id: 7, name: "Cy Writer", image_medium: null }, role: "Story", episode_count: null },
 ];
 
+/** A show's crew, in the API's order. Since NEU-1512 `/shows/{id}/crew` is
+ * series crew, but the list stays mixed so `CrewList`'s grouping has several
+ * roles to keep in first-appearance order. */
 export const fixtureCrew: CrewMember[] = [
   {
     person: { id: 4, name: "Wes Creator", image_medium: null },
     role: "Creator",
+    episode_count: 42,
   },
   {
     person: { id: 5, name: "Ada Producer", image_medium: null },
     role: "Executive Producer",
+    episode_count: 40,
   },
   {
     person: { id: 6, name: "Bo Producer", image_medium: null },
     role: "Executive Producer",
+    episode_count: 30,
   },
-  { person: { id: 7, name: "Cy Writer", image_medium: null }, role: "Writer" },
-  { person: { id: 8, name: "Di Director", image_medium: null }, role: "Director" },
-  { person: { id: 9, name: "Eve Composer", image_medium: null }, role: "Composer" },
+  { person: { id: 7, name: "Cy Writer", image_medium: null }, role: "Writer", episode_count: 12 },
+  { person: { id: 8, name: "Di Director", image_medium: null }, role: "Director", episode_count: 1 },
+  { person: { id: 9, name: "Eve Composer", image_medium: null }, role: "Composer", episode_count: 1 },
+];
+
+/** A show's episode crew (`/shows/{id}/episode-crew`, NEU-1512) — jobs whose
+ * aggregate is the sum of their episode credits. */
+export const fixtureShowEpisodeCrew: CrewMember[] = [
+  { person: { id: 8, name: "Di Director", image_medium: null }, role: "Director", episode_count: 5 },
+  { person: { id: 7, name: "Cy Writer", image_medium: null }, role: "Writer", episode_count: 2 },
 ];
 
 export const fixturePerson: PersonOut = {
@@ -279,7 +353,15 @@ export const fixturePerson: PersonOut = {
   image_original: "https://example.com/zoe-o.jpg",
 };
 
-/** All four credit kinds populated, in the order the API serves them. */
+/** All four credit kinds populated, in the order the API serves them, covering
+ * NEU-1512's card shapes:
+ *
+ * * Alpha Show — a regular (season 1) who also guested (season 2), and a
+ *   cast-and-crew show: Executive Producer on it too.
+ * * Beta Show — a regular whose aggregate lists no count, and no dated episode.
+ * * Gamma Show — guest-only on the Cast tab, episode-crew-only on Crew.
+ * * Delta Show — a special, unnumbered and undated.
+ */
 export const fixturePersonCredits: PersonCredits = {
   cast: [
     {
@@ -287,21 +369,35 @@ export const fixturePersonCredits: PersonCredits = {
       character: { id: 11, name: "Captain Alpha", image_medium: null },
       self: false,
       voice: false,
+      episode_count: 42,
+      seasons: [1],
+      last_credited: "2020-03-01",
     },
     {
       show: { id: 101, name: "Beta Show", image_medium: null, premiered: "2015-06-01" },
       character: { id: 12, name: "Doctor Beta", image_medium: null },
       self: false,
       voice: true,
+      episode_count: null,
+      seasons: [1],
+      last_credited: null,
     },
   ],
   crew: [
     {
       show: { id: 100, name: "Alpha Show", image_medium: null, premiered: "2020-01-01" },
       role: "Executive Producer",
+      episode_count: 40,
     },
   ],
   guest_cast: [
+    {
+      show: { id: 100, name: "Alpha Show", image_medium: null, premiered: "2020-01-01" },
+      episode: { id: 5100, name: "S2 Pilot", season: 2, number: 1, airdate: "2021-01-01" },
+      character: { id: 15, name: "Alpha Prime", image_medium: null },
+      self: false,
+      voice: false,
+    },
     {
       show: { id: 102, name: "Gamma Show", image_medium: null, premiered: "2018-03-01" },
       episode: {

@@ -6,7 +6,7 @@ import { env } from "@/env";
 import { server } from "@/test/msw/server";
 import { fixtureCast } from "@/test/msw/fixtures";
 import { renderWithProviders } from "@/test/renderWithProviders";
-import { ShowCastList } from "./CastList";
+import { ShowCastList, ShowGuestCastList } from "./CastList";
 
 const base = env.apiBaseUrl;
 
@@ -99,8 +99,10 @@ describe("ShowCastList", () => {
     expect(await screen.findByRole("alert")).toHaveTextContent(/boom/);
   });
 
-  it("collapses long casts behind a show-all toggle", async () => {
-    const many = Array.from({ length: 20 }, (_, i) => ({
+  it("shows 12, then 48 more per Show more", async () => {
+    // Paged rather than all-at-once: a show's guest stars run to thousands
+    // (Law & Order has 11,517), and one click must not mount them all.
+    const many = Array.from({ length: 70 }, (_, i) => ({
       ...fixtureCast[0],
       person: { id: 100 + i, name: `Person ${i}`, image_medium: null },
       character: { id: 200 + i, name: `Character ${i}`, image_medium: null },
@@ -108,10 +110,26 @@ describe("ShowCastList", () => {
     server.use(http.get(`${base}/shows/100/cast`, () => HttpResponse.json(many)));
     renderWithProviders(<ShowCastList showId={100} />);
 
-    const toggle = await screen.findByRole("button", { name: "Show all 20" });
+    await screen.findByRole("heading", { name: /Cast/ });
     expect(screen.getAllByRole("listitem")).toHaveLength(12);
 
-    await userEvent.click(toggle);
-    expect(screen.getAllByRole("listitem")).toHaveLength(20);
+    await userEvent.click(screen.getByRole("button", { name: /^Show more cast \(12 of 70/ }));
+    expect(screen.getAllByRole("listitem")).toHaveLength(60);
+
+    await userEvent.click(screen.getByRole("button", { name: /^Show more cast \(60 of 70/ }));
+    expect(screen.getAllByRole("listitem")).toHaveLength(70);
+    // Everything is shown, so there is nothing left to ask for.
+    expect(screen.queryByRole("button", { name: /Show more/ })).not.toBeInTheDocument();
+  });
+});
+
+describe("ShowGuestCastList", () => {
+  it("renders the show's guest stars with their episode counts", async () => {
+    renderWithProviders(<ShowGuestCastList showId={100} />);
+
+    expect(await screen.findByRole("heading", { name: /^Guest stars \(2\)/ })).toBeInTheDocument();
+    expect(renderedNames()).toEqual(["Gus Guest", "Ana Cameo"]);
+    expect(screen.getByText("3 episodes")).toBeInTheDocument();
+    expect(screen.getByText("1 episode")).toBeInTheDocument();
   });
 });

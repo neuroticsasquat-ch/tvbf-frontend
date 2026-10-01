@@ -12,6 +12,7 @@ itself consuming NEU-1209 (`src/pages/EpisodePage.tsx`) and the original
 URL sync, `TabCount`, disabled-when-empty, `headingHidden`, page-fetches-for-counts) and
 its test `src/pages/ShowDetailPage.test.tsx`
 **Status:** approved for implementation
+**Superseded in part:** [NEU-1512](../../../tvbf-backend/docs/specs/NEU-1512-list-full-episode-cast.md) §5.4 reshaped the person page to two tabs (Cast, Crew) with one card per show, merging regular and guest credits (and series and episode crew); its tab counts are shows, and `?tab=guest` / `?tab=episode-crew` alias onto Cast / Crew.
 
 This spec lives in this repo's `docs/specs/` because nothing in another repo cites
 it: it is entirely a `tvbf-frontend` change consuming a contract that already

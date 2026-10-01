@@ -1,8 +1,9 @@
 import { useMemo, useState } from "react";
-import { useShowCrew } from "@/api/shows";
+import { useShowCrew, useShowEpisodeCrew } from "@/api/shows";
 import type { CrewMember } from "@/api/types";
 import { ErrorState } from "@/components/ErrorState";
 import { PersonChip } from "@/components/PersonChip";
+import { episodeCountLabel } from "@/lib/episodeCount";
 
 /** Crew entries shown before the "Show all" affordance. Crew averages ~2× cast
  * and reaches 533 entries on The Simpsons, and those concentrate in a handful
@@ -40,29 +41,33 @@ function takeMembers(groups: RoleGroup[], budget: number): RoleGroup[] {
   return taken;
 }
 
-export function CrewList({
-  showId,
-  headingHidden = false,
-}: {
-  showId: number;
+interface CrewListProps {
+  entries: CrewMember[];
+  /** Section heading — "Crew" or "Episode crew" for a show, "Crew" for a season. */
+  title: string;
+  /** Must be unique on the page; it wires the heading to its section. */
+  headingId: string;
   /** Hides the heading visually but not from assistive tech — see `CastList`. */
   headingHidden?: boolean;
-}) {
-  const { data, isError, error, refetch } = useShowCrew(showId);
+}
+
+/** Crew grouped by role. Presentational: a show's series crew, its episode crew
+ * and a season's crew share the payload, so all three feed this. Each chip
+ * carries the entry's "N episodes" — the aggregate at show grain, the season's
+ * episodes at season grain (NEU-1512). */
+export function CrewList({ entries, title, headingId, headingHidden = false }: CrewListProps) {
   const [expanded, setExpanded] = useState(false);
-  const groups = useMemo(() => groupByRole(data ?? []), [data]);
+  const groups = useMemo(() => groupByRole(entries), [entries]);
 
-  if (isError) return <ErrorState message={error.message} onRetry={() => refetch()} />;
-
-  // Same as cast: plenty of shows have no crew at all. Render nothing.
-  if (!data || data.length === 0) return null;
+  // Plenty of shows have no crew at all. Render nothing.
+  if (entries.length === 0) return null;
 
   const visible = expanded ? groups : takeMembers(groups, COLLAPSED_COUNT);
 
   return (
-    <section aria-labelledby="crew-heading">
-      <h2 id="crew-heading" className={headingHidden ? "sr-only" : "mb-3 text-lg font-semibold"}>
-        Crew <span className="font-normal text-muted-foreground">({data.length})</span>
+    <section aria-labelledby={headingId}>
+      <h2 id={headingId} className={headingHidden ? "sr-only" : "mb-3 text-lg font-semibold"}>
+        {title} <span className="font-normal text-muted-foreground">({entries.length})</span>
       </h2>
       <div className="space-y-4">
         {visible.map((group) => (
@@ -73,23 +78,71 @@ export function CrewList({
                 // Credit rows carry no upstream id and one person can hold the
                 // same role twice, so the index is part of the key.
                 <li key={`${group.role}-${member.person.id}-${i}`}>
-                  <PersonChip person={member.person} />
+                  <PersonChip
+                    person={member.person}
+                    meta={episodeCountLabel(member.episode_count)}
+                  />
                 </li>
               ))}
             </ul>
           </div>
         ))}
       </div>
-      {data.length > COLLAPSED_COUNT && (
+      {entries.length > COLLAPSED_COUNT && (
         <button
           type="button"
           onClick={() => setExpanded((v) => !v)}
           aria-expanded={expanded}
           className="mt-3 rounded text-sm text-muted-foreground underline-offset-2 hover:text-foreground hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
-          {expanded ? "Show less" : `Show all ${data.length}`}
+          {expanded ? "Show less" : `Show all ${entries.length}`}
         </button>
       )}
     </section>
+  );
+}
+
+/** A show's series crew, fetched and rendered. */
+export function ShowCrewList({
+  showId,
+  headingHidden = false,
+}: {
+  showId: number;
+  headingHidden?: boolean;
+}) {
+  const { data, isError, error, refetch } = useShowCrew(showId);
+
+  // A failed request must not look like the (common) empty case.
+  if (isError) return <ErrorState message={error.message} onRetry={() => refetch()} />;
+
+  return (
+    <CrewList
+      entries={data ?? []}
+      title="Crew"
+      headingId="crew-heading"
+      headingHidden={headingHidden}
+    />
+  );
+}
+
+/** A show's episode crew — the jobs held episode by episode. */
+export function ShowEpisodeCrewList({
+  showId,
+  headingHidden = false,
+}: {
+  showId: number;
+  headingHidden?: boolean;
+}) {
+  const { data, isError, error, refetch } = useShowEpisodeCrew(showId);
+
+  if (isError) return <ErrorState message={error.message} onRetry={() => refetch()} />;
+
+  return (
+    <CrewList
+      entries={data ?? []}
+      title="Episode crew"
+      headingId="show-episode-crew-heading"
+      headingHidden={headingHidden}
+    />
   );
 }

@@ -1,36 +1,47 @@
 import { useState } from "react";
-import { useShowCast } from "@/api/shows";
+import { useShowCast, useShowGuestCast } from "@/api/shows";
 import type { CastMember } from "@/api/types";
 import { ErrorState } from "@/components/ErrorState";
 import { PersonChip } from "@/components/PersonChip";
+import { episodeCountLabel } from "@/lib/episodeCount";
 
-/** Cast entries shown before the "Show all" affordance. Cast is unbounded —
- * The Simpsons has 1,420 entries — so the full list is opt-in. */
+/** Cast entries shown before the first "Show more". */
 const COLLAPSED_COUNT = 12;
 
-/** "12 episodes" for a credit that carries a count, nothing for one that
- * doesn't. Zero reads as missing data rather than as a fact worth printing, and
- * a negative count is not a thing the API can mean. */
-function episodeCountLabel(count: number | null | undefined): string | undefined {
-  if (typeof count !== "number" || count < 1) return undefined;
-  return `${count} ${count === 1 ? "episode" : "episodes"}`;
-}
+/** Entries each "Show more" adds (NEU-1512). Paged rather than all-at-once
+ * because a show's guest stars are unbounded — Law & Order has 11,517 — and
+ * mounting them in one click freezes the tab. */
+const PAGE_SIZE = 48;
 
 interface CastListProps {
   entries: CastMember[];
-  /** Section heading — "Cast" for a show, "Guest cast" for an episode. */
+  /** Section heading — "Cast" or "Guest stars" for a show, "Guest cast" for an
+   * episode, "Regular cast" or "Guest stars" for a season. */
   title: string;
   /** Must be unique on the page; it wires the heading to its section. */
   headingId: string;
   /** Hides the heading visually but not from assistive tech. Set where a tab
    * label already carries the same title and count, as on show pages. */
   headingHidden?: boolean;
+  /** `h3` where the list sits under a panel heading of its own — the season
+   * page's Cast panel holds two lists. */
+  headingLevel?: "h2" | "h3";
 }
 
-/** Renders a list of cast credits. Presentational on purpose: show cast and
- * episode guest cast carry the identical payload, so both feed this. */
-export function CastList({ entries, title, headingId, headingHidden = false }: CastListProps) {
-  const [expanded, setExpanded] = useState(false);
+/** Renders a list of cast credits. Presentational on purpose: every cast route
+ * carries the identical payload, so all of them feed this.
+ *
+ * The "N episodes" meta follows the payload rather than a prop: the routes
+ * whose count means nothing — a season's regulars, an episode's guests — send
+ * null, and null prints nothing. */
+export function CastList({
+  entries,
+  title,
+  headingId,
+  headingHidden = false,
+  headingLevel: Heading = "h2",
+}: CastListProps) {
+  const [shown, setShown] = useState(COLLAPSED_COUNT);
 
   // 27% of shows have zero cast, and 96% of episodes have zero guest cast.
   // That is the normal case, not an error state — render nothing at all rather
@@ -41,13 +52,16 @@ export function CastList({ entries, title, headingId, headingHidden = false }: C
   // NEU-1047, and guest cast in the episode's own credit sequence. A
   // client-side sort on `episode_count` would not just duplicate the server's
   // job, it would silently reshuffle the guest cast, which carries no count.
-  const visible = expanded ? entries : entries.slice(0, COLLAPSED_COUNT);
+  const visible = entries.slice(0, shown);
 
   return (
     <section aria-labelledby={headingId}>
-      <h2 id={headingId} className={headingHidden ? "sr-only" : "mb-3 text-lg font-semibold"}>
+      <Heading
+        id={headingId}
+        className={headingHidden ? "sr-only" : "mb-3 text-lg font-semibold"}
+      >
         {title} <span className="font-normal text-muted-foreground">({entries.length})</span>
-      </h2>
+      </Heading>
       <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {visible.map((entry, i) => (
           // Credit rows carry no upstream id and upstream does emit repeat
@@ -61,21 +75,23 @@ export function CastList({ entries, title, headingId, headingHidden = false }: C
           </li>
         ))}
       </ul>
-      {entries.length > COLLAPSED_COUNT && (
+      {entries.length > shown && (
         <button
           type="button"
-          onClick={() => setExpanded((v) => !v)}
-          aria-expanded={expanded}
+          onClick={() => setShown((n) => n + PAGE_SIZE)}
+          // The season page renders two lists in one panel, so the name says
+          // which one grows. The visible text stays a prefix (WCAG 2.5.3).
+          aria-label={`Show more ${title.toLowerCase()} (${visible.length} of ${entries.length} shown)`}
           className="mt-3 rounded text-sm text-muted-foreground underline-offset-2 hover:text-foreground hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
-          {expanded ? "Show less" : `Show all ${entries.length}`}
+          Show more
         </button>
       )}
     </section>
   );
 }
 
-/** Show-level cast, fetched and rendered. */
+/** A show's regular cast, fetched and rendered. */
 export function ShowCastList({
   showId,
   headingHidden = false,
@@ -93,6 +109,28 @@ export function ShowCastList({
       entries={data ?? []}
       title="Cast"
       headingId="cast-heading"
+      headingHidden={headingHidden}
+    />
+  );
+}
+
+/** A show's guest stars — every cast credit that is not a regular one. */
+export function ShowGuestCastList({
+  showId,
+  headingHidden = false,
+}: {
+  showId: number;
+  headingHidden?: boolean;
+}) {
+  const { data, isError, error, refetch } = useShowGuestCast(showId);
+
+  if (isError) return <ErrorState message={error.message} onRetry={() => refetch()} />;
+
+  return (
+    <CastList
+      entries={data ?? []}
+      title="Guest stars"
+      headingId="guest-stars-heading"
       headingHidden={headingHidden}
     />
   );
