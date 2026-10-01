@@ -25,7 +25,12 @@ import { usePersistedSort } from "@/hooks/usePersistedSort";
 import { usePersistedString } from "@/hooks/usePersistedString";
 import { usePersistedView } from "@/hooks/usePersistedView";
 
+// Popularity is TMDB's score, and first because it is the default (NEU-1513).
+// Labelled "Popularity", never "Popular": the glossary reserves that word for
+// the friend-scoped list. No ascending option — nobody wants the least-known
+// match first.
 const SEARCH_SORTS: { key: SortKey; label: string }[] = [
+  { key: "-popularity", label: "Popularity" },
   { key: "-last_aired", label: "Last Aired" },
   { key: "premiered", label: "Premiered First" },
   { key: "-premiered", label: "Premiered Last" },
@@ -125,7 +130,14 @@ export function SearchOverlay({
   const trimmed = search.trim();
   const query = useDebouncedValue(trimmed, DEBOUNCE_MS, "");
   const [view, setView] = usePersistedView("search", "grid");
-  const [sort, setSort] = usePersistedSort<SortKey>("search", SEARCH_SORT_KEYS, "-last_aired");
+  // The page key was renamed from "search" when the default moved to
+  // Popularity (NEU-1513): a stored `-last_aired` cannot be told apart from the
+  // old default, so a fresh key is what lands every viewer on the new one once.
+  const [sort, setSort] = usePersistedSort<SortKey>(
+    "search-sort-v2",
+    SEARCH_SORT_KEYS,
+    "-popularity",
+  );
   const [status, setStatus] = usePersistedSort<ShowStatusFilter>(
     "search-status",
     SHOW_STATUS_KEYS,
