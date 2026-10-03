@@ -2,6 +2,7 @@ import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tansta
 import { toast } from "sonner";
 import { apiFetch } from "./client";
 import type { ApiError } from "./client";
+import { offerPushNudge } from "@/lib/pushNudge";
 import { localToday } from "./today";
 import type {
   AuthedUser,
@@ -10,6 +11,8 @@ import type {
   FeedPage,
   MyShowEntry,
   MyShowsSort,
+  PopularWithFriends,
+  PreferencesPatch,
   Rating,
   RecommendationsResponse,
   ShowDetail,
@@ -157,7 +160,8 @@ function invalidateAll(qc: ReturnType<typeof useQueryClient>) {
   // Friend engagement may include the caller in the future; keep honest.
   qc.invalidateQueries({ queryKey: ["friend-activity"] });
   // Every grid surface carries a per-user `in_my_shows` mark, so adding or
-  // removing a show changes all four bodies (NEU-1057, NEU-1060, NEU-1186).
+  // removing a show changes all five bodies (NEU-1057, NEU-1060, NEU-1186,
+  // NEU-1500).
   // Invalidation is the mechanism, not `staleTime`: `staleTime: 0` alone only
   // refetches on mount, which would leave a Discover tab showing the
   // pre-toggle mark until it remounted — and `["shows"]` / `["show-similar"]`
@@ -165,6 +169,7 @@ function invalidateAll(qc: ReturnType<typeof useQueryClient>) {
   // there is.
   qc.invalidateQueries({ queryKey: ["trending"] });
   qc.invalidateQueries({ queryKey: ["anticipated"] });
+  qc.invalidateQueries({ queryKey: ["popular-with-friends"] });
   qc.invalidateQueries({ queryKey: ["shows"] });
   qc.invalidateQueries({ queryKey: ["show-similar"] });
   invalidateRecommendations(qc);
@@ -255,14 +260,22 @@ function placeholderMyShowEntry(showId: number): MyShowEntry {
     added_at: new Date().toISOString(),
     my_rating: null,
     hide_from_activity: false,
+    muted: false,
   };
+}
+
+/** What an add names: the show, and its name for the post-add push nudge. */
+export interface AddShowVariables {
+  showId: number;
+  showName: string;
 }
 
 export function useAddShow() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (showId: number) => apiFetch<void>(`/me/shows/${showId}`, { method: "PUT" }),
-    onMutate: async (showId: number) => {
+    mutationFn: ({ showId }: AddShowVariables) =>
+      apiFetch<void>(`/me/shows/${showId}`, { method: "PUT" }),
+    onMutate: async ({ showId }: AddShowVariables) => {
       // Both keys are cancelled before either is patched, for the reason the
       // `["my-shows"]` cancel already existed: an in-flight search response
       // landing after the patch would write the pre-toggle body back and
@@ -282,12 +295,16 @@ export function useAddShow() {
       setBrowseMembership(qc, showId, true);
       return { snapshots };
     },
-    onError: (_err, _showId, ctx) => {
+    onError: (_err, _vars, ctx) => {
       // Snapshot-and-restore rather than an inverse flip: that is the shape
       // this mutation already used for `["my-shows"]`, and an inverse flip
       // would be a second expression of the same guess.
       ctx?.snapshots.forEach(([key, data]) => qc.setQueryData(key, data));
     },
+    // Every add surface gets the nudge from here rather than by threading a
+    // prop through it (push-notifications project spec §6.4). The store decides
+    // whether this browser should see it; nothing here asks for permission.
+    onSuccess: (_data, { showName }) => offerPushNudge(showName),
     onSettled: () => invalidateAll(qc),
   });
 }
@@ -517,6 +534,9 @@ export function useShowRating(showId: number) {
       // changes that body too — and a show is routinely similar to one the
       // viewer is rating, which is the case a browse-only invalidation misses.
       qc.invalidateQueries({ queryKey: ["show-similar"] });
+      // `/me/friends/popular` fills `my_rating` too, and a show friends are
+      // talking about is one the viewer is likely to be rating (NEU-1500).
+      qc.invalidateQueries({ queryKey: ["popular-with-friends"] });
       invalidateRecommendations(qc);
     },
   });
@@ -571,6 +591,28 @@ export function useFeed(limit = 20) {
     queryFn: ({ pageParam }) => fetchFeed((pageParam as string | null) ?? null, limit),
     initialPageParam: null as string | null,
     getNextPageParam: (lastPage) => lastPage.next_cursor,
+    staleTime: 0,
+  });
+}
+
+/** The shows the viewer's friends have been active on lately, ranked by how
+ * many of them (tvbf-backend/docs/specs/tvbf-popular-with-friends-project-spec.md
+ * §5.2, §6.1).
+ *
+ * Lives here rather than in `friends.ts` because the path is `/me/...`: the
+ * body is about the viewer's own friend graph. The list arrives ranked,
+ * windowed and capped — this client never slices, filters or re-sorts it, and
+ * branches on `connection_count` only (§7).
+ *
+ * `staleTime: 0` on `useTrending`'s reasoning: the route answers `no-store`
+ * because `in_my_shows` and `my_rating` make the body per-user *and*
+ * user-mutable. Invalidation from `invalidateAll` and `useShowRating` is what
+ * keeps those marks fresh while the tab stays mounted.
+ */
+export function usePopularWithFriends() {
+  return useQuery<PopularWithFriends>({
+    queryKey: ["popular-with-friends"],
+    queryFn: () => apiFetch<PopularWithFriends>("/me/friends/popular"),
     staleTime: 0,
   });
 }
@@ -639,7 +681,7 @@ export function useDismissRecommendation() {
   });
 }
 
-export function patchPreferences(opts: { activity_feed_enabled?: boolean }): Promise<AuthedUser> {
+export function patchPreferences(opts: PreferencesPatch): Promise<AuthedUser> {
   return apiFetch<AuthedUser>("/me/preferences", {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
@@ -654,17 +696,20 @@ export function useUpdatePreferences() {
     onMutate: async (vars) => {
       await qc.cancelQueries({ queryKey: ["me"] });
       const prev = qc.getQueryData<AuthedUser | null>(["me"]);
-      if (prev && typeof vars.activity_feed_enabled === "boolean") {
-        const next: AuthedUser = {
-          ...prev,
-          activity_feed_enabled: vars.activity_feed_enabled,
-        };
-        qc.setQueryData<AuthedUser | null>(["me"], next);
-      }
+      if (prev) qc.setQueryData<AuthedUser | null>(["me"], { ...prev, ...vars });
       return { prev };
     },
-    onError: (_e, _v, ctx) => {
-      if (ctx?.prev !== undefined) qc.setQueryData(["me"], ctx.prev);
+    // Restore only the keys this call patched: Privacy and the notification
+    // switches are separate mutations, and restoring the whole snapshot would
+    // undo whichever of them landed in between.
+    onError: (_e, vars, ctx) => {
+      const prev = ctx?.prev;
+      if (prev) {
+        const restored = Object.fromEntries(
+          Object.keys(vars).map((k) => [k, prev[k as keyof PreferencesPatch]]),
+        );
+        qc.setQueryData<AuthedUser | null>(["me"], (cur) => (cur ? { ...cur, ...restored } : cur));
+      }
       toast.error("Could not update preferences.");
     },
     onSuccess: (data) => {
@@ -696,6 +741,42 @@ export function useToggleHideFromActivity(showId: number) {
     onError: (_e, _v, ctx) => {
       ctx?.snapshots.forEach(([key, data]) => qc.setQueryData(key, data));
       toast.error("Could not update show privacy.");
+    },
+    onSettled: () => {
+      qc.invalidateQueries({ queryKey: ["my-shows"] });
+    },
+  });
+}
+
+/** Mute or unmute push notifications for one show in My Shows (NEU-1495,
+ * push project spec §6.5) — the same shape as `useToggleHideFromActivity`, the
+ * other per-row flag on `app.user_show_watch`: optimistic on `["my-shows"]`,
+ * snapshot-and-restore on failure, refetch on settle.
+ *
+ * **It does not invalidate `["me-recommendations"]`.** A mute is not a
+ * never-recommend source — `recommendations/exclusion.py` does not read it —
+ * so the recommendations payload cannot change, and a refetch would spend a
+ * request to be told the same thing. */
+export function useMuteShow(showId: number) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (muted: boolean) =>
+      apiFetch<void>(`/me/shows/${showId}/mute`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ muted }),
+      }),
+    onMutate: async (muted) => {
+      await qc.cancelQueries({ queryKey: ["my-shows"] });
+      const snapshots = qc.getQueriesData<MyShowEntry[]>({ queryKey: ["my-shows"] });
+      qc.setQueriesData<MyShowEntry[]>({ queryKey: ["my-shows"] }, (prev) =>
+        prev?.map((e) => (e.show.id === showId ? { ...e, muted } : e)),
+      );
+      return { snapshots };
+    },
+    onError: (_e, _v, ctx) => {
+      ctx?.snapshots.forEach(([key, data]) => qc.setQueryData(key, data));
+      toast.error("Could not update notifications for this show.");
     },
     onSettled: () => {
       qc.invalidateQueries({ queryKey: ["my-shows"] });

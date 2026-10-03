@@ -7,7 +7,9 @@ import { ShowCard, type PremiereDisplay } from "./ShowCard";
  * `in_my_shows`, so a `TrendingShow[]` / `AnticipatedShow[]` passes through
  * unchanged and its mark reaches the card (NEU-1057). It is optional, so every
  * existing caller is unaffected: a payload without the field renders a card
- * without the mark.
+ * without the mark. `friend_count` rides the same way (NEU-1501): Popular with
+ * Friends' `PopularShow[]` carries it, every other payload does not, and a card
+ * without it draws no count line.
  *
  * `premiereDisplay` is passed to every card and defaults to the year, so the
  * choice is made once per grid rather than per row — a list where some cards
@@ -30,7 +32,7 @@ export function ShowGrid({
   dismissible,
   onDismissed,
 }: {
-  shows: (ShowSummary & { in_my_shows?: boolean })[];
+  shows: (ShowSummary & { in_my_shows?: boolean; friend_count?: number })[];
   premiereDisplay?: PremiereDisplay;
   addable?: boolean;
   dismissible?: boolean;
@@ -46,6 +48,7 @@ export function ShowGrid({
           key={s.id}
           show={s}
           inMyShows={s.in_my_shows}
+          friendCount={s.friend_count}
           premiereDisplay={premiereDisplay}
           addable={addable}
           dismissible={dismissible}

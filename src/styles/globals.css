@@ -1,4 +1,8 @@
 @import "tailwindcss";
+/* The wordmark's face, self-hosted so no visitor's IP reaches Google Fonts
+ * (NEU-1509 §3.1). Split by unicode-range: "TV BingeFriend" fetches the Latin
+ * file only. */
+@import "@fontsource-variable/manrope";
 @plugin "tailwindcss-animate";
 
 /* `dark:` always matches, because the app is always dark.
@@ -54,6 +58,15 @@
   --radius: 0.5rem;
 }
 
+/* The brand's own tokens (NEU-1509 §3.2), used by `BrandLockup` and nothing
+ * else. Deliberately not shadcn semantic roles: `--color-brand` is the icon
+ * tile's amber, not `primary` or `accent`, and `--font-brand` is the wordmark's
+ * face, not the body's or the headings'. */
+@theme {
+  --font-brand: "Manrope Variable", system-ui, sans-serif;
+  --color-brand: #f5a524;
+}
+
 :root {
   /* Tell the UA the page is dark. Without this it assumes light and renders
      scrollbars, autofill highlights, and native select/date popups in light
@@ -63,6 +76,9 @@
 
 body {
   margin: 0;
+  /* viewport-fit=cover (index.html) extends the page under a landscape notch. */
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
   min-height: 100vh;
   background: var(--color-background);
   color: var(--color-foreground);

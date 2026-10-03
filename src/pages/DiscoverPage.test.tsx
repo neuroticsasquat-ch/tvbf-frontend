@@ -5,7 +5,7 @@ import { http, HttpResponse } from "msw";
 import { env } from "@/env";
 import { server } from "@/test/msw/server";
 import { renderWithProviders } from "@/test/renderWithProviders";
-import type { AnticipatedShow, Recommendation, TrendingShow } from "@/api/types";
+import type { AnticipatedShow, PopularShow, Recommendation, TrendingShow } from "@/api/types";
 import { DiscoverPage } from "./DiscoverPage";
 
 function makeRecommendation(overrides: Partial<Recommendation> = {}): Recommendation {
@@ -112,6 +112,40 @@ function makeAnticipatedShow(overrides: Partial<AnticipatedShow> = {}): Anticipa
 
 function serveAnticipated(shows: AnticipatedShow[]) {
   server.use(http.get(`${env.apiBaseUrl}/anticipated`, () => HttpResponse.json(shows)));
+}
+
+function makePopularShow(overrides: Partial<PopularShow> = {}): PopularShow {
+  return {
+    id: 700,
+    name: "Slow Horses",
+    type: null,
+    status: "Returning Series",
+    language: "en",
+    premiered: "2022-04-01",
+    ended: null,
+    image_medium: null,
+    image_original: null,
+    network: null,
+    web_channel: null,
+    genres: [],
+    matched_aka: null,
+    rating_average: null,
+    my_rating: null,
+    in_my_shows: false,
+    friend_count: 2,
+    ...overrides,
+  };
+}
+
+function servePopular(connectionCount: number, shows: PopularShow[]): { called: () => boolean } {
+  let called = false;
+  server.use(
+    http.get(`${env.apiBaseUrl}/me/friends/popular`, () => {
+      called = true;
+      return HttpResponse.json({ window_days: 14, connection_count: connectionCount, shows });
+    }),
+  );
+  return { called: () => called };
 }
 
 describe("DiscoverPage", () => {
@@ -263,7 +297,7 @@ describe("DiscoverPage", () => {
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
 
-  it("opens on My Recommendations, ahead of the other two tabs", async () => {
+  it("opens on My Recommendations, ahead of the other tabs", async () => {
     serveRows([makeRecommendation()]);
     renderWithProviders(<DiscoverPage />);
 
@@ -271,7 +305,12 @@ describe("DiscoverPage", () => {
     expect(mine).toHaveAttribute("aria-selected", "true");
     // First in the strip, not merely present.
     const labels = screen.getAllByRole("tab").map((t) => t.textContent);
-    expect(labels).toEqual(["My Recommendations", "Trending", "Most Anticipated"]);
+    expect(labels).toEqual([
+      "My Recommendations",
+      "Trending",
+      "Popular with Friends",
+      "Most Anticipated",
+    ]);
     expect(await screen.findByRole("link", { name: /Severance/ })).toBeInTheDocument();
   });
 
@@ -395,5 +434,189 @@ describe("DiscoverPage", () => {
     expect(screen.queryByText(/stale/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/no shows/i)).not.toBeInTheDocument();
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
+
+  describe("the picker below md", () => {
+    // jsdom applies no media queries, so the tab row and the picker are both
+    // in the DOM here; these assert what the picker does, not when it shows.
+    const trigger = () => screen.getByRole("button", { name: /^Discover section: / });
+
+    async function openSheet(): Promise<HTMLElement> {
+      await userEvent.click(trigger());
+      return screen.findByRole("dialog", { name: "Discover" });
+    }
+
+    function optionLabels(sheet: HTMLElement): (string | null)[] {
+      return within(sheet)
+        .getAllByRole("button")
+        .map((b) => b.textContent);
+    }
+
+    function tabLabels(): (string | null)[] {
+      return screen.getAllByRole("tab").map((t) => t.textContent);
+    }
+
+    it("lists every tab the row does, in the same order, with recommendations", async () => {
+      serveRows([makeRecommendation()]);
+      renderWithProviders(<DiscoverPage />);
+
+      await screen.findByRole("link", { name: /Severance/ });
+      // Read before opening: the modal sheet hides the rest of the page from
+      // the accessibility tree, tab row included.
+      const row = tabLabels();
+      const sheet = await openSheet();
+      expect(optionLabels(sheet)).toEqual([
+        "My Recommendations",
+        "Trending",
+        "Popular with Friends",
+        "Most Anticipated",
+      ]);
+      expect(optionLabels(sheet)).toEqual(row);
+    });
+
+    it("drops My Recommendations exactly when the row does", async () => {
+      const request = serveRows([]);
+      serveTrending([makeTrendingShow()]);
+      renderWithProviders(<DiscoverPage />);
+
+      await waitFor(() => expect(request.called()).toBe(true));
+      await waitFor(() =>
+        expect(screen.queryByRole("tab", { name: "My Recommendations" })).not.toBeInTheDocument(),
+      );
+      // Read before opening: the modal sheet hides the rest of the page from
+      // the accessibility tree, tab row included.
+      const row = tabLabels();
+      const sheet = await openSheet();
+      expect(optionLabels(sheet)).toEqual(["Trending", "Popular with Friends", "Most Anticipated"]);
+      expect(optionLabels(sheet)).toEqual(row);
+    });
+
+    it("keeps My Recommendations while the row's latch does", async () => {
+      let call = 0;
+      server.use(
+        http.get(`${env.apiBaseUrl}/me/recommendations`, () => {
+          call += 1;
+          return HttpResponse.json({ recommendations: call === 1 ? [makeRecommendation()] : [] });
+        }),
+        http.put(`${env.apiBaseUrl}/me/shows/1`, () => new HttpResponse(null, { status: 204 })),
+      );
+      renderWithProviders(<DiscoverPage />);
+
+      await userEvent.click(await screen.findByRole("button", { name: /^Add .+ to My Shows$/ }));
+      expect(await screen.findByText(/new recommendations on Sunday/i)).toBeInTheDocument();
+
+      const row = tabLabels();
+      expect(row).toContain("My Recommendations");
+      const sheet = await openSheet();
+      expect(optionLabels(sheet)).toEqual(row);
+    });
+
+    it("switches the panel and persists the choice, then closes", async () => {
+      serveRows([makeRecommendation()]);
+      servePopular(3, [makePopularShow()]);
+      renderWithProviders(<DiscoverPage />);
+
+      await screen.findByRole("link", { name: /Severance/ });
+      const sheet = await openSheet();
+      await userEvent.click(within(sheet).getByRole("button", { name: "Popular with Friends" }));
+
+      expect(screen.queryByRole("dialog", { name: "Discover" })).not.toBeInTheDocument();
+      expect(await screen.findByRole("link", { name: /Slow Horses/ })).toBeInTheDocument();
+      expect(screen.getByRole("tab", { name: "Popular with Friends" })).toHaveAttribute(
+        "aria-selected",
+        "true",
+      );
+      await waitFor(() =>
+        expect(window.localStorage.getItem("tvbf:str:discover-tab")).toBe("popular-with-friends"),
+      );
+    });
+
+    it("names the active tab, including after a switch made through the row", async () => {
+      window.localStorage.setItem("tvbf:str:discover-tab", "trending");
+      serveAnticipated([makeAnticipatedShow()]);
+      renderWithProviders(<DiscoverPage />);
+
+      expect(trigger()).toHaveAccessibleName("Discover section: Trending");
+      expect(trigger()).toHaveTextContent("Trending");
+
+      await userEvent.click(screen.getByRole("tab", { name: "Most Anticipated" }));
+
+      expect(trigger()).toHaveAccessibleName("Discover section: Most Anticipated");
+      expect(trigger()).toHaveTextContent("Most Anticipated");
+      const sheet = await openSheet();
+      // The check sits on the active option only.
+      const checked = within(sheet)
+        .getAllByRole("button")
+        .filter((b) => b.querySelector("svg"))
+        .map((b) => b.textContent);
+      expect(checked).toEqual(["Most Anticipated"]);
+    });
+  });
+
+  describe("Popular with Friends", () => {
+    // The tab is always present, unlike My Recommendations: its empty states
+    // are the point (project spec §6.1). Each case below asserts the trigger
+    // sits between Trending and Most Anticipated whatever the body.
+    function expectTabInPlace() {
+      const labels = screen.getAllByRole("tab").map((t) => t.textContent);
+      const at = labels.indexOf("Popular with Friends");
+      expect(labels[at - 1]).toBe("Trending");
+      expect(labels[at + 1]).toBe("Most Anticipated");
+    }
+
+    it("is present before any data has arrived", () => {
+      server.use(http.get(`${env.apiBaseUrl}/me/friends/popular`, () => new Promise(() => {})));
+      renderWithProviders(<DiscoverPage />);
+
+      expectTabInPlace();
+    });
+
+    it("is present, and renders the grid, with data", async () => {
+      window.localStorage.setItem("tvbf:str:discover-tab", "popular-with-friends");
+      servePopular(3, [makePopularShow()]);
+      renderWithProviders(<DiscoverPage />);
+
+      expect(screen.getByRole("tab", { name: "Popular with Friends" })).toHaveAttribute(
+        "aria-selected",
+        "true",
+      );
+      expect(await screen.findByRole("link", { name: /Slow Horses/ })).toBeInTheDocument();
+      expectTabInPlace();
+    });
+
+    it("is present with the connect prompt for a viewer with no connections", async () => {
+      window.localStorage.setItem("tvbf:str:discover-tab", "popular-with-friends");
+      servePopular(0, []);
+      renderWithProviders(<DiscoverPage />);
+
+      expect(await screen.findByRole("link", { name: "Connect with friends" })).toHaveAttribute(
+        "href",
+        "/friends",
+      );
+      expectTabInPlace();
+    });
+
+    it("is present with the quiet line when friends have done nothing lately", async () => {
+      window.localStorage.setItem("tvbf:str:discover-tab", "popular-with-friends");
+      servePopular(2, []);
+      renderWithProviders(<DiscoverPage />);
+
+      expect(
+        await screen.findByText("Nothing from your friends in the last two weeks."),
+      ).toBeInTheDocument();
+      expectTabInPlace();
+    });
+
+    it("persists the tab when the user switches to it", async () => {
+      servePopular(3, [makePopularShow()]);
+      renderWithProviders(<DiscoverPage />);
+
+      await userEvent.click(screen.getByRole("tab", { name: "Popular with Friends" }));
+
+      await waitFor(() =>
+        expect(window.localStorage.getItem("tvbf:str:discover-tab")).toBe("popular-with-friends"),
+      );
+      expect(await screen.findByRole("link", { name: /Slow Horses/ })).toBeInTheDocument();
+    });
   });
 });

@@ -5,9 +5,9 @@ import {
   Calendar as CalendarIcon,
   Compass as DiscoverIcon,
   Library as MyShowsIcon,
+  Loader2 as SpinnerIcon,
   Users as FriendsIcon,
   Search as SearchIcon,
-  Tv as TvIcon,
 } from "lucide-react";
 import { useAuth } from "./AuthContext";
 import { useIncomingRequestCount } from "@/api/incomingRequests";
@@ -17,10 +17,18 @@ import { DeleteAccountDialog } from "./DeleteAccountDialog";
 import { FeedbackDialog } from "./feedback/FeedbackDialog";
 import { SearchOverlay } from "./SearchOverlay";
 import { SasquatchMark } from "./SasquatchMark";
+import { BrandLockup } from "./BrandLockup";
 import { UnverifiedEmailBanner } from "./UnverifiedEmailBanner";
+import { PushNudgeCard } from "./push/PushNudgeCard";
+import { clearPushNudge } from "@/lib/pushNudge";
 import { cn } from "@/lib/cn";
 
 type Placement = "desktop" | "mobile-header" | "mobile-bottom";
+
+// Read once at module load: a clock read during render is impure (oxlint's
+// react purity rule), and a footer year that lags a tab left open over New
+// Year until the next reload is harmless.
+const COPYRIGHT_YEAR = new Date().getFullYear();
 
 export function AppShell() {
   const { user } = useAuth();
@@ -30,6 +38,9 @@ export function AppShell() {
   const [delOpen, setDelOpen] = useState(false);
   const [feedbackOpen, setFeedbackOpen] = useState(false);
   const [searchInput, setSearchInput] = useState("");
+  // Reported up by `SearchOverlay`, which owns the debounce and both queries
+  // and so is the only place that knows when a search is running (NEU-1502).
+  const [searchBusy, setSearchBusy] = useState(false);
   const searchFormRef = useRef<HTMLFormElement>(null);
   const overlayRef = useRef<HTMLElement>(null);
 
@@ -39,6 +50,10 @@ export function AppShell() {
     setPrevLocationKey(location.key);
     setSearchInput("");
   }
+
+  // The nudge belongs to the page the add happened on; leaving it closes the
+  // card (for good — it was recorded as seen when it appeared).
+  useEffect(() => clearPushNudge(), [location.key]);
 
   const overlayActive = !!user && searchInput.trim().length > 0;
 
@@ -208,18 +223,24 @@ export function AppShell() {
   );
 
   return (
-    // pb-20 reserves space at the document bottom on mobile so the fixed
-    // bottom nav doesn't visually cover the footer. Removed at md+.
-    <div className={cn("flex min-h-screen flex-col overflow-x-hidden", user && "pb-20 md:pb-0")}>
-      <header className="sticky top-0 z-30 border-b border-border bg-background">
+    // pb reserves space at the document bottom on mobile so the fixed bottom
+    // nav — which grows by the home-indicator inset — doesn't visually cover
+    // the footer. Removed at md+.
+    <div
+      className={cn(
+        "flex min-h-screen flex-col overflow-x-hidden",
+        user && "pb-[calc(5rem+env(safe-area-inset-bottom))] md:pb-0",
+      )}
+    >
+      {/* The top inset clears the iOS status bar in a standalone launch (NEU-1482). */}
+      <header className="sticky top-0 z-30 border-b border-border bg-background pt-[env(safe-area-inset-top)]">
         <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-3 px-4 py-3">
           <Link
             to="/"
-            className="inline-flex shrink-0 items-center gap-2 text-lg font-semibold hover:underline"
+            className="inline-flex shrink-0 items-center"
             aria-label="TV BingeFriend home"
           >
-            <TvIcon className="h-5 w-5" aria-hidden />
-            TV BingeFriend
+            <BrandLockup size="header" />
           </Link>
           {user && (
             <>
@@ -227,6 +248,7 @@ export function AppShell() {
                 ref={searchFormRef}
                 value={searchInput}
                 onChange={setSearchInput}
+                busy={searchBusy}
                 className="order-last w-full md:order-none md:ml-auto md:w-auto md:max-w-md md:flex-1"
               />
               <nav className="hidden md:flex shrink-0 items-center gap-1" aria-label="Primary">
@@ -251,9 +273,10 @@ export function AppShell() {
           ref={overlayRef}
           role="region"
           aria-label="Search results"
+          aria-busy={searchBusy}
           className="mx-auto w-full max-w-6xl flex-1 px-4 py-6"
         >
-          <SearchOverlay search={searchInput} />
+          <SearchOverlay search={searchInput} onBusyChange={setSearchBusy} />
         </section>
       ) : (
         <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-6">
@@ -368,7 +391,7 @@ export function AppShell() {
             Terms and Privacy, not here — and it keeps the product's own casing
             rather than backlotter's lowercase house style. */}
           <div className="flex shrink-0 flex-col items-center gap-1 lg:items-end lg:text-right">
-            <span>&copy; {new Date().getFullYear()} TV BingeFriend.</span>
+            <span>&copy; {COPYRIGHT_YEAR} TV BingeFriend.</span>
             <a
               href="https://neuroticsasquat.ch"
               target="_blank"
@@ -396,6 +419,8 @@ export function AppShell() {
         </nav>
       )}
 
+      {user && <PushNudgeCard />}
+
       <ChangePasswordDialog open={pwOpen} onClose={() => setPwOpen(false)} />
       <DeleteAccountDialog open={delOpen} onClose={() => setDelOpen(false)} />
       <FeedbackDialog open={feedbackOpen} onOpenChange={setFeedbackOpen} />
@@ -406,11 +431,13 @@ export function AppShell() {
 function HeaderSearch({
   value,
   onChange,
+  busy = false,
   ref,
   className,
 }: {
   value: string;
   onChange: (next: string) => void;
+  busy?: boolean;
   ref?: React.Ref<HTMLFormElement>;
   className?: string;
 }) {
@@ -443,9 +470,23 @@ function HeaderSearch({
           autoComplete="off"
           // text-base (16px) on mobile prevents iOS Safari auto-zoom on focus;
           // sm:text-sm restores the tighter desktop visual.
-          className="w-full rounded border border-border bg-background py-1.5 pl-7 pr-2 text-base sm:text-sm focus:outline-none focus:ring-1 focus:ring-foreground"
+          // `pr-7` whether or not the spinner is up, so the text never shifts
+          // when it appears.
+          className="w-full rounded border border-border bg-background py-1.5 pl-7 pr-7 text-base sm:text-sm focus:outline-none focus:ring-1 focus:ring-foreground"
         />
+        {/* The app's one spinner (NEU-1502 §3.4): a search in flight has no
+            layout for a skeleton to hold, and the results below it stay on
+            screen while it turns. The search icon stays — it names the field. */}
+        {busy && (
+          <SpinnerIcon
+            className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin motion-reduce:animate-none text-muted-foreground"
+            aria-hidden
+          />
+        )}
       </div>
+      <span role="status" aria-live="polite" className="sr-only">
+        {busy ? "Searching…" : ""}
+      </span>
     </form>
   );
 }

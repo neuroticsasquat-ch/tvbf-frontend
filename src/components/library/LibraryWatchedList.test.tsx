@@ -137,6 +137,8 @@ describe("LibraryWatchedList row UI", () => {
     expect(screen.getByRole("button", { name: /^remove .+ from my shows$/i })).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: /^remove .+ from my shows$/i }));
+    // Every removal from My Shows asks first (NEU-1511).
+    fireEvent.click(screen.getByRole("button", { name: "Remove" }));
 
     await waitFor(() => expect(removeCalls).toEqual([104]));
     await waitFor(() =>
@@ -375,7 +377,8 @@ describe("watch-history removal, and where focus goes after it (NEU-1193)", () =
   it("moves nobody's focus when the removal fails", async () => {
     // `useRemoveFromHistory` restores its snapshot and raises its own toast, so
     // the row comes back — and because the report hangs off `onSuccess`, focus
-    // is never moved into the restored list.
+    // is never moved to a neighbour's chip. It stays on the control the viewer
+    // activated, which `ConfirmDialog` hands it back to on close (NEU-1511).
     seedThree();
     server.use(
       http.delete(
@@ -389,7 +392,7 @@ describe("watch-history removal, and where focus goes after it (NEU-1193)", () =
     await confirmRemoval(/^remove the bear watch history$/i);
 
     await waitFor(() => expect(screen.getByText("The Bear")).toBeInTheDocument());
-    expect(document.body).toHaveFocus();
+    expect(screen.getByRole("button", { name: /^remove the bear watch history$/i })).toHaveFocus();
   });
 });
 

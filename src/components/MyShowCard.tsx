@@ -1,4 +1,5 @@
 import type { MyShowEntry } from "@/api/types";
+import { MuteShowButton } from "@/components/MuteShowButton";
 import { MyShowsButton } from "@/components/MyShowsButton";
 import { OwnerFacts } from "@/components/OwnerFacts";
 import { RemoveWatchHistoryButton } from "@/components/RemoveWatchHistoryButton";
@@ -30,8 +31,8 @@ export function MyShowCard({
   ratingOwner,
   inMyShows,
   callerRelationship,
-  removable,
   historyRemovable,
+  mutable,
   onRemoved,
 }: {
   entry: MyShowEntry;
@@ -57,39 +58,37 @@ export function MyShowCard({
    * the viewer has watched anything, the `You: x/y` comparison — the same pair,
    * from the same resolver, that the list row renders (NEU-1188 AC 2/3).
    *
-   * A flat resolved value rather than a `ReactNode` slot, on `removable`'s
+   * A flat resolved value rather than a `ReactNode` slot, on `historyRemovable`'s
    * precedent: the card builds the control itself, so an affordance belonging
    * to one surface arrives as an opt-in rather than as a hole any caller can
    * fill with a fifth drawing of one affordance.
    *
    * **Absent is the Active tab's self mode**, where every entry is in My Shows
    * by definition — there is no add to offer and nobody to compare against, and
-   * the one control is `removable`'s compact chip. */
+   * no removal either: that tab's removal path is the show page (NEU-1511). */
   callerRelationship?: CallerRelationship | null;
-  /** Opt-in: draw the compact remove chip in the poster's bottom-right corner.
-   * A flat boolean on `ShowCard`'s `addable` / `dismissible` precedent — the
-   * card builds the control itself rather than taking a `ReactNode`, which is
-   * the whole point of that seam: an affordance belonging to one surface
-   * arrives as an opt-in, not as a hole any caller can fill. Only the viewer's
-   * own My Shows · Active passes it (NEU-1187 §3.3). */
-  removable?: boolean;
   /** Opt-in: draw the compact **watch-history** removal in the poster's
-   * bottom-right corner. The sibling of `removable`, and no surface passes
-   * both — `ShowPoster` exposes one control slot, Active passes `removable`
-   * and Watched passes this (NEU-1193). That is a property of the callers, not
-   * of the type: passing both draws this one and drops the other silently,
-   * which is why the pair is worth stating rather than trusting.
-   *
-   * It is a second boolean rather than a widening of `removable` because the
-   * two remove different things — one stops tracking a show, the other deletes
-   * every episode the viewer marked — and a card that took "removable" and
-   * decided which from its tab would be the decision-inside-the-component this
-   * seam exists to avoid. */
+   * bottom-right corner. A flat boolean on `ShowCard`'s `addable` /
+   * `dismissible` precedent — the card builds the control itself rather than
+   * taking a `ReactNode`, which is the whole point of that seam: an affordance
+   * belonging to one surface arrives as an opt-in, not as a hole any caller can
+   * fill. Only Watched passes it (NEU-1193); it is the one corner control this
+   * card draws. The viewer's own Active tab used to pass a sibling `removable`
+   * for a compact My Shows removal, and NEU-1511 took it away: a remove-only
+   * chip over the card's link is what got tapped by mistake. */
   historyRemovable?: boolean;
-  /** Reports a landed removal back to the surface, so it can move focus once
-   * this card unmounts — whichever of the two removals the card was opted into,
-   * since only one can be drawn. One function reference for every card; the
-   * card hands its own id back (NEU-1187 §3.5). */
+  /** Opt-in: draw the compact push-notification mute toggle in the action row
+   * (NEU-1495). Only the viewer's own My Shows · Active passes it — a Watched
+   * entry need not be in My Shows at all, so there is no row to mute — and,
+   * like `historyRemovable`, it is honoured only when `ratingOwner.kind === "own"`: a
+   * friend's entry carries the friend's flag, not the viewer's.
+   *
+   * The action row rather than a poster corner, because the corners hold
+   * controls that can only remove (NEU-1187 §3.1) and a mute flips both ways. */
+  mutable?: boolean;
+  /** Reports a landed watch-history removal back to the surface, so it can
+   * move focus once this card unmounts. One function reference for every card;
+   * the card hands its own id back (NEU-1187 §3.5). */
   onRemoved?: (showId: number) => void;
 }) {
   // Same predicate as the list view (NEU-101 decision 2): show is over AND
@@ -112,37 +111,15 @@ export function MyShowCard({
         // the prop takes a bare number, so it could not go here anyway.
         ownRating={ratingOwner.kind === "own" ? entry.my_rating : null}
         control={
-          // The `ratingOwner` half of the guard is what makes the literal
-          // `inMyShows` below safe. This card is shared with a *friend's*
-          // library, where the entry is in **their** My Shows and says nothing
-          // about the viewer's — so a `removable` passed there would draw
-          // "Remove … from My Shows" over a show the viewer may never have had,
-          // and activating it would DELETE one they do. Deriving the control's
-          // presence from whose library the card is drawn from makes that
-          // impossible rather than merely commented, which matters because D7
-          // hands this card to NEU-1188 and a friend-mode control is exactly
-          // what that ticket adds — in an action row, and needing the caller's
-          // own relationship, which this card is not given.
+          // The `ratingOwner` half of the guard: this card is shared with a
+          // *friend's* library, whose Watched card carries the friend's history,
+          // which is not the viewer's to delete. Deriving the control's presence
+          // from whose library the card is drawn from makes that impossible
+          // rather than merely commented.
           historyRemovable && ratingOwner.kind === "own" ? (
-            // Same guard, same reason: a friend's Watched card carries the
-            // friend's history, which is not the viewer's to delete.
             <RemoveWatchHistoryButton
               showId={entry.show.id}
               showName={entry.show.name}
-              variant="compact"
-              onRemoved={onRemoved}
-            />
-          ) : removable && ratingOwner.kind === "own" ? (
-            // `true`, not this card's `inMyShows`: that prop is the *poster
-            // mark*, which is a claim about the viewer's library and is
-            // deliberately `false` on the one surface that passes `removable`.
-            // What the control needs is whether the entry is tracked, and on a
-            // card drawn from the viewer's own library the entry's presence is
-            // that answer.
-            <MyShowsButton
-              showId={entry.show.id}
-              showName={entry.show.name}
-              inMyShows
               variant="compact"
               onRemoved={onRemoved}
             />
@@ -190,6 +167,18 @@ export function MyShowCard({
           )}
         </div>
       </ShowPoster>
+      {mutable && ratingOwner.kind === "own" && (
+        // Outside the poster for the same sibling-not-descendant reason as the
+        // row below. Compact, because a ~97px card has no room for the label.
+        <div className="flex justify-end px-1.5 pb-1">
+          <MuteShowButton
+            showId={entry.show.id}
+            showName={entry.show.name}
+            muted={entry.muted ?? false}
+            variant="compact"
+          />
+        </div>
+      )}
       {callerRelationship && (
         // Outside the poster, so the button is a sibling of its link rather
         // than a descendant — the same structural reason `ShowCard`'s `addable`

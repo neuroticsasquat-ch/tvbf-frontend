@@ -14,6 +14,22 @@ function wrapper() {
 }
 
 describe("useShows", () => {
+  it("serves the previous key's data as a placeholder until the new one lands (NEU-1502)", async () => {
+    const { result, rerender } = renderHook(({ search }) => useShows({ search }), {
+      wrapper: wrapper(),
+      initialProps: { search: "first" },
+    });
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    const first = result.current.data;
+
+    rerender({ search: "second" });
+    expect(result.current.isPlaceholderData).toBe(true);
+    expect(result.current.data).toBe(first);
+
+    await waitFor(() => expect(result.current.isPlaceholderData).toBe(false));
+    expect(result.current.isSuccess).toBe(true);
+  });
+
   it("fetches the list page", async () => {
     const { result } = renderHook(() => useShows({ page: 1 }), { wrapper: wrapper() });
     await waitFor(() => expect(result.current.isSuccess).toBe(true));

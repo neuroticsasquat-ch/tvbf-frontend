@@ -5,13 +5,13 @@ import { describe, expect, it } from "vitest";
 import { env } from "@/env";
 import { server } from "@/test/msw/server";
 import { renderWithProviders } from "@/test/renderWithProviders";
-import { CrewList } from "./CrewList";
+import { ShowCrewList, ShowEpisodeCrewList } from "./CrewList";
 
 const base = env.apiBaseUrl;
 
-describe("CrewList", () => {
+describe("ShowCrewList", () => {
   it("groups crew by role in API order", async () => {
-    renderWithProviders(<CrewList showId={100} />);
+    renderWithProviders(<ShowCrewList showId={100} />);
     await screen.findByRole("heading", { name: /Crew/ });
 
     // Roles keep first-appearance order — alphabetical would lead with Composer.
@@ -20,15 +20,26 @@ describe("CrewList", () => {
   });
 
   it("keeps API order for people inside a role group", async () => {
-    renderWithProviders(<CrewList showId={100} />);
+    renderWithProviders(<ShowCrewList showId={100} />);
     const heading = await screen.findByRole("heading", { name: "Executive Producer" });
     const group = heading.parentElement as HTMLElement;
 
     expect(
       within(group)
         .getAllByRole("listitem")
-        .map((li) => li.textContent),
+        .map((li) => li.querySelector("p")?.textContent),
     ).toEqual(["Ada Producer", "Bo Producer"]);
+  });
+
+  it("states each credit's episode count, singular on one", async () => {
+    // Series crew carries the show's aggregate since NEU-1512.
+    renderWithProviders(<ShowCrewList showId={100} />);
+    const heading = await screen.findByRole("heading", { name: "Executive Producer" });
+    const group = within(heading.parentElement as HTMLElement);
+
+    expect(group.getByText("40 episodes")).toBeInTheDocument();
+    expect(group.getByText("30 episodes")).toBeInTheDocument();
+    expect(screen.getAllByText("1 episode")).toHaveLength(2);
   });
 
   it("caps entries — not role groups — behind a show-all toggle", async () => {
@@ -37,9 +48,10 @@ describe("CrewList", () => {
     const many = Array.from({ length: 30 }, (_, i) => ({
       person: { id: 100 + i, name: `Writer ${i}`, image_medium: null },
       role: "Writer",
+      episode_count: 1,
     }));
     server.use(http.get(`${base}/shows/100/crew`, () => HttpResponse.json(many)));
-    renderWithProviders(<CrewList showId={100} />);
+    renderWithProviders(<ShowCrewList showId={100} />);
 
     const toggle = await screen.findByRole("button", { name: "Show all 30" });
     expect(screen.getAllByRole("listitem")).toHaveLength(12);
@@ -50,7 +62,7 @@ describe("CrewList", () => {
 
   it("renders nothing when the show has no crew", async () => {
     server.use(http.get(`${base}/shows/100/crew`, () => HttpResponse.json([])));
-    const { container } = renderWithProviders(<CrewList showId={100} />);
+    const { container } = renderWithProviders(<ShowCrewList showId={100} />);
 
     await waitFor(() => expect(container).toBeEmptyDOMElement());
   });
@@ -61,8 +73,28 @@ describe("CrewList", () => {
         HttpResponse.json({ detail: "boom" }, { status: 500 }),
       ),
     );
-    renderWithProviders(<CrewList showId={100} />);
+    renderWithProviders(<ShowCrewList showId={100} />);
 
     expect(await screen.findByRole("alert")).toHaveTextContent(/boom/);
+  });
+});
+
+describe("ShowEpisodeCrewList", () => {
+  it("renders the show's episode crew under its own heading, with counts", async () => {
+    renderWithProviders(<ShowEpisodeCrewList showId={100} />);
+
+    expect(await screen.findByRole("heading", { name: /^Episode crew \(2\)/ })).toBeInTheDocument();
+    expect(screen.getByText("5 episodes")).toBeInTheDocument();
+    expect(screen.getByText("2 episodes")).toBeInTheDocument();
+  });
+
+  it("renders nothing when the show has none", async () => {
+    server.use(http.get(`${base}/shows/100/episode-crew`, () => HttpResponse.json([])));
+    const { container, queryClient } = renderWithProviders(<ShowEpisodeCrewList showId={100} />);
+
+    await waitFor(() =>
+      expect(queryClient.getQueryState(["show-episode-crew", 100])?.status).toBe("success"),
+    );
+    expect(container).toBeEmptyDOMElement();
   });
 });

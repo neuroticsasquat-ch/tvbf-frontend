@@ -1,4 +1,4 @@
-import { screen, waitFor, within } from "@testing-library/react";
+import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { http, HttpResponse } from "msw";
 import { beforeEach, describe, expect, it } from "vitest";
@@ -174,38 +174,21 @@ describe("LibraryActiveList self-mode controls (NEU-1187)", () => {
   beforeEach(() => window.localStorage.clear());
 
   for (const view of ["list", "grid"] as const) {
-    it(`carries no action-row control and no library mark in ${view} view`, () => {
-      // AC 2. Every row on this tab is in My Shows by definition, so the
-      // labelled "✓ My Shows" chip could only say one thing and the mark could
-      // only be true.
-      setView("my-shows", view);
-      renderWithProviders(<LibraryActiveList data={[makeEntry()]} isLoading={false} />);
-
-      // No labelled chip: the labelled variant is the only one with visible
-      // text, and its whole cost was the line it occupied.
-      expect(screen.queryByText("My Shows")).not.toBeInTheDocument();
-      expect(screen.queryByRole("img", { name: "In your My Shows" })).not.toBeInTheDocument();
-    });
-
-    it(`offers removal as one activation in ${view} view`, async () => {
-      // AC 3: the compact chip in the poster's bottom-right, on the page.
-      let deleted = 0;
-      server.use(
-        http.delete(`${env.apiBaseUrl}/me/shows/1`, () => {
-          deleted += 1;
-          return new HttpResponse(null, { status: 204 });
-        }),
-      );
+    it(`carries no removal control and no library mark in ${view} view`, () => {
+      // NEU-1511 AC 1. Every row on this tab is in My Shows by definition, so a
+      // control could only remove, and the remove-only chip NEU-1187 put over
+      // the poster is what got tapped by mistake. The corner is empty; the
+      // mark could only be true, so it stays gone too.
       setView("my-shows", view);
       const { container } = renderWithProviders(
         <LibraryActiveList data={[makeEntry()]} isLoading={false} />,
       );
 
-      const chip = screen.getByRole("button", { name: "Remove The Bear from My Shows" });
-      expect(container.querySelector("[data-show-poster]")?.contains(chip)).toBe(true);
-
-      await userEvent.click(chip);
-      await waitFor(() => expect(deleted).toBe(1));
+      expect(screen.queryByRole("button", { name: /from My Shows$/ })).not.toBeInTheDocument();
+      expect(container.querySelector("[data-show-poster] button")).toBeNull();
+      // No labelled chip either: it is the only control with visible text.
+      expect(screen.queryByText("My Shows")).not.toBeInTheDocument();
+      expect(screen.queryByRole("img", { name: "In your My Shows" })).not.toBeInTheDocument();
     });
   }
 
@@ -236,91 +219,110 @@ describe("LibraryActiveList self-mode controls (NEU-1187)", () => {
     expect(button).toHaveTextContent("My Shows");
     expect(button.closest("[data-show-poster]")).toBeNull();
   });
+});
 
-  it("moves focus to the chip that took the freed slot", async () => {
-    // AC 7. The card unmounts on `onMutate`, so focus would otherwise fall to
-    // `<body>` on the one surface where removing several shows is expected.
-    //
-    // The list is driven by `useMyShows()` rather than by a prop, and that is
-    // the whole point of the test: `useRemoveShow` is optimistic, so the row
-    // leaves the list *before* the request settles. A prop-fed harness updates
-    // the list only after the click has been awaited, which is the one ordering
-    // under which reporting the removal on success would also look correct.
-    const three = [
-      makeEntry({ show: makeShow({ id: 1, name: "Andor" }) }),
-      makeEntry({ show: makeShow({ id: 2, name: "The Bear" }) }),
-      makeEntry({ show: makeShow({ id: 3, name: "Slow Horses" }) }),
-    ];
-    let remaining = three;
+describe("LibraryActiveList push mute (NEU-1495)", () => {
+  beforeEach(() => window.localStorage.clear());
+
+  for (const view of ["list", "grid"] as const) {
+    it(`draws the mute toggle outside the poster on the viewer's own library in ${view} view`, () => {
+      setView("my-shows", view);
+      const { container } = renderWithProviders(
+        <LibraryActiveList data={[makeEntry({ muted: true })]} isLoading={false} />,
+      );
+      const toggle = screen.getByRole("button", { name: "Unmute notifications for The Bear" });
+      expect(container.querySelector("[data-show-poster]")?.contains(toggle)).toBe(false);
+    });
+
+    it(`draws no mute toggle on a friend's library in ${view} view`, () => {
+      // Spec §6.5: honoured only when the rating owner is the viewer.
+      setView("friend-active", view);
+      renderWithProviders(
+        <LibraryActiveList
+          data={[makeEntry()]}
+          isLoading={false}
+          viewerContext={JEANNE}
+          callerLibrary={callerLibrary}
+          storagePrefix="friend-active"
+        />,
+      );
+      expect(screen.queryByRole("button", { name: /notifications for/ })).not.toBeInTheDocument();
+    });
+  }
+
+  /** The list fed by `useMyShows()`, so the optimistic patch to `["my-shows"]`
+   * is what the row reads — not the button's own override alone. */
+  function Harness() {
+    const { data, isLoading } = useMyShows();
+    useRecommendations();
+    return <LibraryActiveList data={data} isLoading={isLoading} />;
+  }
+
+  it("patches the My Shows cache optimistically and rolls it back on failure", async () => {
+    // The cache, not the button: `MuteShowButton` also resets its own override
+    // on error, so asserting on the button alone passes with no cache rollback.
+    // The settle refetch is held open, so the snapshot restore in `useMuteShow`
+    // is the only thing that can put `muted` back.
+    let release!: () => void;
+    const gate = new Promise<void>((r) => (release = r));
+    let showFetches = 0;
     server.use(
-      http.get(`${env.apiBaseUrl}/me/shows`, () => HttpResponse.json(remaining)),
-      http.delete(`${env.apiBaseUrl}/me/shows/2`, () => {
-        remaining = [three[0], three[2]];
-        return new HttpResponse(null, { status: 204 });
+      http.get(`${env.apiBaseUrl}/me/shows`, async () => {
+        showFetches += 1;
+        if (showFetches > 1) await new Promise(() => {});
+        return HttpResponse.json([makeEntry({ muted: false })]);
+      }),
+      http.patch(`${env.apiBaseUrl}/me/shows/1/mute`, async () => {
+        await gate;
+        return HttpResponse.json({ detail: "boom" }, { status: 500 });
       }),
     );
-
-    function Harness() {
+    function CacheProbe() {
       const { data, isLoading } = useMyShows();
-      return <LibraryActiveList data={data} isLoading={isLoading} />;
+      return (
+        <>
+          <output data-testid="cached-muted">{String(data?.[0]?.muted)}</output>
+          <LibraryActiveList data={data} isLoading={isLoading} />
+        </>
+      );
     }
-    renderWithProviders(<Harness />);
-    await screen.findByText("Slow Horses");
+    renderWithProviders(<CacheProbe />);
+    const cached = () => screen.getByTestId("cached-muted");
 
-    // The *middle* row, deliberately: removing the first lands on chip 0
-    // whether the index is right or wrong, which is the assertion this test
-    // exists not to make.
-    await userEvent.click(screen.getByRole("button", { name: "Remove The Bear from My Shows" }));
-
-    await waitFor(() =>
-      expect(
-        screen.getByRole("button", { name: "Remove Slow Horses from My Shows" }),
-      ).toHaveFocus(),
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Mute notifications for The Bear" }),
     );
+    expect(cached()).toHaveTextContent("true");
+
+    release();
+    await waitFor(() => expect(showFetches).toBe(2));
+    await waitFor(() => expect(cached()).toHaveTextContent("false"));
   });
 
-  it("focuses the results container when the last row goes", async () => {
-    server.use(
-      http.delete(`${env.apiBaseUrl}/me/shows/1`, () => new HttpResponse(null, { status: 204 })),
-    );
-    const { container, rerender } = renderWithProviders(
-      <LibraryActiveList data={[makeEntry()]} isLoading={false} />,
-    );
-
-    await userEvent.click(screen.getByRole("button", { name: "Remove The Bear from My Shows" }));
-    rerender(<LibraryActiveList data={[]} isLoading={false} />);
-
-    await waitFor(() => {
-      const results = container.querySelector<HTMLElement>('[tabindex="-1"]');
-      expect(results).not.toBeNull();
-      expect(results).toHaveFocus();
-      expect(within(results!).getByText("You're not tracking any shows yet.")).toBeInTheDocument();
-    });
-  });
-
-  it("invalidates the recommendations grid when a show leaves My Shows", async () => {
-    // AC 5. `GET /me/recommendations` suppresses a suggestion the viewer has a
-    // record for as a live join (NEU-1175), so a removal changes that body —
-    // and the rule lives in `api/me.ts`, not in any component.
+  it("does not refetch recommendations, since a mute is not a never-recommend source", async () => {
     let recommendationFetches = 0;
+    let showFetches = 0;
     server.use(
-      http.delete(`${env.apiBaseUrl}/me/shows/1`, () => new HttpResponse(null, { status: 204 })),
+      http.get(`${env.apiBaseUrl}/me/shows`, () => {
+        showFetches += 1;
+        return HttpResponse.json([makeEntry({ muted: false })]);
+      }),
       http.get(`${env.apiBaseUrl}/me/recommendations`, () => {
         recommendationFetches += 1;
         return HttpResponse.json({ recommendations: [] });
       }),
     );
-
-    function Harness() {
-      useRecommendations();
-      return <LibraryActiveList data={[makeEntry()]} isLoading={false} />;
-    }
     renderWithProviders(<Harness />);
     await waitFor(() => expect(recommendationFetches).toBe(1));
 
-    await userEvent.click(screen.getByRole("button", { name: "Remove The Bear from My Shows" }));
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Mute notifications for The Bear" }),
+    );
 
-    await waitFor(() => expect(recommendationFetches).toBe(2));
+    // `["my-shows"]` is refetched on settle; that refetch is the signal the
+    // mutation has finished, after which recommendations must still be at one.
+    await waitFor(() => expect(showFetches).toBe(2));
+    expect(recommendationFetches).toBe(1);
   });
 });
 
@@ -377,14 +379,10 @@ describe("LibraryActiveList row links (NEU-1190 §1)", () => {
     expect(links[0]).toHaveTextContent("The Bear");
   });
 
-  it("keeps the poster's rating badge announced, and its control working", () => {
+  it("keeps the poster's rating badge announced", () => {
     // The reason the poster drops its link rather than being `aria-hidden`
-    // (§1.3) — and the compact My Shows chip rides the same poster, as a
-    // sibling of the link that is no longer there.
+    // (§1.3).
     renderWithProviders(<LibraryActiveList data={[makeEntry()]} isLoading={false} />);
     expect(screen.getByRole("img", { name: "Your rating: 4.0 out of 5" })).toBeInTheDocument();
-    expect(
-      screen.getByRole("button", { name: "Remove The Bear from My Shows" }),
-    ).toBeInTheDocument();
   });
 });

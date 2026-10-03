@@ -3,12 +3,12 @@ import { Link, useNavigate, useSearchParams } from "react-router";
 import { useAuth } from "@/components/AuthContext";
 import { ApiError } from "@/api/client";
 import { ErrorState } from "@/components/ErrorState";
+import { BrandLockup } from "@/components/BrandLockup";
 import {
   PlayCircle,
   Calendar,
   Library,
   Users,
-  Tv,
   Sparkles,
 } from "lucide-react";
 
@@ -71,10 +71,7 @@ export function LoginPage() {
     <div className="mx-auto grid max-w-4xl gap-8 py-12 md:grid-cols-2 md:items-start">
       {/* Hero / Marketing */}
       <div className="flex flex-col gap-6">
-        <div className="flex items-center gap-2 text-xl font-semibold">
-          <Tv className="h-6 w-6" aria-hidden />
-          TV BingeFriend
-        </div>
+        <BrandLockup size="hero" />
         <p className="text-lg text-muted-foreground">
           Track your TV shows, discover what to watch next, and keep up with
           what your friends are bingeing.
