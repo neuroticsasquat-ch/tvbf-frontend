@@ -25,6 +25,11 @@ import { cn } from "@/lib/cn";
 
 type Placement = "desktop" | "mobile-header" | "mobile-bottom";
 
+// Read once at module load: a clock read during render is impure (oxlint's
+// react purity rule), and a footer year that lags a tab left open over New
+// Year until the next reload is harmless.
+const COPYRIGHT_YEAR = new Date().getFullYear();
+
 export function AppShell() {
   const { user } = useAuth();
   const incomingRequestCount = useIncomingRequestCount(!!user);
@@ -386,7 +391,7 @@ export function AppShell() {
             Terms and Privacy, not here — and it keeps the product's own casing
             rather than backlotter's lowercase house style. */}
           <div className="flex shrink-0 flex-col items-center gap-1 lg:items-end lg:text-right">
-            <span>&copy; {new Date().getFullYear()} TV BingeFriend.</span>
+            <span>&copy; {COPYRIGHT_YEAR} TV BingeFriend.</span>
             <a
               href="https://neuroticsasquat.ch"
               target="_blank"
