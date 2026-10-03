@@ -6,7 +6,9 @@ export type SortKey =
   | "tvmaze_updated"
   | "-tvmaze_updated"
   | "last_aired"
-  | "-last_aired";
+  | "-last_aired"
+  | "popularity"
+  | "-popularity";
 
 export const ALL_SORT_KEYS: readonly SortKey[] = [
   "name",
@@ -17,6 +19,8 @@ export const ALL_SORT_KEYS: readonly SortKey[] = [
   "-tvmaze_updated",
   "last_aired",
   "-last_aired",
+  "popularity",
+  "-popularity",
 ] as const;
 
 export interface NetworkRef {
@@ -145,6 +149,37 @@ export interface TrendingSnapshot {
   shows: TrendingShow[];
 }
 
+/** One entry of `GET /me/friends/popular` — `MarkedShow` flattened plus the
+ * number of the viewer's friends active on the show, a sibling of
+ * `TrendingShow` for its reason: `ShowGrid` / `ShowCard` already take a
+ * `ShowSummary`, so a wrapper would cost this client something for two
+ * scalars. See tvbf-backend/docs/specs/tvbf-popular-with-friends-project-spec.md
+ * §5.2.
+ *
+ * `friend_count` counts **distinct** accepted connections with visible
+ * activity on the show in the window, so it is ≥ 1 by construction. The
+ * activity count and last-activity time that rank the list are deliberately
+ * not exposed — the viewer sees a count, never a name, on this surface (§7).
+ */
+export interface PopularShow extends MarkedShow {
+  friend_count: number;
+}
+
+/** The `GET /me/friends/popular` body.
+ *
+ * `shows` is in the server's rank order and is never re-sorted here; the rank
+ * itself is not exposed. Empty is `200` with `shows: []`, and
+ * `connection_count` — present on every response — is what tells the two
+ * empty cases apart: nobody to hear from, or nobody saying anything (contract
+ * §5.2). This client branches on it and computes nothing else; `window_days`
+ * is informational and never computed with (§7).
+ */
+export interface PopularWithFriends {
+  window_days: number;
+  connection_count: number;
+  shows: PopularShow[];
+}
+
 /** One entry of `GET /anticipated` — `ShowSummary` flattened, plus the same
  * mark `TrendingShow` carries, and for its reason: `ShowGrid` / `ShowCard`
  * already take a `ShowSummary`, so a wrapper type would cost this client
@@ -253,18 +288,28 @@ export interface CastMember {
   /** Credited as themselves (matches upstream's `self` key). */
   self: boolean;
   voice: boolean;
-  /** Episodes this person appeared in as this character, and the key the API
-   * orders show cast by (NEU-1039). Optional because it is absent at two
-   * grains: the credits routes read `catalog` since NEU-1047 and order show
-   * cast by this count, but a show mirrored before the credit writers merged
-   * carries none; and episode guest cast is a per-episode row, so it has no
-   * count at all. */
-  episode_count?: number | null;
+  /** What the count means depends on the route (NEU-1512 §4.1): the show's
+   * aggregate on `/shows/{id}/cast` and `/guest-cast`, appearances in the
+   * season for a season's guests, and null for a season's regulars (upstream
+   * credits a regular on every episode — a claim, not a count) and on an
+   * episode's guest cast (one appearance by definition). */
+  episode_count: number | null;
 }
 
 export interface CrewMember {
   person: PersonRef;
   role: string;
+  /** The show's aggregate on `/shows/{id}/crew` and `/episode-crew`, the
+   * season's episodes on the season route, null on an episode's crew. */
+  episode_count: number | null;
+}
+
+/** `GET /shows/{id}/seasons/{number}/cast` — a season's regulars in billing
+ * order, then everyone who guested in its episodes, by appearances. A pair on
+ * both lists is upstream inconsistency and the server keeps it in `regulars`. */
+export interface SeasonCast {
+  regulars: CastMember[];
+  guests: CastMember[];
 }
 
 /** A person as served by `GET /people/{id}`. Richer than `PersonRef`, which is
@@ -299,16 +344,29 @@ export interface EpisodeRef {
   airdate: string | null;
 }
 
+/** A regular credit: one (show, character) the person is a season regular as
+ * (NEU-1512). Guest turns on the same show arrive separately, in `guest_cast`. */
 export interface PersonCastCredit {
   show: ShowRef;
   character: CharacterRef;
   self: boolean;
   voice: boolean;
+  /** The show's aggregate for this role — upstream counts guest turns into it.
+   * Null when the aggregate does not list the role. */
+  episode_count: number | null;
+  /** Season numbers they were a regular in, ascending. */
+  seasons: number[];
+  /** The latest air date across those seasons' episodes. */
+  last_credited: string | null;
 }
 
+/** A series crew credit (Executive Producer, Creator, Composer) — a job whose
+ * aggregate exceeds the person's episode credits in it. Episode-by-episode jobs
+ * arrive in `episode_crew` instead. */
 export interface PersonCrewCredit {
   show: ShowRef;
   role: string;
+  episode_count: number | null;
 }
 
 export interface PersonGuestCredit {
@@ -320,10 +378,9 @@ export interface PersonGuestCredit {
 }
 
 /** A crew credit on one episode — "Director of *Show* S1E3". Distinct from
- * `PersonCrewCredit`, which is show-level: the glossary keeps *crew credit* and
- * *episode crew credit* apart because they answer different questions, and the
- * vocabularies are disjoint (Director/Writer/Story/Teleplay here, production
- * functions like Executive Producer there). */
+ * `PersonCrewCredit`, which is show-level: the glossary keeps *series crew
+ * credit* and *episode crew credit* apart because they answer different
+ * questions — a job held across the series, or one held episode by episode. */
 export interface PersonEpisodeCrewCredit {
   show: ShowRef;
   episode: EpisodeRef;
@@ -428,7 +485,26 @@ export interface AuthedUser extends User {
   csrf_token: string;
   activity_feed_enabled: boolean;
   is_admin: boolean;
+  /** One per notification kind (push-notifications project spec §4.4). */
+  notify_airs_today: boolean;
+  notify_premiere_set: boolean;
+  notify_premiere_moved: boolean;
+  notify_ended: boolean;
+  notify_revived: boolean;
 }
+
+/** What `PATCH /me/preferences` accepts: any subset of the viewer's switches. */
+export type PreferencesPatch = Partial<
+  Pick<
+    AuthedUser,
+    | "activity_feed_enabled"
+    | "notify_airs_today"
+    | "notify_premiere_set"
+    | "notify_premiere_moved"
+    | "notify_ended"
+    | "notify_revived"
+  >
+>;
 
 export interface AdminUserRow {
   id: string;
@@ -446,6 +522,23 @@ export interface AdminUserRow {
    * field saying so would be the machine-readable confirmation the backend
    * refuses to hand an abuser (NEU-1162 §2.2). */
   disabled_at: string | null;
+}
+
+/** One UTC day of `GET /admin/push/stats` (NEU-1493). `retired` is a subset
+ * of `failed` — the failures that deleted their subscription. */
+export interface AdminPushStatsDay {
+  day: string;
+  sent: number;
+  failed: number;
+  retired: number;
+}
+
+/** `GET /admin/push/stats`: live totals plus exactly 30 UTC days, oldest
+ * first, zero-filled (project spec §5.4). */
+export interface AdminPushStats {
+  subscriptions: number;
+  users_subscribed: number;
+  by_day: AdminPushStatsDay[];
 }
 
 export interface InviteRow {
@@ -472,6 +565,11 @@ export interface MyShowEntry {
   // ShowSummary builder used inside my_shows_service doesn't carry it).
   my_rating: number | null;
   hide_from_activity?: boolean;
+  /** Whether the caller has muted push notifications for this show (NEU-1490,
+   * push project spec §6.5) — every kind, for this one show. Optional because
+   * the Watched grid adapts a `WatchedEntry` into this shape and that payload
+   * does not carry it; `GET /me/shows` always does. */
+  muted?: boolean;
 }
 
 export interface WatchNextEntry {

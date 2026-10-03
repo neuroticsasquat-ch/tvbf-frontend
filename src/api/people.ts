@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { apiFetch } from "./client";
 import type { PersonCredits, PersonListPage, PersonOut } from "./types";
 
@@ -24,6 +24,8 @@ export function usePersonSearch(
     queryFn: ({ signal }) => apiFetch<PersonListPage>(`/people?${params.toString()}`, { signal }),
     staleTime: FIVE_MINUTES,
     enabled: enabled && search.length > 0,
+    // Same as `useShows`, its one caller being the same overlay (NEU-1502).
+    placeholderData: keepPreviousData,
   });
 }
 
@@ -36,9 +38,10 @@ export function usePerson(id: number) {
   });
 }
 
-/** Filmography, grouped into cast/crew/guest by the API. Each group arrives in
- * a deliberate order — cast and crew by show premiere date descending, guest
- * credits by air date descending — so never re-sort it client-side. */
+/** Filmography, in four lists the API keeps apart: regular credits, series
+ * crew, guest credits and episode crew. The lists are consumed in API order;
+ * the person page merges them into one card per show and orders the *cards*
+ * itself (`personCredits.ts`, NEU-1512 §5.4). */
 export function usePersonCredits(id: number) {
   return useQuery<PersonCredits>({
     queryKey: ["person-credits", id],

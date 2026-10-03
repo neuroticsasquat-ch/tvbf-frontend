@@ -1,5 +1,31 @@
 # Release notes
 
+## 0.4.0 — 2026-09-27
+
+### Episode
+
+- Place guest cast and crew into tabs ([NEU-1209](https://linear.app/neuroticsasquatch/issue/NEU-1209))
+
+### General
+
+- Web manifest, icons and apple-touch-icon for installability ([NEU-1482](https://linear.app/neuroticsasquatch/issue/NEU-1482)) ([#251](https://github.com/neuroticsasquat-ch/music-discovery-engine/pull/251))
+
+### Person
+
+- Place cast, guest, crew, and episode crew into tabs ([NEU-1210](https://linear.app/neuroticsasquatch/issue/NEU-1210))
+- Move count to tab and hide empty tabs ([NEU-1211](https://linear.app/neuroticsasquatch/issue/NEU-1211))
+
+### Push
+
+- Subscription lifecycle and Settings Notifications state line ([NEU-1487](https://linear.app/neuroticsasquatch/issue/NEU-1487)) ([#253](https://github.com/neuroticsasquat-ch/music-discovery-engine/pull/253))
+- Notification toggles and device list in Settings ([NEU-1491](https://linear.app/neuroticsasquatch/issue/NEU-1491))
+- Per-show mute control on My Shows rows and cards ([NEU-1495](https://linear.app/neuroticsasquatch/issue/NEU-1495)) ([#255](https://github.com/neuroticsasquat-ch/music-discovery-engine/pull/255))
+- One-time post-add nudge card and Install app button ([NEU-1492](https://linear.app/neuroticsasquatch/issue/NEU-1492)) ([#256](https://github.com/neuroticsasquat-ch/music-discovery-engine/pull/256))
+
+### Pwa
+
+- Hand-written service worker for Web Push ([NEU-1483](https://linear.app/neuroticsasquatch/issue/NEU-1483)) ([#252](https://github.com/neuroticsasquat-ch/music-discovery-engine/pull/252))
+
 ## 0.3.4 — 2026-08-23
 
 ### General

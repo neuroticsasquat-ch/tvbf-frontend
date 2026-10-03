@@ -1,18 +1,20 @@
 import { Navigate, useSearchParams } from "react-router";
 import { useAuth } from "@/components/AuthContext";
 import { AdminInvitesTab } from "@/components/admin/AdminInvitesTab";
+import { AdminPushStatsTab } from "@/components/admin/AdminPushStatsTab";
 import { AdminUsersTab } from "@/components/admin/AdminUsersTab";
 import { cn } from "@/lib/cn";
 
-type Section = "users" | "invites";
+type Section = "users" | "invites" | "push";
 
 const SECTIONS: { key: Section; label: string }[] = [
   { key: "users", label: "Users" },
   { key: "invites", label: "Invites" },
+  { key: "push", label: "Push notifications" },
 ];
 
 function isSection(value: string | null): value is Section {
-  return value === "users" || value === "invites";
+  return value === "users" || value === "invites" || value === "push";
 }
 
 export function AdminPage() {
@@ -64,7 +66,9 @@ export function AdminPage() {
       </div>
 
       <div role="tabpanel" id={`admin-panel-${active}`} aria-labelledby={`admin-tab-${active}`}>
-        {active === "users" ? <AdminUsersTab /> : <AdminInvitesTab />}
+        {active === "users" && <AdminUsersTab />}
+        {active === "invites" && <AdminInvitesTab />}
+        {active === "push" && <AdminPushStatsTab />}
       </div>
     </section>
   );

@@ -18,6 +18,11 @@ export function meHandler(emailVerifiedAt: string | null) {
       csrf_token: "test-csrf",
       activity_feed_enabled: true,
       is_admin: false,
+      notify_airs_today: true,
+      notify_premiere_set: true,
+      notify_premiere_moved: true,
+      notify_ended: true,
+      notify_revived: true,
     }),
   );
 }

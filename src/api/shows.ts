@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { apiFetch, buildShowsQuery } from "./client";
 import type {
   AnticipatedShow,
@@ -8,6 +8,7 @@ import type {
   GenreOut,
   ShowDetail,
   ShowFilters,
+  SeasonCast,
   ShowListPage,
   SimilarShow,
   TrendingSnapshot,
@@ -34,6 +35,9 @@ export function useShows(filters: ShowFilters, options: { enabled?: boolean } = 
       apiFetch<ShowListPage>(`/shows${queryString ? `?${queryString}` : ""}`, { signal }),
     staleTime: FIVE_MINUTES,
     enabled: options.enabled ?? true,
+    // Search is the one caller: the last results stay on screen while the next
+    // query runs, and the search box's spinner says they are stale (NEU-1502).
+    placeholderData: keepPreviousData,
   });
 }
 
@@ -139,13 +143,25 @@ export function useEpisode(id: number) {
   });
 }
 
-/** Ordering is the API's, never this client's. Since NEU-1047 that is
- * descending `episode_count` — the real count that TV Maze's billing order only
- * ever proxied for. */
+/** A show's regular credits (NEU-1512) — the people upstream lists on a
+ * season's regular cast. Ordering is the API's, never this client's:
+ * descending `episode_count`, the real count TV Maze's billing order only ever
+ * proxied for. */
 export function useShowCast(id: number) {
   return useQuery<CastMember[]>({
     queryKey: ["show-cast", id],
     queryFn: () => apiFetch<CastMember[]>(`/shows/${id}/cast`),
+    staleTime: FIVE_MINUTES,
+    enabled: Number.isFinite(id) && id > 0,
+  });
+}
+
+/** Everyone else in the show's cast: guest stars, by episode count (NEU-1512).
+ * Can run to thousands — Law & Order has 11,517 — which `CastList` pages. */
+export function useShowGuestCast(id: number) {
+  return useQuery<CastMember[]>({
+    queryKey: ["show-guest-cast", id],
+    queryFn: () => apiFetch<CastMember[]>(`/shows/${id}/guest-cast`),
     staleTime: FIVE_MINUTES,
     enabled: Number.isFinite(id) && id > 0,
   });
@@ -184,12 +200,51 @@ export function useEpisodeCrew(id: number) {
   });
 }
 
+/** Series crew (NEU-1512): jobs held across the show rather than episode by
+ * episode — Executive Producer, Creator, Composer. */
 export function useShowCrew(id: number) {
   return useQuery<CrewMember[]>({
     queryKey: ["show-crew", id],
     queryFn: () => apiFetch<CrewMember[]>(`/shows/${id}/crew`),
     staleTime: FIVE_MINUTES,
     enabled: Number.isFinite(id) && id > 0,
+  });
+}
+
+/** The rest of the show's crew — directors, writers, editors, whose aggregate
+ * is the sum of their episode credits (NEU-1512). */
+export function useShowEpisodeCrew(id: number) {
+  return useQuery<CrewMember[]>({
+    queryKey: ["show-episode-crew", id],
+    queryFn: () => apiFetch<CrewMember[]>(`/shows/${id}/episode-crew`),
+    staleTime: FIVE_MINUTES,
+    enabled: Number.isFinite(id) && id > 0,
+  });
+}
+
+/** Season numbers start at 0 (Specials), so "is this a season" is an integer
+ * check, not the positive-id check the show and episode hooks use. */
+function seasonEnabled(showId: number, number: number | undefined): boolean {
+  return Number.isFinite(showId) && showId > 0 && Number.isInteger(number);
+}
+
+/** A season's cast (NEU-1512): `regulars` then `guests`. */
+export function useSeasonCast(showId: number, number: number | undefined) {
+  return useQuery<SeasonCast>({
+    queryKey: ["season-cast", showId, number],
+    queryFn: () => apiFetch<SeasonCast>(`/shows/${showId}/seasons/${number}/cast`),
+    staleTime: FIVE_MINUTES,
+    enabled: seasonEnabled(showId, number),
+  });
+}
+
+/** A season's crew, one entry per (person, role) with its episode count. */
+export function useSeasonCrew(showId: number, number: number | undefined) {
+  return useQuery<CrewMember[]>({
+    queryKey: ["season-crew", showId, number],
+    queryFn: () => apiFetch<CrewMember[]>(`/shows/${showId}/seasons/${number}/crew`),
+    staleTime: FIVE_MINUTES,
+    enabled: seasonEnabled(showId, number),
   });
 }
 

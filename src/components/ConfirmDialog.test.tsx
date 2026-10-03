@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import { useState } from "react";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
@@ -46,6 +47,38 @@ describe("ConfirmDialog", () => {
     expect(onConfirm).toHaveBeenCalledTimes(1);
     await userEvent.click(screen.getByRole("button", { name: "Cancel" }));
     expect(onClose).toHaveBeenCalled();
+  });
+
+  it("hands focus back to the control that opened it", async () => {
+    // Radix restores focus only to a `DialogTrigger`, and callers open this by
+    // setting state, so without the opener captured here focus fell to <body>.
+    function Harness() {
+      const [open, setOpen] = useState(false);
+      return (
+        <>
+          <button type="button" onClick={() => setOpen(true)}>
+            Open
+          </button>
+          {open && (
+            <ConfirmDialog
+              title="Block user"
+              description="Block Alice?"
+              onConfirm={() => setOpen(false)}
+              onClose={() => setOpen(false)}
+            />
+          )}
+        </>
+      );
+    }
+    render(<Harness />);
+
+    await userEvent.click(screen.getByRole("button", { name: "Open" }));
+    await userEvent.click(await screen.findByRole("button", { name: "Cancel" }));
+    await waitFor(() => expect(screen.getByRole("button", { name: "Open" })).toHaveFocus());
+
+    await userEvent.click(screen.getByRole("button", { name: "Open" }));
+    await userEvent.keyboard("{Escape}");
+    await waitFor(() => expect(screen.getByRole("button", { name: "Open" })).toHaveFocus());
   });
 
   it("disables confirmation while the caller's mutation is in flight", async () => {

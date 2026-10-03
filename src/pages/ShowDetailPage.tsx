@@ -1,6 +1,13 @@
 import { useState } from "react";
 import { Link, useParams, useSearchParams } from "react-router";
-import { useShow, useShowCast, useShowCrew, useSimilarShows } from "@/api/shows";
+import {
+  useShow,
+  useShowCast,
+  useShowCrew,
+  useShowEpisodeCrew,
+  useShowGuestCast,
+  useSimilarShows,
+} from "@/api/shows";
 import { useAuth } from "@/components/AuthContext";
 import { ApiError } from "@/api/client";
 import { LoadingState } from "@/components/LoadingState";
@@ -16,8 +23,8 @@ import { ShowFriendActivityStrip } from "@/components/friends/FriendActivity";
 import { FriendRatingsList } from "@/components/FriendRatingsList";
 import { WatchProgressBar } from "@/components/WatchProgressBar";
 import { SeasonWatchCheckbox } from "@/components/SeasonWatchCheckbox";
-import { ShowCastList } from "@/components/CastList";
-import { CrewList } from "@/components/CrewList";
+import { ShowCastList, ShowGuestCastList } from "@/components/CastList";
+import { ShowCrewList, ShowEpisodeCrewList } from "@/components/CrewList";
 import { SimilarShows } from "@/components/SimilarShows";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useMyShows, useSeasonProgress, useShowRating } from "@/api/me";
@@ -46,26 +53,29 @@ export function ShowDetailPage() {
   const rate = useShowRating(showId);
   const [seasonFilter, setSeasonFilter] = useState<"all" | "unwatched">("all");
 
-  // Fetched here for the tab counts. ShowCastList/CrewList run the same queries
-  // and React Query dedupes on the key, so this costs no extra request.
-  const castQuery = useShowCast(showId);
-  const crewQuery = useShowCrew(showId);
-  const similarQuery = useSimilarShows(showId);
+  // Fetched here for the tab counts. The panels run the same queries and
+  // React Query dedupes on the key, so this costs no extra request.
+  //
+  // Since NEU-1512 the server splits both credit lists: Cast is the regulars
+  // and Guest stars the rest, Crew is series crew and Episode crew the rest.
   // 44% of shows have no cast and 83% no crew. Those tabs still render, showing
   // a zero count and disabled — the absence is information, and a fixed tab
   // strip beats one that pops in a tab when a query resolves. A tab stays
   // enabled while its query is in flight (nothing to report yet) and on error,
-  // where disabling would bury the ErrorState the panel renders.
-  const castCount = castQuery.data?.length ?? 0;
-  const crewCount = crewQuery.data?.length ?? 0;
-  const castEmpty = castQuery.isSuccess && castCount === 0;
-  const crewEmpty = crewQuery.isSuccess && crewCount === 0;
-  // Similar joins them on the same terms. Roughly 8% of the long tail has no
-  // recommendations at all, which is why it is a disabled tab rather than one
-  // that appears and disappears — a tab strip that changes width when a query
-  // resolves moves the other tabs under the reader's cursor.
-  const similarCount = similarQuery.data?.length ?? 0;
-  const similarEmpty = similarQuery.isSuccess && similarCount === 0;
+  // where disabling would bury the ErrorState the panel renders. Similar joins
+  // them on the same terms: roughly 8% of the long tail has no recommendations,
+  // and a strip that changes width when a query resolves moves the other tabs
+  // under the reader's cursor.
+  const counted = {
+    cast: useShowCast(showId),
+    "guest-stars": useShowGuestCast(showId),
+    crew: useShowCrew(showId),
+    "episode-crew": useShowEpisodeCrew(showId),
+    similar: useSimilarShows(showId),
+  };
+  type CountedTab = keyof typeof counted;
+  const isEmpty = (key: CountedTab) =>
+    counted[key].isSuccess && (counted[key].data?.length ?? 0) === 0;
 
   const [searchParams, setSearchParams] = useSearchParams();
   const requested = searchParams.get("tab");
@@ -73,13 +83,18 @@ export function ShowDetailPage() {
   // nothing to put in — a `?tab=crew` link to a crewless show should not land
   // on a disabled tab.
   const wanted =
-    requested === "cast" || requested === "crew" || requested === "similar" ? requested : "seasons";
-  const tab =
-    (wanted === "cast" && castEmpty) ||
-    (wanted === "crew" && crewEmpty) ||
-    (wanted === "similar" && similarEmpty)
-      ? "seasons"
-      : wanted;
+    requested !== null && Object.hasOwn(counted, requested) ? (requested as CountedTab) : null;
+  const tab = wanted === null || isEmpty(wanted) ? "seasons" : wanted;
+
+  /** One counted tab trigger. The count appears once its query has answered. */
+  function countedTrigger(key: CountedTab, label: string) {
+    const query = counted[key];
+    return (
+      <TabsTrigger value={key} disabled={isEmpty(key)}>
+        {label} {query.isSuccess && <TabCount value={query.data?.length ?? 0} />}
+      </TabsTrigger>
+    );
+  }
 
   function selectTab(next: string) {
     const params = new URLSearchParams(searchParams);
@@ -140,7 +155,7 @@ export function ShowDetailPage() {
             </div>
           ) : null}
           <div className="flex flex-wrap items-center gap-2 pt-3">
-            <MyShowsToggle showId={show.id} />
+            <MyShowsToggle showId={show.id} showName={show.name} />
             {myEntry && (
               <ShowWatchCheckbox
                 showId={show.id}
@@ -178,19 +193,17 @@ export function ShowDetailPage() {
       <NextEpisodeCard showId={show.id} />
 
       <Tabs value={tab} onValueChange={selectTab}>
-        <TabsList>
+        {/* Six triggers overflow a phone, so the strip scrolls rather than
+            wraps — the person page's strip does the same. */}
+        <TabsList className="w-full justify-start overflow-x-auto">
           <TabsTrigger value="seasons">
             Seasons <TabCount value={show.seasons.length} />
           </TabsTrigger>
-          <TabsTrigger value="cast" disabled={castEmpty}>
-            Cast {castQuery.isSuccess && <TabCount value={castCount} />}
-          </TabsTrigger>
-          <TabsTrigger value="crew" disabled={crewEmpty}>
-            Crew {crewQuery.isSuccess && <TabCount value={crewCount} />}
-          </TabsTrigger>
-          <TabsTrigger value="similar" disabled={similarEmpty}>
-            Similar {similarQuery.isSuccess && <TabCount value={similarCount} />}
-          </TabsTrigger>
+          {countedTrigger("cast", "Cast")}
+          {countedTrigger("guest-stars", "Guest stars")}
+          {countedTrigger("crew", "Crew")}
+          {countedTrigger("episode-crew", "Episode crew")}
+          {countedTrigger("similar", "Similar")}
         </TabsList>
 
         <TabsContent value="seasons">
@@ -313,8 +326,16 @@ export function ShowDetailPage() {
           <ShowCastList showId={show.id} headingHidden />
         </TabsContent>
 
+        <TabsContent value="guest-stars">
+          <ShowGuestCastList showId={show.id} headingHidden />
+        </TabsContent>
+
         <TabsContent value="crew">
-          <CrewList showId={show.id} headingHidden />
+          <ShowCrewList showId={show.id} headingHidden />
+        </TabsContent>
+
+        <TabsContent value="episode-crew">
+          <ShowEpisodeCrewList showId={show.id} headingHidden />
         </TabsContent>
 
         <TabsContent value="similar">

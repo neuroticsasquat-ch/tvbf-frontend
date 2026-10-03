@@ -249,6 +249,20 @@ export function EpisodePage() {
         </div>
       </div>
 
+      {/* TMDB credits a regular on the whole season, not on the episodes they
+          appear in, so the episode lists guests and crew only and points at
+          the season's regular cast (NEU-1512 §2.1). Rendered whether or not
+          the credits region is: most episodes have no guests or crew, and
+          every episode has a season. */}
+      <p className="text-sm">
+        <Link
+          to={`/shows/${ep.show_id}/episodes?season=${ep.season}&tab=cast`}
+          className="rounded text-muted-foreground underline-offset-2 hover:text-foreground hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        >
+          Regular cast for {currentSeasonLabel}
+        </Link>
+      </p>
+
       {showCredits && (
         <Tabs value={tab} onValueChange={selectTab}>
           <TabsList>

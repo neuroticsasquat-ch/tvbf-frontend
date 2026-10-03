@@ -6,14 +6,28 @@ import { ApiError } from "@/api/client";
 import { downloadMyData } from "@/api/export";
 import { useUpdatePreferences } from "@/api/me";
 import {
+  useMyPushSubscriptions,
+  usePushDevice,
+  useRemovePushSubscription,
+  useSendTestPush,
+  useTurnOffPushEverywhere,
+  type PushSubscriptionSummary,
+} from "@/api/push";
+import {
   useMySessions,
   useRevokeOtherSessions,
   useRevokeSession,
   type SessionSummary,
 } from "@/api/sessions";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { FieldError } from "@/components/FieldError";
+import { AddToHomeScreenSteps } from "@/components/push/AddToHomeScreenSteps";
+import { InstallAppButton } from "@/components/push/InstallAppButton";
+import { TurnOnPushButton } from "@/components/push/TurnOnPushButton";
 import { useFieldErrors } from "@/hooks/useFieldErrors";
+import { deviceLabel } from "@/lib/deviceLabel";
 import { HANDLE_SHAPE_MESSAGE, isHandleShapeValid, normaliseHandle } from "@/lib/handle";
+import type { PushSupportState } from "@/lib/push";
 import { formatRelativeTime } from "@/lib/relativeTime";
 
 /** Settings page shell. The Profile section carries the display name and the
@@ -29,6 +43,7 @@ export function SettingsPage() {
       <ProfileSection />
       <EmailSection />
       <PrivacySection />
+      <NotificationsSection />
       <SessionsSection />
       <YourDataSection />
     </div>
@@ -682,5 +697,253 @@ function PrivacySection() {
         />
       </label>
     </section>
+  );
+}
+
+/** Push notifications (push-notifications project spec §6.3): this device's
+ * state line and its one action, the per-kind toggles, and every device the
+ * viewer has subscribed, plus Install app wherever the browser offers it. */
+function NotificationsSection() {
+  const device = usePushDevice();
+  const subscriptions = useMyPushSubscriptions();
+
+  return (
+    <section aria-labelledby="notifications-heading" className="space-y-3">
+      <h2 id="notifications-heading" className="text-lg font-semibold">
+        Notifications
+      </h2>
+      <div className="rounded border border-border p-4 space-y-3 text-sm">
+        {device.data ? (
+          <NotificationsStateLine state={device.data.state} subscribed={device.data.subscribed} />
+        ) : (
+          <p className="text-muted-foreground" role="status">
+            Checking this device…
+          </p>
+        )}
+        <InstallAppButton />
+      </div>
+      <NotificationToggles devices={subscriptions.data?.length} />
+      {subscriptions.data && subscriptions.data.length > 0 && (
+        <DeviceList subscriptions={subscriptions.data} />
+      )}
+    </section>
+  );
+}
+
+type NotifyKey =
+  | "notify_airs_today"
+  | "notify_premiere_set"
+  | "notify_premiere_moved"
+  | "notify_ended"
+  | "notify_revived";
+
+const NOTIFY_KINDS: { key: NotifyKey; label: string }[] = [
+  { key: "notify_airs_today", label: "Episode airs today" },
+  { key: "notify_premiere_set", label: "Premiere date set" },
+  { key: "notify_premiere_moved", label: "Premiere date moved" },
+  { key: "notify_ended", label: "Show ended or cancelled" },
+  { key: "notify_revived", label: "Show revived" },
+];
+
+/** One switch per notification kind, saved as it is flipped. They are
+ * account-wide, so they are usable from any browser once *some* device is
+ * subscribed — this one need not be — and meaningless before that.
+ *
+ * One mutation for all five, disabled while it is in flight: its rollback
+ * restores a snapshot of the whole user, so two overlapping flips would let
+ * the first's failure undo the second. */
+function NotificationToggles({ devices }: { devices: number | undefined }) {
+  const { user } = useAuth();
+  const update = useUpdatePreferences();
+  if (!user) return null;
+  // Unknown (loading, or the list failed) disables without the hint: a viewer
+  // with devices must not be told to go and turn one on.
+  const hasDevice = (devices ?? 0) > 0;
+  const showHint = devices === 0;
+  return (
+    <fieldset className="space-y-3" aria-describedby={showHint ? "notify-hint" : undefined}>
+      <legend className="text-base font-medium text-foreground">Notify me when</legend>
+      {showHint && (
+        <p id="notify-hint" className="text-sm text-muted-foreground">
+          Turn on notifications on a device first.
+        </p>
+      )}
+      {NOTIFY_KINDS.map(({ key, label }) => (
+        <label key={key} className="flex items-center justify-between gap-3">
+          <span className="text-base text-foreground">{label}</span>
+          <input
+            type="checkbox"
+            role="switch"
+            aria-label={label}
+            checked={user[key]}
+            disabled={!hasDevice || update.isPending}
+            onChange={(e) => update.mutate({ [key]: e.currentTarget.checked })}
+            className="h-5 w-5"
+          />
+        </label>
+      ))}
+    </fieldset>
+  );
+}
+
+function formatDate(iso: string): string {
+  return new Date(iso).toLocaleDateString(undefined, {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+  });
+}
+
+function DeviceList({ subscriptions }: { subscriptions: PushSubscriptionSummary[] }) {
+  const turnOff = useTurnOffPushEverywhere();
+  const [confirming, setConfirming] = useState(false);
+
+  function onConfirm() {
+    setConfirming(false);
+    turnOff.mutate(undefined, {
+      onSuccess: () => toast.success("Notifications turned off on every device."),
+      onError: () => toast.error("Couldn't turn notifications off everywhere. Try again."),
+    });
+  }
+
+  return (
+    <div className="space-y-2">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h3 id="devices-heading" className="text-base font-medium text-foreground">
+          Devices
+        </h3>
+        <button
+          type="button"
+          onClick={() => setConfirming(true)}
+          disabled={turnOff.isPending}
+          className="rounded border border-border px-3 py-1 text-sm hover:bg-muted disabled:opacity-50"
+        >
+          {turnOff.isPending ? "Turning off…" : "Turn off everywhere"}
+        </button>
+      </div>
+      <ul
+        aria-labelledby="devices-heading"
+        className="rounded border border-border divide-y divide-border"
+      >
+        {subscriptions.map((s) => (
+          <DeviceRow key={s.id} subscription={s} />
+        ))}
+      </ul>
+      {confirming && (
+        <ConfirmDialog
+          title="Turn off everywhere"
+          description="Stop notifications on every device you've turned them on for? You can turn them on again on each device."
+          confirmLabel="Turn off"
+          destructive
+          pending={turnOff.isPending}
+          onConfirm={onConfirm}
+          onClose={() => setConfirming(false)}
+        />
+      )}
+    </div>
+  );
+}
+
+function DeviceRow({ subscription: s }: { subscription: PushSubscriptionSummary }) {
+  const remove = useRemovePushSubscription();
+  const label = deviceLabel(s.user_agent);
+  const added = formatDate(s.created_at);
+
+  function onRemove() {
+    remove.mutate(s.id, {
+      onError: () => toast.error("Couldn't remove that device. Try again."),
+    });
+  }
+
+  return (
+    <li className="flex flex-wrap items-center gap-x-4 gap-y-1 p-4 text-sm">
+      <span className="flex-1 min-w-0 truncate font-medium text-foreground">{label}</span>
+      <div className="text-xs text-muted-foreground sm:text-right">
+        <p>Added {added}</p>
+        <p>Last delivered {s.last_success_at ? formatRelativeTime(s.last_success_at) : "never"}</p>
+      </div>
+      <button
+        type="button"
+        onClick={onRemove}
+        disabled={remove.isPending}
+        aria-label={`Remove ${label}, added ${added}`}
+        className="rounded border border-border px-2 py-1 text-xs hover:bg-muted disabled:opacity-50"
+      >
+        {remove.isPending ? "Removing…" : "Remove"}
+      </button>
+    </li>
+  );
+}
+
+function NotificationsStateLine({
+  state,
+  subscribed,
+}: {
+  state: PushSupportState;
+  subscribed: boolean;
+}) {
+  switch (state) {
+    case "unsupported":
+      return (
+        <p className="text-muted-foreground">
+          This browser can&apos;t receive notifications. Try a current version of Chrome, Edge,
+          Firefox or Safari.
+        </p>
+      );
+    case "ios_needs_install":
+      return <AddToHomeScreenSteps />;
+    case "denied":
+      return (
+        <p className="text-muted-foreground">
+          Notifications are blocked for this site. To turn them on, allow notifications for this
+          site in your browser&apos;s settings, then reload this page.
+        </p>
+      );
+    case "prompt":
+    case "granted":
+      return subscribed ? (
+        <SubscribedLine />
+      ) : (
+        <div className="space-y-2">
+          <p className="text-muted-foreground">
+            Get told when an episode of a show you track airs, or when its next season is announced.
+          </p>
+          <TurnOnPushButton />
+        </div>
+      );
+  }
+}
+
+function SubscribedLine() {
+  const sendTest = useSendTestPush();
+
+  async function onSendTest() {
+    try {
+      const res = await sendTest.mutateAsync();
+      if (res.status === "sent") toast.success("Test notification sent.");
+      else toast.error("The test notification couldn't be delivered. Try again.");
+    } catch (e) {
+      if (e instanceof ApiError && e.status === 410) {
+        toast.error("This device's subscription had expired. Turn notifications on again.");
+      } else if (e instanceof ApiError && e.status === 429) {
+        toast.error("You've sent several test notifications recently. Try again later.");
+      } else {
+        toast.error("Couldn't send a test notification. Try again.");
+      }
+    }
+  }
+
+  return (
+    <div className="flex flex-wrap items-center justify-between gap-2">
+      <p className="text-foreground">On for this device</p>
+      <button
+        type="button"
+        onClick={onSendTest}
+        disabled={sendTest.isPending}
+        className="rounded border border-border px-3 py-1 hover:bg-muted disabled:opacity-50"
+      >
+        {sendTest.isPending ? "Sending…" : "Send test notification"}
+      </button>
+    </div>
   );
 }

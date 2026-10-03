@@ -1,13 +1,13 @@
 import { useEffect, useMemo } from "react";
 import { Link } from "react-router";
 import type { MyShowEntry } from "@/api/types";
-import { useFocusAfterRemoval } from "@/hooks/useFocusAfterRemoval";
 import { usePersistedSort } from "@/hooks/usePersistedSort";
 import { usePersistedString } from "@/hooks/usePersistedString";
 import { usePersistedView } from "@/hooks/usePersistedView";
 import { WatchProgressBar } from "@/components/WatchProgressBar";
 import { MyShowCard } from "@/components/MyShowCard";
 import { ShowPoster } from "@/components/ShowPoster";
+import { MuteShowButton } from "@/components/MuteShowButton";
 import { MyShowsButton } from "@/components/MyShowsButton";
 import { ListingToolbar } from "@/components/home/ListingToolbar";
 import {
@@ -53,10 +53,6 @@ import { activeEmptyMessage } from "./emptyStates";
 // a no-op (every Active row is in My Shows by definition) and `Not in My
 // Shows` would always be empty. Disable the whole picker (NEU-131).
 const IN_MY_SHOWS_DISABLED_REASON = "All Active shows are in My Shows.";
-
-/** Module scope so it is one stable reference across renders — it lands in
- * `useFocusAfterRemoval`'s effect dependencies. */
-const showIdOf = (e: MyShowEntry) => e.show.id;
 
 interface Props {
   data: MyShowEntry[] | undefined;
@@ -151,18 +147,6 @@ export function LibraryActiveList({
     rated,
   ]);
 
-  // Focus after a removal unmounts a card (NEU-1187 §3.5), through the hook
-  // that owns the mechanism (NEU-1193). `useRemoveShow` filters the entry out
-  // of every `["my-shows"]` query in `onMutate`, so the card is gone by the
-  // time the click settles and focus falls to `<body>` — on the one surface
-  // where removing several shows in a sitting is the expected use. No empty
-  // selector: when the last row goes, the results container itself takes focus.
-  const { containerRef: resultsRef, onRemoved } = useFocusAfterRemoval<MyShowEntry, HTMLDivElement>(
-    filteredAndSorted,
-    showIdOf,
-    "[data-remove-from-my-shows]",
-  );
-
   const filtersActive =
     watchState !== "all" ||
     status !== "all" ||
@@ -189,10 +173,7 @@ export function LibraryActiveList({
                   disabledReason={IN_MY_SHOWS_DISABLED_REASON}
                 />
                 <FilterGroupDivider />
-                <InMyShowsFilterPicker
-                  value={callerMembership}
-                  onChange={setCallerMembership}
-                />
+                <InMyShowsFilterPicker value={callerMembership} onChange={setCallerMembership} />
                 <MyWatchStateFilter value={callerWatchState} onChange={setCallerWatchState} />
                 <FilterGroupDivider />
                 <ShowStatusFilterPicker value={status} onChange={setStatus} />
@@ -227,11 +208,7 @@ export function LibraryActiveList({
           </>
         }
       />
-      {/* The results region is one focusable container across both views, so
-        the post-removal focus move has somewhere to land when the last row
-        goes — and one query root for the chips. `tabIndex={-1}` keeps it out
-        of the tab order. */}
-      <div ref={resultsRef} tabIndex={-1} className="outline-none">
+      <div>
         {isLoading && <p>Loading…</p>}
         {!isLoading && filteredAndSorted && filteredAndSorted.length === 0 && (
           <p className="text-muted-foreground">
@@ -258,8 +235,7 @@ export function LibraryActiveList({
                   viewerContext,
                   callerLibrary,
                 )}
-                removable={viewerContext.kind === "self"}
-                onRemoved={onRemoved}
+                mutable={viewerContext.kind === "self"}
               />
             ))}
           </div>
@@ -272,7 +248,6 @@ export function LibraryActiveList({
                 entry={entry}
                 viewerContext={viewerContext}
                 callerLibrary={callerLibrary}
-                onRemoved={onRemoved}
               />
             ))}
           </ul>
@@ -284,14 +259,19 @@ export function LibraryActiveList({
 
 /** One Active row.
  *
- * **Self mode has no action row at all** (NEU-1187 §3.4). Every row on this tab
- * is in My Shows by definition, so the labelled "✓ My Shows" chip could only
- * ever say one thing while costing a full line of the tallest rows in the app.
- * Its replacement is the compact chip in the poster's bottom-right corner — the
- * position that *means* remove-only (§3.1) — and the viewer's own rating moves
- * to the poster's top-right, matching `MyShowCard` exactly. Moving the rating is
- * what makes the height drop true for a rated row too, and it is NEU-1183's
- * last holdout: grid and list disagreed about where that fact lives.
+ * **Self mode carries no My Shows control at all** (NEU-1511 §4 D1). Every
+ * row on this tab is in My Shows by definition, so the control could only ever
+ * remove — and a remove-only chip over the poster, which is what NEU-1187 put
+ * here, is what got tapped by mistake on the grid card beside this row. The
+ * poster's corner is empty rather than holding an inert glyph; removing a show
+ * from the viewer's own library is the show page's `MyShowsToggle`, which asks
+ * first. The viewer's own rating sits on the poster's top-right, matching
+ * `MyShowCard` exactly (NEU-1187 §3.4, NEU-1183's last holdout).
+ *
+ * The action row came back in self mode with the push mute toggle (NEU-1495),
+ * which is the one control there that flips both ways and so cannot take a
+ * poster corner. That line is the cost NEU-1187 removed, paid for a control
+ * that genuinely has two states rather than one.
  *
  * Friend mode keeps the action row, because adding is possible there: the row
  * is the friend's, the button reflects the *caller's* relationship, and
@@ -301,16 +281,13 @@ function ActiveRow({
   entry,
   viewerContext,
   callerLibrary,
-  onRemoved,
 }: {
   entry: MyShowEntry;
   viewerContext: ViewerContext;
   callerLibrary?: CallerLibrary;
-  onRemoved?: (showId: number) => void;
 }) {
   const status = libraryStatusFor(entry);
   const owner = ratingOwnerFor(viewerContext);
-  const isSelf = viewerContext.kind === "self";
   // The same resolver the grid asks, so both views draw one answer rather than
   // two derivations of it (NEU-1188).
   const caller = activeCallerRelationship(entry.show.id, viewerContext, callerLibrary);
@@ -318,8 +295,7 @@ function ActiveRow({
   return (
     <li className="border border-border rounded p-3 flex items-start gap-3 sm:gap-4">
       {/* Presentational — the show's name below is the row's one link
-        (NEU-1190 §1). The control below is a sibling of the poster's link
-        either way, so dropping the link changes nothing about it. */}
+        (NEU-1190 §1). No `control`: see the docstring above. */}
       <ShowPoster
         src={entry.show.image_medium}
         size="row"
@@ -327,19 +303,6 @@ function ActiveRow({
         // Only the viewer's own rating may occupy a poster corner; a friend's
         // stays in the group that carries their name (NEU-1182 §3.5).
         ownRating={owner.kind === "own" ? entry.my_rating : null}
-        control={
-          isSelf ? (
-            // `true` because this row came out of the viewer's own My Shows —
-            // the caller supplies the answer, per `MyShowsButton`'s contract.
-            <MyShowsButton
-              showId={entry.show.id}
-              showName={entry.show.name}
-              inMyShows
-              variant="compact"
-              onRemoved={onRemoved}
-            />
-          ) : undefined
-        }
       />
       <div className="flex-1 min-w-0 flex flex-col gap-2">
         <div className="flex items-baseline gap-2 flex-wrap">
@@ -381,6 +344,20 @@ function ActiveRow({
         />
         {status !== "finished" && entry.upcoming_episode_count > 0 && (
           <p className="text-xs text-muted-foreground">{entry.upcoming_episode_count} upcoming</p>
+        )}
+        {owner.kind === "own" && (
+          // The mute toggle is the one self-mode control that can flip both
+          // ways, so it takes the action row rather than a poster corner
+          // (NEU-1495, NEU-1187 §3.1). Self mode only, on `owner` — the same
+          // guard the card applies — because a friend's entry carries the
+          // friend's flag, not the viewer's.
+          <div className="flex justify-end">
+            <MuteShowButton
+              showId={entry.show.id}
+              showName={entry.show.name}
+              muted={entry.muted ?? false}
+            />
+          </div>
         )}
         {caller && (
           <div className="flex flex-wrap items-center justify-end gap-2 pt-1">

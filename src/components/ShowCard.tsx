@@ -50,6 +50,14 @@ function premiereLabel(dateStr: string | null, display: PremiereDisplay): string
  * is decided (NEU-1183 §3.4). This card states no position for it, and neither
  * should any other surface.
  *
+ * `friendCount` is how many of the viewer's friends touched this show recently
+ * (NEU-1501), passed only by Popular with Friends. It is a **fact, not a
+ * control**, and both of `ShowPoster`'s fact corners are already assigned, so
+ * it takes no corner: it renders inline in the caption beneath the title, the
+ * caption being where an aggregate already goes (NEU-1183 §3.5). Absent means no line — `undefined` is the
+ * absent case rather than falsiness, though the contract never sends a `0`.
+ * Names are never shown here; they live on the show page's strip.
+ *
  * `premiereDisplay` chooses how much of the premiere date the date line
  * carries; it defaults to the year every existing caller has always rendered.
  *
@@ -101,6 +109,7 @@ function premiereLabel(dateStr: string | null, display: PremiereDisplay): string
 export function ShowCard({
   show,
   inMyShows,
+  friendCount,
   premiereDisplay = "year",
   addable,
   dismissible,
@@ -108,6 +117,7 @@ export function ShowCard({
 }: {
   show: ShowSummary;
   inMyShows?: boolean;
+  friendCount?: number;
   premiereDisplay?: PremiereDisplay;
   addable?: boolean;
   dismissible?: boolean;
@@ -150,6 +160,11 @@ export function ShowCard({
           {show.matched_aka && (
             <p className="truncate text-[10px] text-muted-foreground leading-tight italic">
               {show.matched_aka}
+            </p>
+          )}
+          {friendCount !== undefined && (
+            <p className="truncate text-[10px] text-muted-foreground leading-tight">
+              {friendCount === 1 ? "1 friend" : `${friendCount} friends`}
             </p>
           )}
           <p className="text-[10px] text-muted-foreground leading-tight">

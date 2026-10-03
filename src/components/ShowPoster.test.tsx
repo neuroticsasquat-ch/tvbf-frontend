@@ -179,9 +179,9 @@ describe("ShowPoster", () => {
     });
 
     it("still places a control in the bottom-right, outside any link", () => {
-      // `ActiveRow`'s compact My Shows chip rides a presentational poster, and
-      // the control layer is a sibling of the link either way — so dropping
-      // the link changes nothing about it.
+      // A list row's poster is presentational, and the control layer is a
+      // sibling of the link either way — so dropping the link changes nothing
+      // about it.
       renderWithProviders(
         <ShowPoster src={null} size="row" control={<button type="button">Remove</button>} />,
       );

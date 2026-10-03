@@ -29,10 +29,10 @@ describe("EpisodeGuestCast", () => {
   });
 
   it("shows no episode count — a guest credit is already per-episode", async () => {
-    // Permanent, not a stopgap: `catalog` records guest cast at episode grain
-    // with no count to carry, so this stays true after the credits routes move
-    // to it (NEU-1047). Asserted on the rendered surface rather than left to
-    // the fixture, which a later edit could unpin in silence.
+    // Permanent, not a stopgap: since NEU-1512 every cast route carries an
+    // `episode_count` key, and the episode route sends it null — one
+    // appearance by definition. Asserted on the rendered surface rather than
+    // left to the fixture, which a later edit could unpin in silence.
     renderWithProviders(<EpisodeGuestCast episodeId={5000} />);
 
     expect(await screen.findByText("The Stranger")).toBeInTheDocument();

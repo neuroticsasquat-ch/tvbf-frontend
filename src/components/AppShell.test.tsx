@@ -1,9 +1,13 @@
-import { describe, expect, it } from "vitest";
-import { screen, within } from "@testing-library/react";
+import { afterEach, describe, expect, it } from "vitest";
+import { act, screen, waitFor, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { http, HttpResponse } from "msw";
 import { server } from "@/test/msw/server";
 import { env } from "@/env";
 import { renderWithProviders } from "@/test/renderWithProviders";
+import { meHandler, VERIFIED_AT } from "@/test/msw/me";
+import { installFakePush, uninstallFakePush } from "@/test/push";
+import { clearPushNudge, offerPushNudge } from "@/lib/pushNudge";
 import { AppShell } from "./AppShell";
 
 // TMDB's attribution terms require this sentence verbatim. Do not reword it —
@@ -76,6 +80,16 @@ describe("AppShell footer publisher line", () => {
   });
 });
 
+describe("AppShell header brand (NEU-1509)", () => {
+  it("draws the lockup inside the home link, in place of lucide's Tv", () => {
+    renderWithProviders(<AppShell />);
+    const home = screen.getByRole("link", { name: "TV BingeFriend home" });
+    expect(home).toHaveAttribute("href", "/");
+    expect(home.querySelector("[data-brand-lockup]")).not.toBeNull();
+    expect(home.querySelector(".lucide")).toBeNull();
+  });
+});
+
 describe("AppShell primary nav", () => {
   // Both the desktop header nav and the mobile bottom bar render the same
   // primaryLinks() and carry aria-label="Primary", so there are always two.
@@ -125,5 +139,72 @@ describe("AppShell primary nav", () => {
       .getAllByRole("link")
       .map((a) => a.getAttribute("href"));
     expect(hrefs).toEqual(["/", "/upcoming", "/discover", "/my-shows", "/friends"]);
+  });
+});
+
+describe("AppShell push nudge", () => {
+  afterEach(() => {
+    act(() => clearPushNudge());
+    uninstallFakePush();
+    localStorage.clear();
+  });
+
+  // The card belongs to the page the add happened on: leaving closes it.
+  it("draws the nudge over the page, and closes it on navigation", async () => {
+    server.use(meHandler(VERIFIED_AT));
+    installFakePush({ permission: "default" });
+    renderWithProviders(<AppShell />, { route: "/discover" });
+    const [watchNext] = await screen.findAllByRole("link", { name: "Watch Next" });
+
+    act(() => offerPushNudge("Severance"));
+    expect(
+      screen.getByRole("complementary", { name: "Get told when Severance airs" }),
+    ).toBeVisible();
+
+    await userEvent.click(watchNext);
+    expect(screen.queryByRole("complementary", { name: /get told/i })).not.toBeInTheDocument();
+  });
+});
+
+describe("AppShell search-running indicator (NEU-1502)", () => {
+  it("spins and announces while the overlay reports a search running, and stops when it settles", async () => {
+    let release!: () => void;
+    const opened = new Promise<void>((resolve) => (release = resolve));
+    server.use(
+      http.get(`${env.apiBaseUrl}/me`, () =>
+        HttpResponse.json({
+          id: "u1",
+          email: "a@b.com",
+          display_name: "A",
+          created_at: new Date().toISOString(),
+        }),
+      ),
+      http.get(`${env.apiBaseUrl}/me/connection-requests`, () =>
+        HttpResponse.json({ incoming: [], outgoing: [] }),
+      ),
+      http.get(`${env.apiBaseUrl}/shows`, async () => {
+        await opened;
+        return HttpResponse.json({ items: [], page: 1, per_page: 50, total: 0, total_pages: 1 });
+      }),
+    );
+    const user = userEvent.setup();
+    renderWithProviders(<AppShell />);
+
+    const form = await screen.findByRole("search", { name: "Search shows" });
+    const status = within(form).getByRole("status");
+    expect(status).toHaveTextContent("");
+    expect(form.querySelector(".animate-spin")).toBeNull();
+
+    await user.type(within(form).getByRole("searchbox", { name: "Search shows" }), "fixture");
+
+    const results = screen.getByRole("region", { name: "Search results" });
+    expect(status).toHaveTextContent("Searching…");
+    expect(form.querySelector(".animate-spin")).not.toBeNull();
+    expect(results).toHaveAttribute("aria-busy", "true");
+
+    release();
+    await waitFor(() => expect(status).toHaveTextContent(""));
+    expect(form.querySelector(".animate-spin")).toBeNull();
+    expect(results).toHaveAttribute("aria-busy", "false");
   });
 });
