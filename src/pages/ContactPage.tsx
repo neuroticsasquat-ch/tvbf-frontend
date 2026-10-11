@@ -4,6 +4,7 @@ import { submitContact } from "@/api/contact";
 import { ErrorState } from "@/components/ErrorState";
 import { TurnstileWidget } from "@/components/TurnstileWidget";
 import { env } from "@/env";
+import { SUPPORT_EMAIL } from "@/lib/contact";
 import { cn } from "@/lib/cn";
 
 const CAPTCHA_MESSAGES: Record<string, string> = {
@@ -87,7 +88,7 @@ export function ContactPage() {
         <h1 className="text-3xl font-semibold mb-4">Contact</h1>
         <p className="text-green-700">Message sent &mdash; we&apos;ll get back to you.</p>
         <footer className="mt-8">
-          <time dateTime="2026-08-21">Last updated: 2026-08-21</time>
+          <time dateTime="2026-10-11">Last updated: 2026-10-11</time>
         </footer>
       </div>
     );
@@ -96,6 +97,13 @@ export function ContactPage() {
   return (
     <div className="mx-auto max-w-prose py-8">
       <h1 className="text-3xl font-semibold mb-4">Contact</h1>
+      <p className="mb-6">
+        Use the form below, or email{" "}
+        <a href={`mailto:${SUPPORT_EMAIL}`} className="underline">
+          {SUPPORT_EMAIL}
+        </a>
+        .
+      </p>
       {rateLimited ? (
         <div className="mb-6">
           <ErrorState message="Too many messages have been sent from your network. Please wait a while before trying again." />
@@ -167,7 +175,7 @@ export function ContactPage() {
         ) : null}
       </form>
       <footer className="mt-8">
-        <time dateTime="2026-08-21">Last updated: 2026-08-21</time>
+        <time dateTime="2026-10-11">Last updated: 2026-10-11</time>
       </footer>
     </div>
   );
