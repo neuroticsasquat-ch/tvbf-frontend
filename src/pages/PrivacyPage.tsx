@@ -7,8 +7,9 @@ export function PrivacyPage() {
       <h1 className="text-3xl font-semibold">Privacy Policy</h1>
 
       <p>
-        <strong>Tom Boone d/b/a neuroticsasquat.ch</strong> (Maryland) operates TV BingeFriend ("the
-        Service"). This policy describes how your information is collected, used, and shared.
+        <strong>neuroticsasquat.ch</strong>, a trade name registered in Maryland, operates TV
+        BingeFriend ("the Service"). This policy describes how your information is collected, used,
+        and shared.
       </p>
 
       <section className="space-y-2">

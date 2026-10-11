@@ -4,8 +4,8 @@ export function TermsPage() {
       <h1 className="text-3xl font-semibold">Terms of Service</h1>
 
       <p>
-        <strong>Tom Boone d/b/a neuroticsasquat.ch</strong> (Maryland) operates TV BingeFriend ("the
-        Service"). By using the Service, you agree to these terms.
+        <strong>neuroticsasquat.ch</strong>, a trade name registered in Maryland, operates TV
+        BingeFriend ("the Service"). By using the Service, you agree to these terms.
       </p>
 
       <section className="space-y-2">
@@ -21,7 +21,7 @@ export function TermsPage() {
         <h2 className="text-xl font-semibold">Intellectual Property</h2>
         <p>
           Your watch data and ratings belong to you. The Service's code, design, and branding are
-          the property of Tom Boone. Catalog data, images, and credits are provided by{" "}
+          the property of neuroticsasquat.ch. Catalog data, images, and credits are provided by{" "}
           <a
             href="https://www.themoviedb.org"
             target="_blank"
@@ -56,7 +56,7 @@ export function TermsPage() {
       </section>
 
       <footer>
-        <time dateTime="2026-08-21">Last updated: 2026-08-21</time>
+        <time dateTime="2026-10-11">Last updated: 2026-10-11</time>
       </footer>
     </article>
   );
