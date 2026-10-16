@@ -1,0 +1,13 @@
+// An assets-only Worker (NEU-1629): no `main`, so no Worker script runs — the
+// platform serves dist/ directly. Response headers come from public/_headers,
+// which Workers static assets reads in the same format Pages did.
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "tvbf-frontend",
+  "compatibility_date": "2026-10-16",
+  "assets": {
+    "directory": "./dist",
+    // Unknown paths answer index.html with a 200, so deep links reach the router.
+    "not_found_handling": "single-page-application"
+  }
+}

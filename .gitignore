@@ -1,6 +1,7 @@
 node_modules/
 .pnpm-store/
 dist/
+.wrangler/
 coverage/
 .env
 .env.local
