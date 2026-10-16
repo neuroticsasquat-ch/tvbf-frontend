@@ -8,6 +8,7 @@ import { router } from "./router";
 import { AuthProvider } from "./components/AuthContext";
 import { registerServiceWorker } from "./lib/serviceWorker";
 import { useVersionCheck } from "./hooks/useVersionCheck";
+import { sentryRelease } from "./lib/sentry";
 import "./styles/globals.css";
 
 const dsn = import.meta.env.VITE_SENTRY_DSN;
@@ -26,7 +27,7 @@ if (dsn) {
     replaysSessionSampleRate: 0.0,
     replaysOnErrorSampleRate: 1.0,
     environment: import.meta.env.MODE,
-    release: import.meta.env.VITE_GIT_SHA,
+    release: sentryRelease,
   });
 }
 
