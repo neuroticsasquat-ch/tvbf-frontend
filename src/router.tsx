@@ -25,6 +25,7 @@ import { TermsPage } from "@/pages/TermsPage";
 import { PrivacyPage } from "@/pages/PrivacyPage";
 import { AboutPage } from "@/pages/AboutPage";
 import { ContactPage } from "@/pages/ContactPage";
+import { ErrorTestPage } from "@/pages/ErrorTestPage";
 
 export const router = createBrowserRouter([
   {
@@ -41,6 +42,8 @@ export const router = createBrowserRouter([
       { path: "privacy", element: <PrivacyPage /> },
       { path: "about", element: <AboutPage /> },
       { path: "contact", element: <ContactPage /> },
+      // Unlinked: forces a test error for the Bugsink runbook (NEU-1593).
+      { path: "debug/error", element: <ErrorTestPage /> },
       {
         element: <RequireAuth />,
         children: [

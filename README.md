@@ -94,6 +94,28 @@ Copy `.env.example` to `.env.local` (gitignored) to override:
   so the widget's script from `challenges.cloudflare.com` needs no allowlist entry. Add
   `script-src`/`frame-src` for that host if a CSP is ever introduced.
 
+- `VITE_SENTRY_DSN` — the Bugsink DSN for this project. Unset (the default) leaves
+  error reporting off.
+
+### Error reporting and source maps
+
+Errors go to Bugsink through `@sentry/react`, and a production build uploads its source maps
+there through `@sentry/vite-plugin`, matched to events by debug ID. Set these in the build
+environment, never with a `VITE_` prefix (that would put the token in the bundle):
+
+- `SENTRY_URL` — the Bugsink host, e.g. `https://bugsink.example.com`.
+- `SENTRY_AUTH_TOKEN` — a Bugsink auth token. Without it the build still succeeds: it emits
+  no source maps, skips the upload and logs a warning.
+- `SENTRY_ORG` / `SENTRY_PROJECT` — as Bugsink's project settings give them. Bugsink has no
+  orgs, so the org defaults to its placeholder `bugsinkhasnoorgs`; the project defaults to
+  `tvbf-frontend`.
+
+The maps are deleted from `dist/` after upload, so the CDN never serves them. The Sentry
+`release` is the commit SHA — `VITE_GIT_SHA`, else `CF_PAGES_COMMIT_SHA`, else Coolify's
+`SOURCE_COMMIT` — and `environment` is the Vite mode (`production` for a build).
+`/debug/error` is an unlinked page whose button throws a known error, to confirm a deploy
+reports to Bugsink with a readable stack.
+
 ## Testing
 
 MSW intercepts `fetch` in tests; handlers and fixtures live in `src/test/msw/`. To cover a new endpoint, add a handler + fixture there, then write the test. Component tests use the `renderWithProviders` helper (TanStack Query + AuthProvider + MemoryRouter).
