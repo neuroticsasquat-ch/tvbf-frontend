@@ -43,6 +43,12 @@ tasks:
     cmds:
       - "{{.EXEC}} pnpm build"
 
+  worker:check:
+    desc: Build, then dry-run the Worker deploy (lists the dist assets, uploads nothing)
+    cmds:
+      - "{{.EXEC}} pnpm build"
+      - "{{.EXEC}} pnpm exec wrangler deploy --dry-run"
+
   deps:add:
     desc: 'Add a runtime dependency (task deps:add -- <package>)'
     cmds:

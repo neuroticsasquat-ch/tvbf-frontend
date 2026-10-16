@@ -16,12 +16,14 @@ const apiProxyTarget = process.env.API_PROXY_TARGET;
 // and skips the upload, with a warning at build time (NEU-1593).
 const sentryAuthToken = process.env.SENTRY_AUTH_TOKEN;
 
-// The deployed commit (NEU-1593): an explicit VITE_GIT_SHA, else Cloudflare
-// Pages' CF_PAGES_COMMIT_SHA, else Coolify's SOURCE_COMMIT — which is the literal
-// "unknown" unless "Include SOURCE_COMMIT in build" is on, so that one is not a
-// SHA. Becomes the Sentry release on both the upload and the client.
+// The deployed commit (NEU-1593): an explicit VITE_GIT_SHA, else Workers Builds'
+// WORKERS_CI_COMMIT_SHA (NEU-1629), else Cloudflare Pages' CF_PAGES_COMMIT_SHA
+// (until the Pages project is retired), else Coolify's SOURCE_COMMIT — which is
+// the literal "unknown" unless "Include SOURCE_COMMIT in build" is on, so that
+// one is not a SHA. Becomes the Sentry release on both the upload and the client.
 const gitSha = [
   process.env.VITE_GIT_SHA,
+  process.env.WORKERS_CI_COMMIT_SHA,
   process.env.CF_PAGES_COMMIT_SHA,
   process.env.SOURCE_COMMIT,
 ].find((sha) => sha && sha !== "unknown");

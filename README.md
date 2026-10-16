@@ -38,6 +38,7 @@ All `task` targets run inside the container.
 | `task test:watch` | Vitest watch mode |
 | `task lint` / `format` / `typecheck` | quality gates |
 | `task build:app` | production Vite build |
+| `task worker:check` | build, then dry-run the Worker deploy |
 | `task deps:add -- <pkg>` / `deps:add-dev -- <pkg>` | add deps via pnpm |
 
 ## Architecture
@@ -84,13 +85,13 @@ Copy `.env.example` to `.env.local` (gitignored) to override:
 - `VITE_API_BASE_URL` — defaults to `https://api.tvbf.localhost`.
 - `VITE_TURNSTILE_SITE_KEY` — Cloudflare Turnstile's public site key. Blank (the default)
   renders no verification widget on the signup form, which matches the backend shipping
-  with `TURNSTILE_ENABLED=False`. Production sets it in the Cloudflare Pages build
-  environment. The two switches live in different systems: turning verification on
-  server-side without setting this key leaves signup answering 400 `captcha_required`
+  with `TURNSTILE_ENABLED=False`. Production sets it in the Worker's build environment
+  (see [Deployment](#deployment)). The two switches live in different systems: turning
+  verification on server-side without setting this key leaves signup answering 400 `captcha_required`
   for everyone, which the form reports as a temporary outage.
 
-  The page sets no Content-Security-Policy (checked 2026-08-19 — no meta CSP in
-  `index.html`, and `public/staticwebapp.config.json` sets only `navigationFallback`),
+  The page sets no Content-Security-Policy (checked 2026-10-16 — no meta CSP in
+  `index.html`, and `public/_headers` sets only the manifest's `Content-Type`),
   so the widget's script from `challenges.cloudflare.com` needs no allowlist entry. Add
   `script-src`/`frame-src` for that host if a CSP is ever introduced.
 
@@ -111,10 +112,44 @@ environment, never with a `VITE_` prefix (that would put the token in the bundle
   `tvbf-frontend`.
 
 The maps are deleted from `dist/` after upload, so the CDN never serves them. The Sentry
-`release` is the commit SHA — `VITE_GIT_SHA`, else `CF_PAGES_COMMIT_SHA`, else Coolify's
+`release` is the commit SHA — `VITE_GIT_SHA`, else Workers Builds' `WORKERS_CI_COMMIT_SHA`,
+else `CF_PAGES_COMMIT_SHA` (kept until the Pages project is retired), else Coolify's
 `SOURCE_COMMIT` — and `environment` is the Vite mode (`production` for a build).
 `/debug/error` is an unlinked page whose button throws a known error, to confirm a deploy
 reports to Bugsink with a readable stack.
+
+## Deployment
+
+The app deploys as a Cloudflare Worker with static assets, built and deployed by Workers
+Builds (NEU-1629); moving production off the Pages project is the ops cutover's job. `wrangler.jsonc` declares an **assets-only** Worker — no `main`, so no Worker
+script runs: the platform serves `dist/` directly, answers unknown paths with `index.html`
+(`not_found_handling: "single-page-application"`) so deep links reach the router, and applies
+the response headers in `public/_headers`.
+
+Workers Builds settings:
+
+- **Build command:** `pnpm build`
+- **Deploy command:** `npx wrangler deploy`, Workers Builds' default — it resolves the
+  `wrangler` dev dependency. The `deploy` script is the same command; run it as
+  `pnpm run deploy`, never `pnpm deploy`, which is a pnpm built-in that ignores the script.
+- **Root directory:** the repo root.
+
+Build variables the app reads (set them as **build** variables, not Worker runtime variables
+— the bundle is static, so every value is fixed at build time):
+
+| Variable | Purpose |
+|---|---|
+| `VITE_API_BASE_URL` | the API origin |
+| `VITE_TURNSTILE_SITE_KEY` | Turnstile's public site key; blank renders no widget |
+| `VITE_SENTRY_DSN` | the Bugsink DSN; unset leaves error reporting off |
+| `SENTRY_URL` / `SENTRY_AUTH_TOKEN` / `SENTRY_ORG` / `SENTRY_PROJECT` | the source map upload (above) |
+| `VITE_GIT_SHA` | optional: overrides the release SHA below |
+
+The release SHA needs no variable: Workers Builds sets `WORKERS_CI_COMMIT_SHA` itself.
+
+To check the Worker locally, `task worker:check` builds and dry-runs the deploy, listing the
+assets it would upload. `pnpm exec wrangler dev` (from `task shell`) serves `dist/` the way
+production does.
 
 ## Testing
 
