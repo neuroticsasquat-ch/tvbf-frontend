@@ -1,4 +1,5 @@
 import { Link } from "react-router";
+import { PRIVACY_EMAIL } from "@/lib/contact";
 
 export function PrivacyPage() {
   return (
@@ -6,8 +7,9 @@ export function PrivacyPage() {
       <h1 className="text-3xl font-semibold">Privacy Policy</h1>
 
       <p>
-        <strong>Tom Boone d/b/a neuroticsasquat.ch</strong> (Maryland) operates TV BingeFriend ("the
-        Service"). This policy describes how your information is collected, used, and shared.
+        <strong>neuroticsasquat.ch</strong>, a trade name registered in Maryland, operates TV
+        BingeFriend ("the Service"). This policy describes how your information is collected, used,
+        and shared.
       </p>
 
       <section className="space-y-2">
@@ -83,7 +85,11 @@ export function PrivacyPage() {
       <section className="space-y-2">
         <h2 className="text-xl font-semibold">Contact</h2>
         <p>
-          If you have questions about this policy, please contact us through the{" "}
+          If you have questions about this policy, please email{" "}
+          <a href={`mailto:${PRIVACY_EMAIL}`} className="underline">
+            {PRIVACY_EMAIL}
+          </a>{" "}
+          or contact us through the{" "}
           <Link to="/contact" className="underline">
             contact form
           </Link>
@@ -92,7 +98,7 @@ export function PrivacyPage() {
       </section>
 
       <footer>
-        <time dateTime="2026-08-21">Last updated: 2026-08-21</time>
+        <time dateTime="2026-10-11">Last updated: 2026-10-11</time>
       </footer>
     </article>
   );

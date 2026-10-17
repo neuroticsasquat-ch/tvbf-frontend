@@ -4,8 +4,8 @@ import { loadTurnstile, resetTurnstileLoaderForTests, type TurnstileApi } from "
 
 const SCRIPT_SELECTOR = "script[src*='challenges.cloudflare.com']";
 
-function fakeApi(ready?: (cb: () => void) => void): TurnstileApi {
-  return { render: () => "w", reset: () => {}, remove: () => {}, ready };
+function fakeApi(): TurnstileApi {
+  return { render: () => "w", reset: () => {}, remove: () => {} };
 }
 
 function injectedScript(): HTMLScriptElement {
@@ -47,19 +47,20 @@ describe("loadTurnstile", () => {
     await expect(second).resolves.toBe(api);
   });
 
-  it("waits for turnstile.ready before resolving when the script defines it", async () => {
+  it("resolves on load without calling turnstile.ready", async () => {
     const promise = loadTurnstile();
     const script = injectedScript();
 
-    let release: (() => void) | undefined;
-    const api = fakeApi((cb) => {
-      release = cb;
-    });
+    // The real script throws from `ready()` when it was loaded async/defer.
+    const api = {
+      ...fakeApi(),
+      ready: () => {
+        throw new Error("Remove async/defer from the Turnstile api.js script tag");
+      },
+    };
     window.turnstile = api;
     script.dispatchEvent(new Event("load"));
 
-    expect(release).toBeDefined();
-    release?.();
     await expect(promise).resolves.toBe(api);
   });
 
