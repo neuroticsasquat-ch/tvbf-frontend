@@ -27,9 +27,6 @@ export interface TurnstileApi {
   render: (container: HTMLElement, options: TurnstileRenderOptions) => string;
   reset: (widgetId: string) => void;
   remove: (widgetId: string) => void;
-  /** Present on the real script, absent on the test fake. With explicit
-   * rendering Cloudflare asks callers to wait for it before calling `render`. */
-  ready?: (callback: () => void) => void;
 }
 
 declare global {
@@ -61,8 +58,9 @@ export function loadTurnstile(): Promise<TurnstileApi> {
         reject(new Error("Turnstile script loaded without defining window.turnstile"));
         return;
       }
-      if (typeof api.ready === "function") api.ready(() => resolve(api));
-      else resolve(api);
+      // Not `turnstile.ready()`: the real script throws from it when loaded
+      // async/defer, as this one is. `onload` already means `render` is usable.
+      resolve(api);
     };
     script.onerror = () => {
       pending = null;
