@@ -10,18 +10,21 @@ React 19 · Vite 6 · TypeScript · React Router 7 · TanStack Query · Tailwind
 
 - Docker Desktop.
 - [`go-task`](https://taskfile.dev) (`brew install go-task`).
-- [`tbc-localdev-infra`](../../tbc-localdev-infra) running (Traefik + shared Postgres).
+- [`tbc-localdev-infra`](../../tbc-localdev-infra) cloned at `~/projects/tbc-localdev-infra` (Traefik + shared Postgres). The dev setup here follows its `CONVENTIONS.md` (`~/projects/tbc-localdev-infra/CONVENTIONS.md`).
+- [`pre-commit`](https://pre-commit.com) (`brew install pre-commit`).
 - [`tvbf-backend`](../tvbf-backend) running (this SPA needs the API).
 
-No local Node/pnpm needed — everything runs in the `tvbf_frontend` container.
+No local Node/pnpm needed — everything runs in the `tvbf-frontend` service's container.
 
 ## Quick start
 
 ```sh
-task infra:up   # start shared Traefik + Postgres (once per boot)
-task build      # build image (first run only, or after dep changes)
-task up         # start the dev container
+task infra:up       # first run: shared Traefik + Postgres and the `proxy` network `build` needs
+task build          # build image, sync deps, start the container (also after dep changes)
+pre-commit install  # once per clone: lint/format/typecheck/test on commit (container must be up)
 ```
+
+After that, `task up` starts the shared infra and then the dev container.
 
 Open **https://app.tvbf.localhost/**. Accept the self-signed cert; do the same once for **https://api.tvbf.localhost/** so the browser trusts the API origin and accepts cross-subdomain session cookies.
 
@@ -33,13 +36,13 @@ All `task` targets run inside the container.
 
 | Target | Purpose |
 |---|---|
-| `task up` / `down` / `build` / `logs` / `shell` | container lifecycle |
+| `task up` / `down` / `restart` / `build` / `logs` / `shell` | container lifecycle (`up` starts the shared infra too) |
 | `task test` | run Vitest once (`task test -- <path>` for a single file) |
 | `task test:watch` | Vitest watch mode |
-| `task lint` / `format` / `typecheck` | quality gates |
+| `task lint` / `format` / `format:check` / `typecheck` | quality gates |
 | `task build:app` | production Vite build |
 | `task worker:check` | build, then dry-run the Worker deploy |
-| `task deps:add -- <pkg>` / `deps:add-dev -- <pkg>` | add deps via pnpm |
+| `task deps:add -- <pkg>` / `deps:add-dev -- <pkg>` / `deps:remove -- <pkg>` | add / remove deps via pnpm |
 
 ## Architecture
 
