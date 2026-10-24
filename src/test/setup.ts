@@ -20,7 +20,7 @@ if (typeof window !== "undefined") {
     ResizeObserverStub as unknown as typeof ResizeObserver;
 }
 
-beforeAll(() => server.listen({ onUnhandledRequest: "error" }));
+beforeAll(() => server.listen({ onUnhandledFrame: "error" }));
 // Installed for every test, not only the ones that assert on it: `loadTurnstile`
 // short-circuits when `window.turnstile` is already defined, so this is what
 // makes "no test reaches Cloudflare" structural rather than a convention each

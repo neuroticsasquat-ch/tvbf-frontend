@@ -1,5 +1,5 @@
 import { HttpResponse, http } from "msw";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { server } from "@/test/msw/server";
 import { env } from "@/env";
 import { ApiError, apiFetch, buildShowsQuery, isEmailNotVerified, setCsrfToken } from "./client";
@@ -108,15 +108,17 @@ describe("apiFetch — auth + csrf", () => {
   });
 
   it("includes credentials on every request", async () => {
-    let observedCredentials: RequestCredentials | undefined;
-    server.use(
-      http.get(`${env.apiBaseUrl}/probe`, ({ request }) => {
-        observedCredentials = request.credentials;
-        return HttpResponse.json({ ok: true });
-      }),
-    );
-    await apiFetch("/probe");
-    expect(observedCredentials).toBe("include");
+    // Asserted on the init handed to fetch, not on the handler's `request`:
+    // msw 3's Node interceptor rebuilds the Request without its credentials
+    // mode, so `request.credentials` reads "same-origin" whatever was sent.
+    const fetchSpy = vi.spyOn(globalThis, "fetch");
+    server.use(http.get(`${env.apiBaseUrl}/probe`, () => HttpResponse.json({ ok: true })));
+    try {
+      await apiFetch("/probe");
+      expect(fetchSpy.mock.calls[0]?.[1]?.credentials).toBe("include");
+    } finally {
+      fetchSpy.mockRestore();
+    }
   });
 
   it("attaches X-CSRF-Token from in-memory csrf token on POST", async () => {
