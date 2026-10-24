@@ -13,13 +13,15 @@ tracking, ratings, friends and recommendations.
 Its sibling is **[`tvbf-backend`](https://github.com/neuroticsasquat-ch/tvbf-backend)** — a FastAPI
 service holding the TMDB catalog mirror and every API this SPA calls. It carries its own
 `.claude/CLAUDE.md`, and that file is the reference for anything server-side. Both repos are cloned
-side by side under one parent directory, alongside `tbc-localdev-infra`:
+side by side under one parent directory, which sits beside `tbc-localdev-infra` (the path
+both Taskfiles include it from):
 
 ```
-<parent>/
-  tvbf-frontend/    <- you are here
-  tvbf-backend/
+<projects>/
   tbc-localdev-infra/
+  <parent>/
+    tvbf-frontend/    <- you are here
+    tvbf-backend/
 ```
 
 Nothing outside this repo is required to work in it. There is no umbrella-level `CLAUDE.md` or
@@ -57,7 +59,7 @@ so it is `repo:tvbf-frontend` here — the name above must match.
 
 - **Git is allowed here, within limits.** Branching, staging, committing and pushing are fine to do without asking, including from subagents. Never commit directly to `main`, cut a branch first. Destructive operations — `reset --hard`, `push --force`, branch deletion, history rewriting — still need explicit confirmation every time.
 - **Containerization is non-negotiable. There is no local Node toolchain.** Every `pnpm`/`vite`/`tsc`/`eslint`/`vitest` invocation runs inside the `tvbf_frontend` container, which uses pnpm 9. `task` targets wrap `docker compose exec` — use them.
-- **The shared localdev infra at `../tbc-localdev-infra/` must be running first.** That compose project owns `tbc_postgresql_db`, Traefik (TLS termination for `*.localhost`), Mailpit, and the external `proxy` Docker network this SPA joins. If Traefik isn't up, nothing here works. Start it with `task infra:up` (namespace comes from an include in `Taskfile.yml`).
+- **The shared localdev infra at `../../tbc-localdev-infra/` must be running first.** That compose project owns `tbc_postgresql_db`, Traefik (TLS termination for `*.localhost`), Mailpit, and the external `proxy` Docker network this SPA joins. If Traefik isn't up, nothing here works. Start it with `task infra:up` (namespace comes from an include in `Taskfile.yml`).
 - **The backend must be running for anything past the login screen.** `cd ../tvbf-backend && task up`. Its `task` commands run from that repo, not this one.
 
 ## Commands
