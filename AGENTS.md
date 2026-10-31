@@ -13,13 +13,15 @@ tracking, ratings, friends and recommendations.
 Its sibling is **[`tvbf-backend`](https://github.com/neuroticsasquat-ch/tvbf-backend)** — a FastAPI
 service holding the TMDB catalog mirror and every API this SPA calls. It carries its own
 `.claude/CLAUDE.md`, and that file is the reference for anything server-side. Both repos are cloned
-side by side under one parent directory, alongside `tbc-localdev-infra`:
+side by side under one parent directory, which sits beside `tbc-localdev-infra` (the path
+both Taskfiles include it from):
 
 ```
-<parent>/
-  tvbf-frontend/    <- you are here
-  tvbf-backend/
+<projects>/
   tbc-localdev-infra/
+  <parent>/
+    tvbf-frontend/    <- you are here
+    tvbf-backend/
 ```
 
 Nothing outside this repo is required to work in it. There is no umbrella-level `CLAUDE.md` or
@@ -56,15 +58,18 @@ so it is `repo:tvbf-frontend` here — the name above must match.
 ## Hard constraints
 
 - **Git is allowed here, within limits.** Branching, staging, committing and pushing are fine to do without asking, including from subagents. Never commit directly to `main`, cut a branch first. Destructive operations — `reset --hard`, `push --force`, branch deletion, history rewriting — still need explicit confirmation every time.
-- **Containerization is non-negotiable. There is no local Node toolchain.** Every `pnpm`/`vite`/`tsc`/`eslint`/`vitest` invocation runs inside the `tvbf_frontend` container, which uses pnpm 9. `task` targets wrap `docker compose exec` — use them.
-- **The shared localdev infra at `../tbc-localdev-infra/` must be running first.** That compose project owns `tbc_postgresql_db`, Traefik (TLS termination for `*.localhost`), Mailpit, and the external `proxy` Docker network this SPA joins. If Traefik isn't up, nothing here works. Start it with `task infra:up` (namespace comes from an include in `Taskfile.yml`).
+- **Containerization is non-negotiable. There is no local Node toolchain.** Every `pnpm`/`vite`/`tsc`/`eslint`/`vitest` invocation runs inside the `tvbf-frontend` service's container, which uses pnpm 9. `task` targets wrap `docker compose exec` — use them.
+- **The shared localdev infra at `~/projects/tbc-localdev-infra/` must be running first.** That compose project owns `tbc_postgresql_db`, Traefik (TLS termination for `*.localhost`), Mailpit, and the external `proxy` Docker network this SPA joins. If Traefik isn't up, nothing here works. `task up` starts it first (via `task infra:up`, whose namespace comes from an include in `Taskfile.yml`).
+- **The dev setup follows `~/projects/tbc-localdev-infra/CONVENTIONS.md`** — the shared contract for task names, the compose service and the pre-commit hooks across every app repo on that stack. Change it there before diverging here.
 - **The backend must be running for anything past the login screen.** `cd ../tvbf-backend && task up`. Its `task` commands run from that repo, not this one.
 
 ## Commands
 
 All `task` commands run from this repo's root.
 
-- `task up` / `task down` / `task build` — docker compose up/down/build
+- `task up` — start the shared infra, then the container
+- `task down` / `task restart` — stop / restart the container (the shared infra keeps running)
+- `task build` — rebuild the image, sync deps into the `node_modules` volume, recreate the container
 - `task logs` — follow (Ctrl+C to stop, container keeps running)
 - `task shell` — shell inside the container
 - `task install` — install dependencies via pnpm inside the container
@@ -74,7 +79,8 @@ Quality gates:
 
 - `task test` — `vitest run`
 - `task test:watch` — vitest in watch mode
-- `task lint` — eslint
+- `task lint` — oxlint
+- `task format` / `task format:check` — prettier write / check (`task format:check -- <files>` checks only those)
 - `task typecheck` — `tsc --noEmit`
 
 ## The backend contract
@@ -119,7 +125,7 @@ tvbf-frontend/src/
 ## Conventions
 
 - **Hostnames:** `https://app.tvbf.localhost` (frontend) / `https://api.tvbf.localhost` (backend). Both are in `CORS_ALLOWED_ORIGINS`. Cookies are scoped to `.tvbf.localhost` so the session is shared across both subdomains.
-- **Network:** the `tvbf_frontend` container joins the external `proxy` Docker network owned by `tbc-localdev-infra`. Traefik routes `Host(\`app.tvbf.localhost\`)` to it.
+- **Network:** the `tvbf-frontend` service joins the external `proxy` Docker network owned by `tbc-localdev-infra`. Traefik routes `Host(\`app.tvbf.localhost\`)` to it.
 - **Containerization is non-negotiable.** No local Node toolchain. Vite HMR runs over Traefik's TLS — config uses `clientPort: 443` + `protocol: "wss"`.
 - **API client (`src/api/client.ts`):** every request sends `credentials: "include"`. Mutating requests automatically include `X-CSRF-Token` from the in-memory auth context. Errors throw typed objects that pages render into `<ErrorState />`. Don't bypass it for ad-hoc fetches.
 - **Sort + filter state is persisted to localStorage** via `usePersistedSort` / `usePersistedString` / `usePersistedView`. `usePersistedSort` and `usePersistedView` validate against an allowed key list, so adding a new sort option is safe (old persisted values that aren't in the list fall back to the default). Renaming a page key is the sanctioned way to reset everyone's choice when a default changes (NEU-1513: search's `search` → `search-sort-v2`) — a stored value cannot be told apart from the old default, so rewriting it in the hook is not an option. **`usePersistedString` does not validate at all** — it returns the raw stored string — so a persisted *value* (a genre or status name) survives a vocabulary change and is sent to the API unchecked, which is NEU-1064's finding and NEU-1037's to fix.
@@ -154,5 +160,8 @@ docs go.
 
 ## Quality gates
 
-This repo has **no pre-commit hooks** (the backend does). Gates run via `task lint` /
-`task typecheck` / `task test`, and in CI. Run all three locally before pushing.
+`.pre-commit-config.yaml` runs `task lint`, `task format:check`, `task typecheck` and `task test`
+on any commit touching a `ts`/`tsx`/`js`/`mjs`/`json`/`css` file — inside the container, so it
+must be up. Run `pre-commit install` once per clone. The format hook checks **only the staged
+files**, because `main` has known prettier drift (CONVENTIONS.md's documented exception); format
+what you touch with `task format`. CI runs the same gates.

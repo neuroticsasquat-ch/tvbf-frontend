@@ -128,6 +128,11 @@ export default defineConfig(({ command }) => ({
     watch: {
       usePolling: true,
       interval: 500,
+      // Polling stats every file it watches, every interval. pnpm drops its
+      // store at the bind mount's root (.pnpm-store, ~50k files), and polling it
+      // pinned a core and pushed index.html past the healthcheck's timeout.
+      // node_modules and .git are already in Vite's defaults.
+      ignored: ["**/.pnpm-store/**", "**/dist/**", "**/.wrangler/**", "**/coverage/**"],
     },
   },
 }));
