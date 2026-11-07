@@ -83,6 +83,9 @@ export function TurnstileWidget({ siteKey, onToken }: TurnstileWidgetProps) {
       });
 
     return () => {
+      // `cancelled` is local to this effect run, not render scope — the
+      // standard cancellation flag. oxlint 1.91's port of the rule misreads it.
+      // oxlint-disable-next-line react/immutability
       cancelled = true;
       const id = widgetIdRef.current;
       widgetIdRef.current = null;
