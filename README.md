@@ -1,3 +1,5 @@
+> **Archived.** This repo now lives under `frontend/` in [neuroticsasquat-ch/tvbf](https://github.com/neuroticsasquat-ch/tvbf).
+
 # tvbf-frontend
 
 React SPA for TV Binge Friend. Auth, catalog browse, search, watchlist, and per-episode watch tracking against the [tvbf-backend](../tvbf-backend) API.
