@@ -54,6 +54,9 @@ export function useVersionCheck(
     async function onVisibilityChange() {
       const now = Date.now();
       if (document.visibilityState === "hidden") {
+        // These `let`s are local to this effect run, not render scope; the
+        // listener owns them. oxlint 1.91's port of the rule misreads that.
+        // oxlint-disable-next-line react/immutability
         hiddenAt = now;
         return;
       }
